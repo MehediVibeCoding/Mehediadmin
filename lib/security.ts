@@ -1,13 +1,12 @@
-import DOMPurify from 'isomorphic-dompurify';
 
-// প্রতিটা admin ফর্মের free-text ইনপুট (প্রোডাক্ট নাম/বিবরণ/স্পেসিফিকেশন,
-// রিভিউ, FAQ, হেডার কপি ইত্যাদি) এই ফাংশন দিয়ে সেভ করার আগে sanitize করতে
-// হবে — কোনো HTML/script ইনজেকশন যেন Supabase-এ গিয়ে পরে মেইন সাইটে বা
-// admin panel-এই render না হয়।
 export function sanitizeInput(value: unknown): string {
   if (value == null) return '';
   const str = String(value);
-  return DOMPurify.sanitize(str, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim();
+  // <script>/<style> ট্যাগ তাদের ভেতরের কনটেন্টসহ পুরোপুরি বাদ
+  const withoutScripts = str.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  // বাকি সব HTML ট্যাগ সরাও, ভেতরের টেক্সট রেখে দাও
+  const withoutTags = withoutScripts.replace(/<[^>]*>/g, '');
+  return withoutTags.trim();
 }
 
 // একই fields-এর array (features, FAQ answers ইত্যাদি) sanitize করতে
