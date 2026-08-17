@@ -25,6 +25,10 @@
 | Gold (offer/badge) | `#D4A853` | `gold` |
 | Green (success) | `#10B981` | `success` |
 | Info blue | `#3B82F6` | `info` |
+| Red (delete/error) | `#E63946` | `danger` |
+| Amber (low-stock warn) | `#F59E0B` | `warn` |
+
+> `danger`/`warn` Module ৩ (Products)-এ প্রথম দরকার হলো (delete বাটন, sold-out/low-stock pill) — legacy `admin.html`-এর `--red`/`--warn` CSS variable থেকে হুবহু verify করে যোগ করা হয়েছে, নতুন hex বানানো হয়নি।
 
 ## Shadows / Radius / Transition
 

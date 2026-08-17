@@ -31,6 +31,8 @@ const config: Config = {
         gold: '#D4A853',
         success: '#10B981',
         info: '#3B82F6',
+        danger: '#E63946',
+        warn: '#F59E0B',
       },
       fontFamily: {
         display: ['"Playfair Display"', 'serif'],
