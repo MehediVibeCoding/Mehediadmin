@@ -153,7 +153,8 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | B-২ | Orders | ✅ সম্পূর্ণ (list, search, status filter, calendar range filter, ১৪/page pagination, bulk status update, CSV export all/range, order detail modal, single status change + sound, realtime new-order sound/browser-notification/toast/pending badge) |
 | B-৩ | Products | ✅ সম্পূর্ণ (AI Parser সহ) |
 | B-৪ | Customers | ✅ সম্পূর্ণ (কোনো আলাদা `customers` টেবিল নেই — legacy-র মতোই `orders` থেকে ফোন/নাম দিয়ে গ্রুপ করে দেখানো হয়, এখন সার্ভার-সাইড Server Action-এ; Dashboard-এর "কাস্টমার" stat card-ও এখন `/customers`-এ লিংক করে) |
-| B-৫ থেকে B-১৮ | Traffic, Profit, Design pages, Offers, Review Gallery, FAQ, Header Copy, Settings, Info Pages | ⏳ বাকি |
+| B-৫ | Traffic/Analytics | ✅ সম্পূর্ণ (৪টা stat card, দিন-টেবিল, ভিজিটর ট্রেন্ড চার্ট (hourly/daily), পিক-আওয়ার চার্ট, top-viewed products (৩ স্টেট: ট্র্যাকিং-নেই/খালি/ডাটা), ৭ দিন ডিফল্ট রেঞ্জ + ৮৯ দিন পর্যন্ত ক্যালেন্ডার, রিফ্রেশ; Dashboard-এর "আজকের ভিজিটর" card-ও `/traffic`-এ লিংক করে) |
+| B-৬ থেকে B-১৮ | Profit, Design pages, Offers, Review Gallery, FAQ, Header Copy, Settings, Info Pages | ⏳ বাকি |
 | C | Server Actions & API routes (`sync-sheet` proxy সহ) | ⏳ বাকি — Orders-এর "confirmed" স্ট্যাটাসে Google Sheet sync call এখনো wire করা হয়নি, TODO কমেন্ট রাখা আছে `app/actions/orders.ts`-এ |
 | D | Documentation (ARCHITECTURE.md, MIGRATION_NOTES.md) | ⏳ বাকি |
 
