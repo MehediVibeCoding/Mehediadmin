@@ -21,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/products', label: 'প্রোডাক্ট', enabled: true, icon: <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /> },
   { href: '/products/parser', label: 'AI Planner', enabled: true, icon: <rect x="4" y="4" width="16" height="16" rx="2" /> },
   { href: '/offers-mgmt', label: 'অফার পপআপ', enabled: false, icon: <path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" /> },
-  { href: '/customers', label: 'কাস্টমার', enabled: false, icon: <circle cx="9" cy="7" r="4" /> },
+  { href: '/customers', label: 'কাস্টমার', enabled: true, icon: <circle cx="9" cy="7" r="4" /> },
   { href: '/design/hero-cards', label: 'হিরো ক্যাটাগরি কার্ড', enabled: false, icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
   { href: '/design/categories', label: 'ক্যাটাগরি', enabled: false, icon: <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /> },
   { href: '/design/footer', label: 'Footer ও লোগো', enabled: false, icon: <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /> },

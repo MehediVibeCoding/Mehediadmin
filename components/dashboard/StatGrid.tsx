@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { DashboardStats } from '@/app/actions/dashboard';
 
 function Icon({ children }: { children: React.ReactNode }) {
@@ -24,18 +25,16 @@ interface CardProps {
   accentText: string;
   icon: React.ReactNode;
   isLive?: boolean;
+  href?: string;
 }
 
-// এই মুহূর্তে stat card গুলোর টার্গেট পেজ (/orders, /customers, /traffic,
-// /profit) এখনো তৈরি হয়নি (পরবর্তী module গুলো) — তাই এখন non-clickable,
-// শুধু ডাটা দেখায়। সংশ্লিষ্ট module তৈরি হলে Link যোগ করে দিতে হবে।
-function StatCard({ label, value, note, accentBg, accentText, icon, isLive }: CardProps) {
-  return (
-    <div
-      className={`relative flex min-h-[148px] flex-col items-center justify-center rounded-2xl border bg-brand-surface p-5 text-center shadow-sh1 transition-brand hover:-translate-y-0.5 hover:shadow-sh2 ${
-        isLive ? 'border-warn/50' : 'border-border-base'
-      }`}
-    >
+// stat card গুলোর টার্গেট পেজের (/orders, /traffic, /profit) মধ্যে যেগুলো
+// এখনো তৈরি হয়নি সেগুলো non-clickable থাকে; যে module-এর route তৈরি হয়ে
+// গেছে (যেমন /customers) সেটার card-এ href দিয়ে Link করা হয় — legacy
+// stat-card-cust-এর `onclick="showPage('customers',null)"` আচরণের মতোই।
+function StatCard({ label, value, note, accentBg, accentText, icon, isLive, href }: CardProps) {
+  const content = (
+    <>
       {isLive && (
         <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-warn shadow-[0_0_0_3px_rgba(245,158,11,.2)]" />
       )}
@@ -51,8 +50,22 @@ function StatCard({ label, value, note, accentBg, accentText, icon, isLive }: Ca
           {note}
         </div>
       )}
-    </div>
+    </>
   );
+
+  const className = `relative flex min-h-[148px] flex-col items-center justify-center rounded-2xl border bg-brand-surface p-5 text-center shadow-sh1 transition-brand hover:-translate-y-0.5 hover:shadow-sh2 ${
+    isLive ? 'border-warn/50' : 'border-border-base'
+  } ${href ? 'cursor-pointer' : ''}`;
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
 export default function StatGrid({ stats }: { stats: DashboardStats }) {
@@ -100,6 +113,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       <StatCard
         label="কাস্টমার"
         value={String(stats.uniqueCustomers)}
+        href="/customers"
         accentBg="bg-info/10"
         accentText="text-info"
         icon={
@@ -115,6 +129,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
         label="আজকের ভিজিটর"
         value={String(stats.todayVisitors)}
         note={stats.totalVisitors > 0 ? `+ ${stats.totalVisitors}টি Total` : undefined}
+        href="/traffic"
         accentBg="bg-brand-accent/10"
         accentText="text-brand-accent"
         icon={
