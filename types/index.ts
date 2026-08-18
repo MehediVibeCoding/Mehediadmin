@@ -4,24 +4,39 @@
 // লেখা যাবে না, প্রতিটা table-এর real schema Supabase Dashboard-এ
 // গিয়ে verify করে নিতে হবে।
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
+export interface OrderItem {
+  name: string;
+  qty: number;
+  price: number;
+  emoji?: string;
+}
+
+// ✅ VERIFIED (Module ১ — Dashboard): কলাম নামগুলো legacy admin.html-এর
+// getOrdersAsync()/viewOrder()/setOrderStatus()-এ সরাসরি Supabase-এ
+// পড়া/লেখা হওয়া column নাম থেকে নেওয়া (অনুমান না — production কোড
+// আসলেই এই কলামগুলো ব্যবহার করে)। তবে owner চাইলে Supabase Dashboard-এ
+// গিয়ে column type (numeric/text) once spot-check করে নেওয়া ভালো,
+// বিশেষ করে shipping_cost/subtotal/total সংখ্যাসূচক কিনা।
 export interface Order {
   id: string;
+  order_num: string;
   created_at: string;
   status: OrderStatus;
   customer_name: string;
   customer_phone: string;
+  customer_district: string;
   customer_address: string;
+  customer_email: string;
   items: OrderItem[];
+  shipping: string;
+  shipping_cost: number;
+  subtotal: number;
   total: number;
-}
-
-export interface OrderItem {
-  product_id: string;
-  name: string;
-  quantity: number;
-  price: number;
+  payment_txn: string;
+  payment_last4: string;
+  ip: string;
 }
 
 // ✅ VERIFIED (Module ৩ — Products): Supabase টেবিল `custom_products`।
