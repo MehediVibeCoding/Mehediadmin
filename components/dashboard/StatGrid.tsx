@@ -101,6 +101,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
         label="নিট প্রফিট"
         value={`৳${Math.round(stats.netProfit).toLocaleString()}`}
         note={`মোট রেভিনিউ: ৳${stats.confirmedRevenue.toLocaleString()}`}
+        href="/profit"
         accentBg="bg-success/10"
         accentText="text-success"
         icon={

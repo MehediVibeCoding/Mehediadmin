@@ -154,7 +154,8 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | B-৩ | Products | ✅ সম্পূর্ণ (AI Parser সহ) |
 | B-৪ | Customers | ✅ সম্পূর্ণ (কোনো আলাদা `customers` টেবিল নেই — legacy-র মতোই `orders` থেকে ফোন/নাম দিয়ে গ্রুপ করে দেখানো হয়, এখন সার্ভার-সাইড Server Action-এ; Dashboard-এর "কাস্টমার" stat card-ও এখন `/customers`-এ লিংক করে) |
 | B-৫ | Traffic/Analytics | ✅ সম্পূর্ণ (৪টা stat card, দিন-টেবিল, ভিজিটর ট্রেন্ড চার্ট (hourly/daily), পিক-আওয়ার চার্ট, top-viewed products (৩ স্টেট: ট্র্যাকিং-নেই/খালি/ডাটা), ৭ দিন ডিফল্ট রেঞ্জ + ৮৯ দিন পর্যন্ত ক্যালেন্ডার, রিফ্রেশ; Dashboard-এর "আজকের ভিজিটর" card-ও `/traffic`-এ লিংক করে) |
-| B-৬ থেকে B-১৮ | Profit, Design pages, Offers, Review Gallery, FAQ, Header Copy, Settings, Info Pages | ⏳ বাকি |
+| B-৬ | Profit | ✅ সম্পূর্ণ (৪টা stat card — নিট প্রফিট/রেভিনিউ/অর্ডার সংখ্যা/গড় প্রফিট, দিন-অনুযায়ী প্রফিট চার্ট, দিন-টেবিল, ৭ দিন ডিফল্ট রেঞ্জ + ৩৬৪ দিন পর্যন্ত ক্যালেন্ডার, রিফ্রেশ; Dashboard-এর "নিট প্রফিট" stat card-ও এখন `/profit`-এ লিংক করে; চার্টের রঙ DESIGN_SYSTEM.md-এর নিয়ম অনুযায়ী brand-primary — legacy-র green থেকে ইচ্ছাকৃত পরিবর্তন, নিচে নোট দেখুন) |
+| B-৭ থেকে B-১৮ | Design pages, Offers, Review Gallery, FAQ, Header Copy, Settings, Info Pages | ⏳ বাকি |
 | C | Server Actions & API routes (`sync-sheet` proxy সহ) | ⏳ বাকি — Orders-এর "confirmed" স্ট্যাটাসে Google Sheet sync call এখনো wire করা হয়নি, TODO কমেন্ট রাখা আছে `app/actions/orders.ts`-এ |
 | D | Documentation (ARCHITECTURE.md, MIGRATION_NOTES.md) | ⏳ বাকি |
 

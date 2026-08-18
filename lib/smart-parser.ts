@@ -207,7 +207,7 @@ export function smartParse(raw: string): ParsedProductData {
   }
 
   // ── Features ──
-  let features: string[] = [];
+  const features: string[] = [];
   const featKwds = ['Product Features', 'Features', 'ফিচার', 'সুবিধা', 'Product Feature', 'Feature'];
   for (const kw of featKwds) {
     const idx = lines.findIndex((l) => l.toLowerCase().includes(kw.toLowerCase()) && !l.includes('Quick'));
