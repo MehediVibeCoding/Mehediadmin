@@ -116,11 +116,17 @@ export interface FAQItem {
   order_index: number;
 }
 
+// ✅ VERIFIED (Module ৪ — Customers): legacy `admin.html`-এ আলাদা কোনো
+// `customers` টেবিল নেই — renderCustomers() `orders` টেবিলের রো থেকেই
+// ফোন/নাম দিয়ে client-side গ্রুপ করে এই শেপ বানাত। তাই এটা কোনো Supabase
+// row না, orders থেকে derive করা কম্পিউটেড টাইপ (দেখুন lib/customers.ts)।
 export interface Customer {
-  email: string;
   name: string;
   phone: string;
+  email: string;
   order_count: number;
+  total_spent: number;
+  last_order_date: string;
 }
 
 export interface TrafficDay {
