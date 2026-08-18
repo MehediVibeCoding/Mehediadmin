@@ -144,12 +144,16 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | Phase | কাজ | অবস্থা |
 |-------|-----|--------|
 | — | পুরনো repo fix: `GOOGLE_SHEET_URL` → `/api/sync-sheet` proxy | ✅ সম্পূর্ণ |
-| — | পুরনো repo: `ADMIN_EMAIL` (ইচ্ছাকৃতভাবে অপরিবর্তিত, নিচে Phase A.3-এ প্রকৃত সমাধান) | 🟡 জানা আছে, নতুন repo-তে সমাধান হবে |
-| A | Foundation (tsconfig, Tailwind config token কপি, types, DESIGN_SYSTEM.md, ssr client setup) | ⏳ বাকি |
-| A.3 | Auth middleware (route-level SSR gate) | ⏳ বাকি |
-| A.1 | Owner-এর External Setup Checklist (নতুন repo, Vercel project, env vars) | ⏳ বাকি |
-| B | Module-by-module conversion (১৮টা module, উপরের টেবিল) | ⏳ বাকি |
-| C | Server Actions & API routes (`sync-sheet` proxy সহ) | ⏳ বাকি |
+| — | পুরনো repo: `ADMIN_EMAIL` (ইচ্ছাকৃতভাবে অপরিবর্তিত, নিচে Phase A.3-এ প্রকৃত সমাধান) | 🟡 জানা আছে, নতুন repo-তে সমাধান হয়ে গেছে |
+| A | Foundation (tsconfig, Tailwind config token কপি, types, DESIGN_SYSTEM.md, ssr client setup) | ✅ সম্পূর্ণ |
+| A.3 | Auth middleware (route-level SSR gate) | ✅ সম্পূর্ণ |
+| A.1 | Owner-এর External Setup Checklist (নতুন repo, Vercel project, env vars) | 🟡 owner নিজে confirm করবে |
+| B | Module-by-module conversion (১৮টা module, উপরের টেবিল) | 🔵 চলছে — নিচে per-module breakdown |
+| B-১ | Dashboard | ✅ সম্পূর্ণ |
+| B-২ | Orders | ✅ সম্পূর্ণ (list, search, status filter, calendar range filter, ১৪/page pagination, bulk status update, CSV export all/range, order detail modal, single status change + sound, realtime new-order sound/browser-notification/toast/pending badge) |
+| B-৩ | Products | ✅ সম্পূর্ণ (AI Parser সহ) |
+| B-৪ থেকে B-১৮ | Customers, Traffic, Profit, Design pages, Offers, Review Gallery, FAQ, Header Copy, Settings, Info Pages | ⏳ বাকি |
+| C | Server Actions & API routes (`sync-sheet` proxy সহ) | ⏳ বাকি — Orders-এর "confirmed" স্ট্যাটাসে Google Sheet sync call এখনো wire করা হয়নি, TODO কমেন্ট রাখা আছে `app/actions/orders.ts`-এ |
 | D | Documentation (ARCHITECTURE.md, MIGRATION_NOTES.md) | ⏳ বাকি |
 
 ---

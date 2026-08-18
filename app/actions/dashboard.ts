@@ -2,7 +2,8 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { listProducts } from '@/app/actions/products';
-import type { Order, OrderItem, OrderStatus, Product } from '@/types';
+import { mapOrderRow } from '@/lib/orders';
+import type { Order, OrderStatus, Product } from '@/types';
 
 const DEFAULT_UNIT_PROFIT = 200; // বেশিরভাগ প্রোডাক্টে ডিফল্ট প্রফিট ৳২০০, specs._profit না থাকলে
 
@@ -33,42 +34,6 @@ export interface DashboardData {
   recentOrders: Order[];
   revenueByDate: Record<string, number>; // YYYY-MM-DD → confirmed/shipped/delivered মোট total
   lowStock: LowStockItem[];
-}
-
-function parseItems(raw: unknown): OrderItem[] {
-  if (Array.isArray(raw)) return raw as OrderItem[];
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapOrderRow(o: any): Order {
-  return {
-    id: o.id,
-    order_num: o.order_num || '',
-    created_at: o.created_at || '',
-    status: (o.status || 'pending') as OrderStatus,
-    customer_name: o.customer_name || '',
-    customer_phone: o.customer_phone || '',
-    customer_district: o.customer_district || '',
-    customer_address: o.customer_address || '',
-    customer_email: o.customer_email || '',
-    items: parseItems(o.items),
-    shipping: o.shipping || '',
-    shipping_cost: o.shipping_cost || 0,
-    subtotal: o.subtotal || 0,
-    total: o.total || 0,
-    payment_txn: o.payment_txn || '',
-    payment_last4: o.payment_last4 || '',
-    ip: o.ip || '',
-  };
 }
 
 // প্রোডাক্ট নাম দিয়ে match করে প্রতি ইউনিটের প্রফিট বের করো (legacy getUnitProfitByName)

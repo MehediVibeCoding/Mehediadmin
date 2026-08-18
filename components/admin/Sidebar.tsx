@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
+import PendingOrdersBadge from '@/components/admin/PendingOrdersBadge';
 
 interface NavItem {
   href: string;
@@ -16,7 +17,7 @@ interface NavItem {
 // হচ্ছে, যাতে পুরো নেভিগেশন কাঠামোটা শুরু থেকেই চেনা যায়।
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'ড্যাশবোর্ড', enabled: true, icon: <line x1="18" y1="20" x2="18" y2="10" /> },
-  { href: '/orders', label: 'অর্ডার', enabled: false, icon: <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> },
+  { href: '/orders', label: 'অর্ডার', enabled: true, icon: <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> },
   { href: '/products', label: 'প্রোডাক্ট', enabled: true, icon: <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /> },
   { href: '/products/parser', label: 'AI Planner', enabled: true, icon: <rect x="4" y="4" width="16" height="16" rx="2" /> },
   { href: '/offers-mgmt', label: 'অফার পপআপ', enabled: false, icon: <path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" /> },
@@ -84,6 +85,7 @@ export default function Sidebar() {
             >
               <NavIcon>{item.icon}</NavIcon>
               <span>{item.label}</span>
+              {item.href === '/orders' && <PendingOrdersBadge />}
             </Link>
           );
         })}

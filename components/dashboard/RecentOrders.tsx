@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Order } from '@/types';
 import StatusPill from '@/components/admin/StatusPill';
 
@@ -6,7 +7,9 @@ export default function RecentOrders({ orders }: { orders: Order[] }) {
     <div className="rounded-brand bg-brand-surface p-5 shadow-sh1">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-sm font-bold text-ink">সর্বশেষ ৫টি অর্ডার</span>
-        {/* Module ২ (Orders) তৈরি হলে এখানে "সব দেখুন →" লিংক (/orders) যোগ হবে */}
+        <Link href="/orders" className="text-xs font-semibold text-brand-primary hover:underline">
+          সব দেখুন →
+        </Link>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[480px] text-left text-sm">
