@@ -91,22 +91,43 @@ export interface StoreSetting {
   setting_value: string;
 }
 
+// ✅ VERIFIED (Module ১৪ — Review Gallery): Supabase টেবিল `customer_reviews`।
+// legacy admin.html-এর loadReviewGallery()/saveReview() শুধু id/image_url/created_at
+// পড়ে-লেখে (select('*') হলেও admin এই তিনটার বাইরে কিছু ব্যবহার করে না — টেবিলে
+// আরও কলাম থাকতে পারে মূল সাইটের রিভিউ সেকশনের জন্য, কিন্তু admin সেগুলো ছোঁয় না)।
 export interface Review {
-  id: string;
-  customer_name: string;
-  content: string;
-  rating: number;
-  image_url?: string;
+  id: number;
+  image_url: string;
   created_at: string;
 }
 
-export interface Offer {
-  id: string;
+// ✅ VERIFIED (Module ১৩ — Offers Popup): কোনো আলাদা "offers" টেবিল নেই —
+// legacy admin.html-এর _offerCfg ঠিক এই শেপে `store_settings` key
+// 'vc_offer_popup'-এ (একটাই JSON অবজেক্ট, একবারে সর্বোচ্চ একটা মডেল active থাকে)।
+export interface OfferModel1 {
   title: string;
-  discount_percent: number;
-  active: boolean;
-  starts_at?: string;
-  ends_at?: string;
+  body: string;
+  btn_text: string;
+  btn_url: string;
+}
+
+export interface OfferModel2 {
+  img: string;
+  url: string;
+}
+
+export interface OfferModel3 {
+  product_id: string;
+  badge_text: string;
+}
+
+export type OfferActiveModel = 'none' | 'model1' | 'model2' | 'model3';
+
+export interface OfferConfig {
+  active_model: OfferActiveModel;
+  model1: OfferModel1;
+  model2: OfferModel2;
+  model3: OfferModel3;
 }
 
 export interface FAQItem {

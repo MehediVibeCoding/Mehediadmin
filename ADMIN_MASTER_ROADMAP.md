@@ -98,16 +98,18 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | ৬ | Profit | `page-profit` | Profit calculation + chart |
 | ৭ | Design — Categories | `page-design-categories` | Category CRUD, ordering |
 | ৮ | Design — Category Cards | `page-design-cath-cards` | Homepage category card visuals |
-| ৯ | Design — Colors | `page-design-colors` | Brand color override (owner UI) |
-| ১০ | Design — Logo | `page-design-logo` | Logo upload/switch |
+| ৯ | ~~Design — Colors~~ | `page-design-colors` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** — legacy-তেই অকার্যকর mockup ছিল, নিচে সেশন নোট দেখুন |
+| ১০ | ~~Design — Logo~~ | `page-design-logo` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** |
 | ১১ | Design — Header | `page-design-header` | Header copy/config |
-| ১২ | Design — Footer | `page-design-footer` | Footer links/content |
+| ১২ | ~~Design — Footer~~ | `page-design-footer` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** |
 | ১৩ | Offers | `page-offers-mgmt` | Discount campaign management |
 | ১৪ | Review Gallery | `page-review-gallery` | Customer review CRUD |
-| ১৫ | FAQ Settings | `page-faq-settings` | FAQ CRUD |
+| ১৫ | ~~FAQ Settings~~ | `page-faq-settings` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** |
 | ১৬ | Header Copy | `page-header-copy` | সাইট হেডারের টেক্সট |
-| ১৭ | Settings | `page-settings`, `page-shipping-settings` | General + shipping config |
+| ১৭ | ~~Settings~~ | `page-settings`, `page-shipping-settings` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** — General + shipping config |
 | ১৮ | Info Pages | `ipage-about`, `ipage-privacy`, `ipage-returns`, `ipage-terms` | Static page content editor |
+
+**নোট (owner সিদ্ধান্ত, দেখুন Progress Tracker-এর পরের সেশন নোট):** Module ৯, ১০, ১২, ১৫, ১৭ — এই পাঁচটা মডিউল সম্পূর্ণ স্কোপ থেকে বাদ দেওয়া হয়েছে, বানানো হবে না। Sidebar থেকেও সংশ্লিষ্ট নেভ আইটেম মুছে ফেলা হয়েছে (আগে "শীঘ্রই আসছে" disabled অবস্থায় ছিল)। Module ১১ (Design — Header) ও ১৮ (Info Pages) এখনো ⏳ বাকি হিসেবেই আছে — owner এগুলো বাদ দিতে বলেননি।
 
 **প্রতিটা module convert করার নিয়ম (মূল সাইটের Phase B rule-ই এখানেও):**
 1. `.js` state/render logic → `.tsx` component + proper TS types
@@ -148,16 +150,94 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | A | Foundation (tsconfig, Tailwind config token কপি, types, DESIGN_SYSTEM.md, ssr client setup) | ✅ সম্পূর্ণ |
 | A.3 | Auth middleware (route-level SSR gate) | ✅ সম্পূর্ণ |
 | A.1 | Owner-এর External Setup Checklist (নতুন repo, Vercel project, env vars) | 🟡 owner নিজে confirm করবে |
-| B | Module-by-module conversion (১৮টা module, উপরের টেবিল) | 🔵 চলছে — নিচে per-module breakdown |
+| B | Module-by-module conversion (মূলত ১৮টা module ছিল, ৫টা owner সিদ্ধান্তে বাদ — কার্যত ১৩টা, উপরের টেবিল) | 🔵 চলছে — নিচে per-module breakdown |
 | B-১ | Dashboard | ✅ সম্পূর্ণ |
 | B-২ | Orders | ✅ সম্পূর্ণ (list, search, status filter, calendar range filter, ১৪/page pagination, bulk status update, CSV export all/range, order detail modal, single status change + sound, realtime new-order sound/browser-notification/toast/pending badge) |
 | B-৩ | Products | ✅ সম্পূর্ণ (AI Parser সহ) |
 | B-৪ | Customers | ✅ সম্পূর্ণ (কোনো আলাদা `customers` টেবিল নেই — legacy-র মতোই `orders` থেকে ফোন/নাম দিয়ে গ্রুপ করে দেখানো হয়, এখন সার্ভার-সাইড Server Action-এ; Dashboard-এর "কাস্টমার" stat card-ও এখন `/customers`-এ লিংক করে) |
 | B-৫ | Traffic/Analytics | ✅ সম্পূর্ণ (৪টা stat card, দিন-টেবিল, ভিজিটর ট্রেন্ড চার্ট (hourly/daily), পিক-আওয়ার চার্ট, top-viewed products (৩ স্টেট: ট্র্যাকিং-নেই/খালি/ডাটা), ৭ দিন ডিফল্ট রেঞ্জ + ৮৯ দিন পর্যন্ত ক্যালেন্ডার, রিফ্রেশ; Dashboard-এর "আজকের ভিজিটর" card-ও `/traffic`-এ লিংক করে) |
 | B-৬ | Profit | ✅ সম্পূর্ণ (৪টা stat card — নিট প্রফিট/রেভিনিউ/অর্ডার সংখ্যা/গড় প্রফিট, দিন-অনুযায়ী প্রফিট চার্ট, দিন-টেবিল, ৭ দিন ডিফল্ট রেঞ্জ + ৩৬৪ দিন পর্যন্ত ক্যালেন্ডার, রিফ্রেশ; Dashboard-এর "নিট প্রফিট" stat card-ও এখন `/profit`-এ লিংক করে; চার্টের রঙ DESIGN_SYSTEM.md-এর নিয়ম অনুযায়ী brand-primary — legacy-র green থেকে ইচ্ছাকৃত পরিবর্তন, নিচে নোট দেখুন) |
-| B-৭ থেকে B-১৮ | Design pages, Offers, Review Gallery, FAQ, Header Copy, Settings, Info Pages | ⏳ বাকি |
+| B-৭ | Design — Categories | ✅ সম্পূর্ণ (list + drag-reorder (desktop drag ও mobile touch), add/edit/delete, প্রতি ক্যাটাগরিতে product count, "+ প্রোডাক্ট" বাটন → Products পেজে গিয়ে ক্যাটাগরি প্রি-সিলেক্ট করে অ্যাড-মোডাল অটো-ওপেন করে (`?openAdd=<catId>`); কোনো আলাদা টেবিল নেই, `store_settings.vc_categories`-এই সেভ হয়, না থাকলে `DEFAULT_CATEGORIES` fallback — এটা Products module থেকেই আগে read-only পড়া হতো, এখন CRUD যোগ হলো) |
+| B-৮ | Design — Category Cards (হিরো সেকশন কার্ড) | ✅ সম্পূর্ণ (গ্রিড ভিউ + এডিটর মোডাল — ছবি URL/আপলোড/প্রিভিউ, বাটন টেক্সট, ক্যাটাগরি লিংক, লাইভ প্রিভিউ; add/edit/delete + "ডিফল্টে রিসেট" (১৩টা ডিফল্ট কার্ড); `store_settings.vc_cath_cards`-এ সেভ হয়; সর্বোচ্চ ১৩টা কার্ড লিমিট UI-তেই আটকানো হয়েছে, নিচে নোট দেখুন) |
+| B-৯ | ~~Design — Colors~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত, নিচে সেশন নোট দেখুন |
+| B-১০ | ~~Design — Logo~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
+| B-১১ | Design — Header | ⏳ বাকি |
+| B-১২ | ~~Design — Footer~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
+| B-১৩ | Offers Popup | ✅ সম্পূর্ণ (৩টা মডেল — টেক্সট নোটিশ/ব্যানার ইমেজ/হট প্রোডাক্ট প্রোমোশন; pill বাটন → এডিটর মোডাল, ৩-কলাম লাইভ প্রিভিউ গ্রিড, প্রতিটায় toggle switch — একবারে একটাই মডেল লাইভ থাকতে পারে, চালু করলে বাকি দুইটা অটো বন্ধ; `store_settings.vc_offer_popup`-এ সেভ হয়; মডেল ৩-এর প্রোডাক্ট ড্রপডাউন `custom_products` থেকে) |
+| B-১৪ | Review Gallery | ✅ সম্পূর্ণ (গ্রিড ভিউ, ছবি URL/আপলোড + প্রিভিউ, add/edit/delete, ক্লিক করলে ফুল-স্ক্রিন zoom প্রিভিউ; `customer_reviews` টেবিলে সেভ হয়, শুধু `image_url` কলাম touch করা হয় — টেবিলে অন্য কলাম থাকলেও admin সেগুলো ছোঁয় না, নিচে নোট দেখুন) |
+| B-১৫ | ~~FAQ Settings~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
+| B-১৬ | Header Copy | ⏳ বাকি |
+| B-১৭ | ~~Settings (General + Shipping)~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
+| B-১৮ | Info Pages | ⏳ বাকি |
 | C | Server Actions & API routes (`sync-sheet` proxy সহ) | ⏳ বাকি — Orders-এর "confirmed" স্ট্যাটাসে Google Sheet sync call এখনো wire করা হয়নি, TODO কমেন্ট রাখা আছে `app/actions/orders.ts`-এ |
 | D | Documentation (ARCHITECTURE.md, MIGRATION_NOTES.md) | ⏳ বাকি |
+
+### সেশন নোট — Module ৭ (Design — Categories)
+
+legacy `admin.html`-এর `#page-design-categories` (`getCats`/`saveCats`/`renderCategoryList`/`addNewCategory`/`editCategory`/`saveCategoryEdit`/`deleteCategory`) সম্পূর্ণ পড়ে port করা হলো। বিদ্যমান কনভেনশন অনুসরণ করা হয়েছে (Products/Orders module যেভাবে গঠিত — `app/actions/<module>.ts`, `components/<module>/`, `useToast()` from `components/admin/Toast.tsx`, `window.confirm()` delete pattern, `store_settings` upsert+fallback pattern)।
+
+- **[REPLACE]** `app/actions/categories.ts` — আগে শুধু `getCategories()` ছিল (read-only, Products dropdown-এর জন্য), এখন `addCategory`/`updateCategory`/`deleteCategory`/`reorderCategories` যোগ হলো
+- **[NEW FILE]** `app/(admin)/design/categories/page.tsx` — categories + products fetch করে product count হিসাব করে
+- **[NEW FILE]** `components/design/CategoriesPageClient.tsx` — drag-reorder list, add/edit ফর্ম (modal), delete
+- **[REPLACE]** `app/(admin)/products/ProductsPageClient.tsx` — `?openAdd=<catId>` query param সাপোর্ট যোগ হলো (Categories পেজের "+ প্রোডাক্ট" বাটন থেকে ক্যাটাগরি প্রি-সিলেক্ট করে অ্যাড-মোডাল খোলার জন্য) — ছোট, additive পরিবর্তন, বাকি কম্পোনেন্ট অপরিবর্তিত
+- **[REPLACE]** `components/admin/Sidebar.tsx` — `/design/categories` নেভ আইটেম `enabled: false` থেকে `true` করা হলো
+- `npx tsc --noEmit` ও `next build` — ক্লিন
+
+**একটা ছোট, ইচ্ছাকৃত পার্থক্য:** legacy-তে "+ প্রোডাক্ট" বাটন ক্লিক করলে একই পেজে (SPA) মডাল খুলত। Next.js-এ এটা এখন Products পেজে নেভিগেট করে (route আলাদা), কিন্তু ফলাফল একই — ক্যাটাগরি প্রি-সিলেক্ট করা অ্যাড-মোডাল খোলে। এটা এই migration-এর framework-স্বাভাবিক পরিবর্তন (routing-based), কোনো ফিচার বাদ পড়েনি।
+
+### সেশন নোট — Module ৮ (Design — Category Cards / হিরো সেকশন কার্ড)
+
+legacy `admin.html`-এর `#page-design-cath-cards` (`getCathCards`/`saveCathCardsData`/`renderCathCardGrid`/`openCathCardDrawer`/`saveCathCardNew`/`deleteCathCardNew`/`resetCathCardsToDefault`/`handleCathFile`) সম্পূর্ণ পড়ে port করা হলো।
+
+- **[NEW FILE]** `lib/constants/heroCards.ts` — `DEFAULT_HERO_CARDS` (legacy `DEFAULT_CATH_CARDS` থেকে হুবহু, ১৩টা), `HeroCard` টাইপ, `HERO_CARDS_MAX`
+- **[NEW FILE]** `app/actions/hero-cards.ts` — `getHeroCards`/`addHeroCard`/`updateHeroCard`/`deleteHeroCard`/`resetHeroCardsToDefault`/`uploadHeroCardImage`
+- **[NEW FILE]** `app/(admin)/design/hero-cards/page.tsx`
+- **[NEW FILE]** `components/design/HeroCardsPageClient.tsx` — গ্রিড + এডিটর মোডাল
+- **[REPLACE]** `components/admin/Sidebar.tsx` — `/design/hero-cards` নেভ আইটেম `enabled: false` থেকে `true`
+- `npx tsc --noEmit` ও `next build` — ক্লিন
+
+**দুটো ইচ্ছাকৃত পার্থক্য (owner-কে জানানো দরকার):**
+1. **ছবি আপলোড: base64 থেকে আসল Storage upload** — legacy `handleCathFile()` ছবি সরাসরি base64 বানিয়ে `store_settings` JSON-এর ভেতরেই বসিয়ে দিত (প্রতিটা কার্ডের ছবি পুরো টেবিল রো-কে ভারী করে তুলত)। এখানে Products module-এর মতোই আসল Supabase Storage-এ আপলোড হয় (bucket `product-images` পুনর্ব্যবহার, নতুন bucket বানানো হয়নি, path শুধু `hero-cards/...` আলাদা) — `store_settings`-এ শুধু ছোট URL string থাকে। এটা bug ফিক্সের মতো, ফিচার পাল্টায়নি (ব্যবহারকারীর জন্য URL অথবা আপলোড দুটো অপশনই আগের মতোই আছে)।
+2. **১৩ কার্ডের সীমা এখন UI-তেই আটকানো** — legacy-তে ১৪তম কার্ড যোগ করা যেত, কিন্তু পরের বার পেজ লোডে সেটা silently ট্রিম হয়ে হারিয়ে যেত (কারণ মূল সাইটে ফিক্সড ১৩টা স্লট)। এখানে "+ নতুন কার্ড" বাটনে ১৩ নম্বরে পৌঁছালে স্পষ্ট বার্তা দেখানো হয় ("আগে একটা মুছুন"), যাতে কেউ silently কার্ড না হারায়। read-side safety-net trim-ও রাখা হয়েছে (কেউ ম্যানুয়ালি DB-তে ১৩+ ঢুকিয়ে দিলে)।
+
+### সেশন নোট — Module ৯ স্কিপ + স্কোপ থেকে ৫টা মডিউল বাদ (owner সিদ্ধান্ত)
+
+Module ৭/৮ merge করার পর owner-কে জিজ্ঞেস করা হয়েছিল Module ৯ (Design — Colors) নিয়ে, কারণ legacy `#page-design-colors` (লাইন ২২৭১-২৩০৪) পড়ে দেখা গেছে এটা আসলে অকার্যকর mockup: কালার পিকার/ফন্ট dropdown আছে কিন্তু কোনো save handler নেই, আর পেজেই লেখা আছে "রঙ ও ফন্ট পরিবর্তন করতে এখন index.html এর CSS ভেরিয়েবল সরাসরি এডিট করতে হবে। ভবিষ্যতে এটি স্বয়ংক্রিয় হবে।" — অর্থাৎ ডেভেলপার নিজেই future-placeholder হিসেবে রেখেছিলেন, কখনো backend-এর সাথে connect হয়নি।
+
+owner সিদ্ধান্ত নিয়েছেন:
+- Module ৯ (Colors) সম্পূর্ণ স্কিপ — বানানো হবে না
+- আরও ৪টা মডিউল সম্পূর্ণ স্কোপ থেকে বাদ: Module ১০ (Logo), Module ১২ (Footer), Module ১৫ (FAQ Settings), Module ১৭ (Settings — General + Shipping)
+- Module ১১ (Design — Header) ও Module ১৮ (Info Pages) বাদ পড়েনি, এখনো ভবিষ্যতের কাজ হিসেবে roadmap-এ আছে
+
+- **[REPLACE]** `components/admin/Sidebar.tsx` — চারটা নেভ আইটেম মুছে ফেলা হলো: `সাধারণ` (`/settings`), `শিপিং` (`/shipping-settings`), `Footer ও লোগো` (`/design/footer`), `FAQ` (`/faq-settings`)। এই চারটা আগে `enabled: false` অবস্থায় "শীঘ্রই আসছে" ট্যাগ নিয়ে ছিল, এখন পুরোপুরি সরিয়ে দেওয়া হলো যেহেতু বানানো হবে না।
+
+### সেশন নোট — Module ১৩ (Offers Popup)
+
+legacy `admin.html`-এর `#page-offers-mgmt` + সংশ্লিষ্ট JS (`loadOfferData`/`renderOfferPreviews`/`handleOfferToggle`/`openOfferEditor`/`saveOfferModel`/`deleteOfferModel`) সম্পূর্ণ পড়ে port করা হলো।
+
+- **[NEW FILE]** `app/actions/offers.ts` — `getOfferConfig`/`toggleActiveModel`/`saveOfferModel1`/`saveOfferModel2`/`saveOfferModel3`/`deleteOfferModel`
+- **[NEW FILE]** `app/(admin)/offers-mgmt/page.tsx` — config + `listProducts()` (মডেল ৩-এর প্রোডাক্ট ড্রপডাউনের জন্য, আগে থেকেই থাকা `products.ts`-এর ফাংশন পুনর্ব্যবহার)
+- **[NEW FILE]** `components/offers/OffersPageClient.tsx` — ৩টা pill বাটন, ৩-কলাম লাইভ প্রিভিউ গ্রিড (প্রতিটায় toggle + live badge), মডেল-নির্দিষ্ট এডিটর মোডাল
+- **[REPLACE]** `types/index.ts` — আগে placeholder `Offer` টাইপ ছিল (আন্দাজে বানানো, ব্যবহৃত হতো না), verified `OfferConfig`/`OfferModel1`/`OfferModel2`/`OfferModel3` দিয়ে replace করা হলো
+- **[REPLACE]** `components/admin/Sidebar.tsx` — `/offers-mgmt` নেভ আইটেম `enabled: false` থেকে `true`
+- `npx tsc --noEmit` ও `next build` — ক্লিন
+
+কোনো ইচ্ছাকৃত পার্থক্য নেই — behavior হুবহু (একবারে একটাই মডেল লাইভ, toggle করলে বাকিগুলো অটো বন্ধ, প্রতিটা মডেলের নিজস্ব ফিল্ড)।
+
+### সেশন নোট — Module ১৪ (Review Gallery)
+
+legacy `admin.html`-এর `#page-review-gallery` + TASK 30 JS (`loadReviewGallery`/`renderReviewGrid`/`saveReview`/`deleteReview`/`handleReviewImgUpload`/`openReviewPreview`) সম্পূর্ণ পড়ে port করা হলো।
+
+- **[NEW FILE]** `app/actions/reviews.ts` — `listReviews`/`addReview`/`updateReview`/`deleteReview`/`uploadReviewImage`
+- **[NEW FILE]** `app/(admin)/review-gallery/page.tsx`
+- **[NEW FILE]** `components/reviews/ReviewGalleryPageClient.tsx` — গ্রিড, add/edit মোডাল, ফুল-স্ক্রিন zoom প্রিভিউ মোডাল
+- **[REPLACE]** `types/index.ts` — আগে placeholder `Review` টাইপ ছিল (customer_name/content/rating সহ, আন্দাজে বানানো, ব্যবহৃত হতো না), verified শেপ দিয়ে replace করা হলো (`id`, `image_url`, `created_at` — admin এই তিনটার বাইরে কিছু ছোঁয় না)
+- **[REPLACE]** `components/admin/Sidebar.tsx` — `/review-gallery` নেভ আইটেম `enabled: false` থেকে `true`
+- `npx tsc --noEmit` ও `next build` — ক্লিন
+
+**একটা ইচ্ছাকৃত পার্থক্য (owner-কে জানানো দরকার), Module ৮-এর মতোই একই কারণে:** **ছবি আপলোড: base64 থেকে আসল Storage upload** — legacy `handleReviewImgUpload()` ছবি সরাসরি base64 বানিয়ে `image_url` কলামেই বসিয়ে দিত (প্রতিটা রিভিউ রো ভারী হয়ে উঠত)। এখানে Products/Hero-Cards module-এর মতোই আসল Supabase Storage-এ আপলোড হয় (bucket `product-images` পুনর্ব্যবহার, path `reviews/...`) — কলামে শুধু ছোট URL string থাকে। এটা bug ফিক্সের মতো, ফিচার পাল্টায়নি (URL অথবা আপলোড দুটো অপশনই আগের মতোই আছে)।
+
+**পরের ধাপ:** Module ১১ (Design — Header) অথবা Module ১৮ (Info Pages) অথবা owner চাইলে Phase C (Server Actions/API routes, বিশেষ করে Orders-এর confirmed sync-sheet TODO)।
 
 ---
 

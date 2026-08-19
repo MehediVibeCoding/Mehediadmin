@@ -20,16 +20,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/orders', label: 'অর্ডার', enabled: true, icon: <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> },
   { href: '/products', label: 'প্রোডাক্ট', enabled: true, icon: <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /> },
   { href: '/products/parser', label: 'AI Planner', enabled: true, icon: <rect x="4" y="4" width="16" height="16" rx="2" /> },
-  { href: '/offers-mgmt', label: 'অফার পপআপ', enabled: false, icon: <path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" /> },
+  { href: '/offers-mgmt', label: 'অফার পপআপ', enabled: true, icon: <path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" /> },
   { href: '/customers', label: 'কাস্টমার', enabled: true, icon: <circle cx="9" cy="7" r="4" /> },
-  { href: '/design/hero-cards', label: 'হিরো ক্যাটাগরি কার্ড', enabled: false, icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
-  { href: '/design/categories', label: 'ক্যাটাগরি', enabled: false, icon: <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /> },
-  { href: '/design/footer', label: 'Footer ও লোগো', enabled: false, icon: <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /> },
-  { href: '/review-gallery', label: 'রিভিউ গ্যালারি', enabled: false, icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
+  { href: '/design/hero-cards', label: 'হিরো ক্যাটাগরি কার্ড', enabled: true, icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
+  { href: '/design/categories', label: 'ক্যাটাগরি', enabled: true, icon: <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /> },
+  { href: '/review-gallery', label: 'রিভিউ গ্যালারি', enabled: true, icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
   { href: '/header-copy', label: 'হেডার টেক্সট', enabled: false, icon: <path d="M12 20h9" /> },
-  { href: '/settings', label: 'সাধারণ', enabled: false, icon: <circle cx="12" cy="12" r="3" /> },
-  { href: '/shipping-settings', label: 'শিপিং', enabled: false, icon: <rect x="1" y="3" width="15" height="13" /> },
-  { href: '/faq-settings', label: 'FAQ', enabled: false, icon: <circle cx="12" cy="12" r="10" /> },
 ];
 
 function NavIcon({ children }: { children: React.ReactNode }) {
