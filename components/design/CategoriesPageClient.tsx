@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CategoryOption } from '@/lib/constants/categories';
 import { getCleanIcon } from '@/lib/constants/categories';
+import { sanitizeSvgHtml } from '@/lib/sanitizeSvg';
 import { addCategory, updateCategory, deleteCategory, reorderCategories } from '@/app/actions/categories';
 import { useToast } from '@/components/admin/Toast';
 
@@ -153,7 +154,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
               </span>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[22px]">
                 {c.icon.startsWith('<svg') ? (
-                  <span dangerouslySetInnerHTML={{ __html: c.icon }} />
+                  <span dangerouslySetInnerHTML={{ __html: sanitizeSvgHtml(c.icon) }} />
                 ) : (
                   getCleanIcon(c)
                 )}

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
+import { requireAdmin } from '@/lib/auth-guard';
 import type { Product, ProductFaq, ProductSpecs } from '@/types';
 
 const TABLE = 'custom_products';
@@ -60,6 +61,7 @@ function applyOrder(products: Product[], order: number[]): Product[] {
 // ══════════════════════════════════════════════════════════════
 
 export async function listProducts(): Promise<Product[]> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const [{ data, error }, order] = await Promise.all([
     supabase.from(TABLE).select('*'),
@@ -170,6 +172,7 @@ interface SaveResult {
 }
 
 export async function checkDuplicateName(name: string, excludeId?: number): Promise<boolean> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data } = await supabase.from(TABLE).select('id, name');
   const nameLower = name.toLowerCase().trim();
@@ -182,6 +185,7 @@ export async function createProduct(
   input: ProductFormInput,
   opts: { forceDuplicate?: boolean } = {}
 ): Promise<SaveResult> {
+  await requireAdmin();
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
@@ -227,6 +231,7 @@ export async function createProduct(
 }
 
 export async function updateProduct(id: number, input: ProductFormInput): Promise<SaveResult> {
+  await requireAdmin();
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
@@ -269,6 +274,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
 }
 
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) return { ok: false, message: error.message };
@@ -281,6 +287,7 @@ export async function deleteProduct(id: number): Promise<{ ok: boolean; message?
 // ══════════════════════════════════════════════════════════════
 
 export async function updateStock(id: number, stock: number): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin();
   if (!Number.isFinite(stock) || stock < 0) return { ok: false, message: 'সঠিক স্টক সংখ্যা দিন' };
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from(TABLE).update({ stock }).eq('id', id);
@@ -290,6 +297,7 @@ export async function updateStock(id: number, stock: number): Promise<{ ok: bool
 }
 
 export async function updateBadge(id: number, badge: string): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { error } = await supabase
     .from(TABLE)
@@ -305,6 +313,7 @@ export async function updateBadge(id: number, badge: string): Promise<{ ok: bool
 // ══════════════════════════════════════════════════════════════
 
 export async function updateProductOrder(visibleOrderedIds: number[]): Promise<{ ok: boolean }> {
+  await requireAdmin();
   // legacy saveCurrentOrder()-এর মতোই: ফিল্টার/পেজিনেশনের কারণে সবসময় সব
   // প্রোডাক্ট টেবিলে দৃশ্যমান থাকে না, তাই পুরনো সম্পূর্ণ অর্ডার রেখে শুধু
   // দৃশ্যমান আইটেমগুলোর পজিশনে নতুন সিরিয়াল বসানো হয়, বাকিগুলো অপরিবর্তিত।
@@ -327,6 +336,7 @@ export async function updateProductOrder(visibleOrderedIds: number[]): Promise<{
 export async function uploadProductImage(
   formData: FormData
 ): Promise<{ ok: boolean; url?: string; message?: string }> {
+  await requireAdmin();
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: 'কোনো ফাইল পাওয়া যায়নি' };

@@ -1,6 +1,7 @@
 'use server';
 
 import { listOrders } from './orders';
+import { requireAdmin } from '@/lib/auth-guard';
 import { aggregateCustomers } from '@/lib/customers';
 import type { Customer } from '@/types';
 
@@ -11,6 +12,7 @@ import type { Customer } from '@/types';
 // সর্ট করে আনে, ঠিক legacy getOrdersAsync()-এর মতোই — তাই আলাদা কোনো নতুন
 // query/টেবিল লাগছে না।
 export async function listCustomers(): Promise<Customer[]> {
+  await requireAdmin();
   const orders = await listOrders();
   return aggregateCustomers(orders);
 }

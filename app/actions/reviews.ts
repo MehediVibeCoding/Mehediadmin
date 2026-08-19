@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-guard';
 import type { Review } from '@/types';
 
 const TABLE = 'customer_reviews';
@@ -9,6 +10,7 @@ const STORAGE_BUCKET = 'product-images'; // products/hero-cards module-এর bu
 
 // legacy loadReviewGallery()
 export async function listReviews(): Promise<Review[]> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from(TABLE)
@@ -25,6 +27,7 @@ export interface ReviewActionResult {
 
 // legacy saveReview()-এর "নতুন" শাখা (insert)
 export async function addReview(imageUrl: string): Promise<ReviewActionResult> {
+  await requireAdmin();
   const image_url = imageUrl.trim();
   if (!image_url) return { ok: false, message: '❌ ছবির URL বা ফাইল দিন' };
 
@@ -38,6 +41,7 @@ export async function addReview(imageUrl: string): Promise<ReviewActionResult> {
 
 // legacy saveReview()-এর "এডিট" শাখা (update)
 export async function updateReview(id: number, imageUrl: string): Promise<ReviewActionResult> {
+  await requireAdmin();
   const image_url = imageUrl.trim();
   if (!image_url) return { ok: false, message: '❌ ছবির URL বা ফাইল দিন' };
 
@@ -51,6 +55,7 @@ export async function updateReview(id: number, imageUrl: string): Promise<Review
 
 // legacy deleteReview()
 export async function deleteReview(id: number): Promise<ReviewActionResult> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) return { ok: false, message: '❌ মুছতে সমস্যা: ' + error.message };
@@ -66,6 +71,7 @@ export async function deleteReview(id: number): Promise<ReviewActionResult> {
 export async function uploadReviewImage(
   formData: FormData
 ): Promise<{ ok: boolean; url?: string; message?: string }> {
+  await requireAdmin();
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: 'কোনো ফাইল পাওয়া যায়নি' };

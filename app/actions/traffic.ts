@@ -1,6 +1,7 @@
 'use server';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-guard';
 import { listProducts } from '@/app/actions/products';
 import { detectTrackingField, type TrackingField, type TrafficPageView } from '@/lib/traffic';
 import type { Product } from '@/types';
@@ -19,6 +20,7 @@ export interface TrafficData {
 }
 
 export async function getTrafficData(): Promise<TrafficData> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
 
   const cutoff = new Date();

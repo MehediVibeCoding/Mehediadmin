@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-guard';
 import { DEFAULT_HERO_CARDS, HERO_CARDS_MAX, type HeroCard } from '@/lib/constants/heroCards';
 
 const SETTING_KEY = 'vc_cath_cards';
@@ -10,6 +11,7 @@ const STORAGE_BUCKET = 'product-images'; // products module-এ ব্যবহ�
 // legacy getCathCards() — saved থাকলে সেটাই authority, ১৩টার বেশি হলে
 // (safety net, কখনো bug/manual DB edit-এ হতে পারে) ট্রিম করে আবার সেভ করে দেয়
 export async function getHeroCards(): Promise<HeroCard[]> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from('store_settings')
@@ -57,6 +59,7 @@ export interface HeroCardActionResult {
 export async function addHeroCard(
   input: Pick<HeroCard, 'label' | 'catId' | 'img'>
 ): Promise<HeroCardActionResult> {
+  await requireAdmin();
   const label = input.label.trim();
   if (!label) return { ok: false, message: '⚠️ বাটন টেক্সট দিন' };
 
@@ -84,6 +87,7 @@ export async function updateHeroCard(
   index: number,
   input: Pick<HeroCard, 'label' | 'catId' | 'img'>
 ): Promise<HeroCardActionResult> {
+  await requireAdmin();
   const label = input.label.trim();
   if (!label) return { ok: false, message: '⚠️ বাটন টেক্সট দিন' };
 
@@ -102,6 +106,7 @@ export async function updateHeroCard(
 
 // legacy deleteCathCardNew()
 export async function deleteHeroCard(index: number): Promise<HeroCardActionResult> {
+  await requireAdmin();
   const cards = await getHeroCards();
   if (index < 0 || index >= cards.length) return { ok: false, message: 'কার্ড খুঁজে পাওয়া যায়নি' };
   cards.splice(index, 1);
@@ -111,6 +116,7 @@ export async function deleteHeroCard(index: number): Promise<HeroCardActionResul
 
 // legacy resetCathCardsToDefault()
 export async function resetHeroCardsToDefault(): Promise<HeroCardActionResult> {
+  await requireAdmin();
   await persistHeroCards(JSON.parse(JSON.stringify(DEFAULT_HERO_CARDS)));
   return { ok: true };
 }
@@ -122,6 +128,7 @@ export async function resetHeroCardsToDefault(): Promise<HeroCardActionResult> {
 export async function uploadHeroCardImage(
   formData: FormData
 ): Promise<{ ok: boolean; url?: string; message?: string }> {
+  await requireAdmin();
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: 'কোনো ফাইল পাওয়া যায়নি' };

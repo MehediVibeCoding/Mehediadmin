@@ -1,6 +1,7 @@
 'use server';
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-guard';
 import { listProducts } from '@/app/actions/products';
 import { mapOrderRow } from '@/lib/orders';
 import type { Order, OrderStatus, Product } from '@/types';
@@ -56,6 +57,7 @@ function computeOrderProfit(order: Order, products: Product[]): number {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
 
   const pvCutoff = new Date();

@@ -3,6 +3,7 @@
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-guard';
 import { mapOrderRow } from '@/lib/orders';
 import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import type { Order, OrderStatus } from '@/types';
@@ -13,6 +14,7 @@ import type { Order, OrderStatus } from '@/types';
 
 // legacy getOrdersAsync() — সব অর্ডার, created_at DESC (Supabase-ই সর্ট করে দেয়)
 export async function listOrders(): Promise<Order[]> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from('orders')
@@ -24,6 +26,7 @@ export async function listOrders(): Promise<Order[]> {
 
 // সাইডবারের পেন্ডিং ব্যাজের জন্য — পুরো লিস্ট না টেনে শুধু count
 export async function getPendingOrdersCount(): Promise<number> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { count, error } = await supabase
     .from('orders')
@@ -45,6 +48,7 @@ export interface OrderActionResult {
 // legacy setOrderStatus() — শুধু Supabase আপডেট অংশ। sound legacy-তেও
 // client-side, তাই OrdersPageClient.tsx-এই আছে (এখানে না)।
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<OrderActionResult> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) return { status: 'error', message: error.message };
@@ -77,6 +81,7 @@ export async function bulkUpdateOrderStatus(
   ids: string[],
   status: OrderStatus
 ): Promise<BulkOrderActionResult> {
+  await requireAdmin();
   if (!ids.length) return { status: 'error', changed: 0, message: 'অন্তত একটি অর্ডার সিলেক্ট করুন' };
   const supabase = createServiceRoleClient();
   const { error, count } = await supabase

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-guard';
 import { DEFAULT_CATEGORIES, type CategoryOption } from '@/lib/constants/categories';
 
 const SETTING_KEY = 'vc_categories';
@@ -10,6 +11,7 @@ const SETTING_KEY = 'vc_categories';
 // store_settings key 'vc_categories'-এ owner-এর সেভ করা কাস্টম লিস্ট (JSON
 // array) থাকলে সেটাই authority, না থাকলে DEFAULT_CATEGORIES fallback।
 export async function getCategories(): Promise<CategoryOption[]> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from('store_settings')
@@ -56,6 +58,7 @@ export interface CategoryActionResult {
 
 // legacy addNewCategory() + saveCategoryEdit()-এর "নতুন" শাখা
 export async function addCategory(input: { id: string; name: string; icon: string }): Promise<CategoryActionResult> {
+  await requireAdmin();
   const id = input.id.trim().toLowerCase().replace(/\s/g, '');
   const name = input.name.trim();
   const icon = input.icon.trim() || '📦';
@@ -77,6 +80,7 @@ export async function updateCategory(
   id: string,
   input: { name: string; icon: string }
 ): Promise<CategoryActionResult> {
+  await requireAdmin();
   const name = input.name.trim();
   const icon = input.icon.trim() || '📦';
   if (!name) return { ok: false, message: 'ক্যাটাগরির নাম দিন' };
@@ -92,6 +96,7 @@ export async function updateCategory(
 
 // legacy deleteCategory()
 export async function deleteCategory(id: string): Promise<CategoryActionResult> {
+  await requireAdmin();
   const cats = await getCategories();
   const next = cats.filter((c) => c.id !== id);
   if (next.length === cats.length) return { ok: false, message: 'ক্যাটাগরি খুঁজে পাওয়া যায়নি' };
@@ -101,6 +106,7 @@ export async function deleteCategory(id: string): Promise<CategoryActionResult> 
 
 // legacy drag/drop-এর পর saveCats(reordered) — এখানে reorder করা পুরো id লিস্ট নেওয়া হয়
 export async function reorderCategories(orderedIds: string[]): Promise<CategoryActionResult> {
+  await requireAdmin();
   const cats = await getCategories();
   const byId = new Map(cats.map((c) => [c.id, c]));
   const reordered = orderedIds.map((id) => byId.get(id)).filter((c): c is CategoryOption => !!c);

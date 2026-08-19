@@ -2,6 +2,7 @@
 
 import { listOrders } from '@/app/actions/orders';
 import { listProducts } from '@/app/actions/products';
+import { requireAdmin } from '@/lib/auth-guard';
 import type { Order, Product } from '@/types';
 
 // legacy initProfitPage() — loadAndRenderOrders() দিয়ে সব অর্ডার আনত (কোনো
@@ -14,6 +15,7 @@ export interface ProfitData {
 }
 
 export async function getProfitData(): Promise<ProfitData> {
+  await requireAdmin();
   const [orders, products] = await Promise.all([listOrders(), listProducts()]);
   return { orders, products };
 }

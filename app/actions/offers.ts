@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput } from '@/lib/security';
+import { requireAdmin } from '@/lib/auth-guard';
 import type { OfferConfig, OfferActiveModel } from '@/types';
 
 const SETTING_KEY = 'vc_offer_popup';
@@ -16,6 +17,7 @@ const DEFAULT_OFFER_CONFIG: OfferConfig = {
 
 // legacy loadOfferData() — store_settings.vc_offer_popup পড়ে, না থাকলে ডিফল্ট শেপ
 export async function getOfferConfig(): Promise<OfferConfig> {
+  await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from('store_settings')
@@ -66,6 +68,7 @@ export async function toggleActiveModel(
   model: Exclude<OfferActiveModel, 'none'>,
   checked: boolean
 ): Promise<OfferActionResult> {
+  await requireAdmin();
   const cfg = await getOfferConfig();
   cfg.active_model = checked ? model : 'none';
   await persistOfferConfig(cfg);
@@ -74,6 +77,7 @@ export async function toggleActiveModel(
 
 // legacy saveOfferModel() — মডেল অনুযায়ী ভিন্ন ফিল্ড সেভ হয়, active_model অপরিবর্তিত থাকে
 export async function saveOfferModel1(input: Omit<OfferConfig['model1'], never>): Promise<OfferActionResult> {
+  await requireAdmin();
   const cfg = await getOfferConfig();
   cfg.model1 = {
     title: sanitizeInput(input.title),
@@ -86,6 +90,7 @@ export async function saveOfferModel1(input: Omit<OfferConfig['model1'], never>)
 }
 
 export async function saveOfferModel2(input: OfferConfig['model2']): Promise<OfferActionResult> {
+  await requireAdmin();
   const cfg = await getOfferConfig();
   cfg.model2 = {
     img: sanitizeInput(input.img),
@@ -96,6 +101,7 @@ export async function saveOfferModel2(input: OfferConfig['model2']): Promise<Off
 }
 
 export async function saveOfferModel3(input: OfferConfig['model3']): Promise<OfferActionResult> {
+  await requireAdmin();
   const cfg = await getOfferConfig();
   cfg.model3 = {
     product_id: input.product_id,
@@ -107,6 +113,7 @@ export async function saveOfferModel3(input: OfferConfig['model3']): Promise<Off
 
 // legacy deleteOfferModel() — মডেলের ডেটা খালি করে দেয়, লাইভ থাকলে বন্ধ করে দেয়
 export async function deleteOfferModel(model: Exclude<OfferActiveModel, 'none'>): Promise<OfferActionResult> {
+  await requireAdmin();
   const cfg = await getOfferConfig();
   if (model === 'model1') cfg.model1 = { title: '', body: '', btn_text: '', btn_url: '' };
   else if (model === 'model2') cfg.model2 = { img: '', url: '' };
