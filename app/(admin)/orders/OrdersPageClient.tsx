@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Order, OrderStatus } from '@/types';
 import { listOrders, updateOrderStatus, bulkUpdateOrderStatus } from '@/app/actions/orders';
 import { orderMatchesQuery } from '@/lib/orders';
@@ -28,6 +29,8 @@ function inRange(dateStr: string, range: DateRange): boolean {
 }
 
 export default function OrdersPageClient({ initialOrders }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | OrderStatus>('all');
@@ -41,6 +44,18 @@ export default function OrdersPageClient({ initialOrders }: Props) {
 
   const { showToast } = useToast();
   const { ordersVersion } = useOrdersRealtime();
+
+  // Dashboard-এর "পেন্ডিং অর্ডার" quick-action শর্টকাট থেকে আসলে (?status=pending)
+  // সেই স্ট্যাটাস ফিল্টার প্রি-সিলেক্ট করে দাও, তারপর URL পরিষ্কার করো
+  // (Categories → Products-এর ?openAdd প্যাটার্নের মতোই)
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status) {
+      setFilterStatus(status as OrderStatus);
+      router.replace('/orders');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // realtime নতুন/আপডেট ইভেন্ট এলে (OrdersRealtimeProvider থেকে) নীরবে লিস্ট রিফ্রেশ —
   // প্রথম মাউন্টে স্কিপ করা হচ্ছে কারণ initialOrders আগে থেকেই সার্ভার থেকে আনা

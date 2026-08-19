@@ -262,6 +262,20 @@ legacy `setOrderStatus()`-এর Google Sheet sync অংশ (`addConfirmed` pay
 
 **পরের ধাপ:** owner চাইলে Module ১৬ (Header Copy) বা ১৮ (Info Pages) আবার শুরু করা যাবে, নয়তো Phase D (Documentation)।
 
+### সেশন নোট — Dashboard-এর অচল/অগম্য বাটন ফিক্স (bug fix, নতুন module না)
+
+owner রিপোর্ট করেছিলেন Dashboard-এর "দ্রুত কাজ" প্যানেলে CSV Export ও পেন্ডিং অর্ডার বাটন কাজ করছে না। কারণ বের করা হলো, এবং একই সাথে পুরো repo জুড়ে অন্য কোনো একই ধরনের "তৈরি হয়ে গেছে কিন্তু UI থেকে অগম্য" জায়গা আছে কিনা চেক করা হলো (সব route vs Sidebar NAV_ITEMS ক্রস-চেক করে)।
+
+- **root cause ১:** `components/dashboard/QuickActions.tsx`-এ CSV Export ও পেন্ডিং অর্ডার বাটন দুটো Module ১ (Dashboard) সেশনে `disabled` অবস্থায় "শীঘ্রই আসছে" প্লেসহোল্ডার হিসেবে রাখা হয়েছিল (কমেন্ট: "Module ২ তৈরি হলে সক্রিয় হবে")। পরে Orders module (B-২) সম্পূর্ণ হলেও এই প্লেসহোল্ডার আর ফিরে গিয়ে সক্রিয় করা হয়নি — ভুলে বাদ পড়েছিল।
+- **root cause ২ (একই সময়ে পাওয়া, একই ধরনের bug):** `/traffic` ও `/profit` পেজ দুটো (B-৫, B-৬) সম্পূর্ণ তৈরি ও কার্যকর ছিল, কিন্তু `components/admin/Sidebar.tsx`-এর `NAV_ITEMS`-এ কখনো যোগ করা হয়নি — শুধু Dashboard stat card-এর deep-link দিয়েই পাওয়া যেত, সাইডবার থেকে না।
+
+**ফিক্স:**
+- **[REPLACE]** `components/dashboard/QuickActions.tsx` — CSV Export বাটন এখন client-side-এ সরাসরি `listOrders()` + `lib/csv.ts`-এর `downloadCsvRows`/`ordersToCsvRows` (Orders পেজের exportAll()-এর একই হেল্পার পুনর্ব্যবহার) দিয়ে কাজ করে — Orders পেজে না গিয়েই এক-ক্লিকে সব অর্ডারের CSV ডাউনলোড হয়। পেন্ডিং অর্ডার বাটন এখন `/orders?status=pending`-এ লিংক করে।
+- **[REPLACE]** `app/(admin)/orders/OrdersPageClient.tsx` — `?status=pending` query param রিড করে স্ট্যাটাস ফিল্টার প্রি-সিলেক্ট করে দেয়, তারপর URL পরিষ্কার করে (Categories → Products-এর বিদ্যমান `?openAdd=<catId>` প্যাটার্নের সাথে সামঞ্জস্যপূর্ণ implementation)।
+- **[REPLACE]** `components/admin/Sidebar.tsx` — `/traffic` ও `/profit` নেভ আইটেম যোগ করা হলো (`enabled: true`), legacy priority ক্রম অনুযায়ী কাস্টমারের ঠিক পরে।
+- সব route (`find app/(admin) -name page.tsx`) বনাম Sidebar `NAV_ITEMS`-এর href ক্রস-চেক করা হয়েছে — এখন প্রতিটা তৈরি হওয়া রুটের একটা enabled নেভ আইটেম আছে, কোনো orphaned/অগম্য পেজ নেই। `/header-copy` (B-১৬) ইচ্ছাকৃতভাবেই `enabled: false` আছে যেহেতু owner সিদ্ধান্তে এখনো পজ করা।
+- `npx tsc --noEmit` ও `next build` — ক্লিন, ১২টা route-ই সফলভাবে বিল্ড হয়েছে।
+
 ---
 
 ## Owner-এর কাজ (প্রতিটা phase শেষে)
