@@ -100,16 +100,18 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | ৮ | Design — Category Cards | `page-design-cath-cards` | Homepage category card visuals |
 | ৯ | ~~Design — Colors~~ | `page-design-colors` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** — legacy-তেই অকার্যকর mockup ছিল, নিচে সেশন নোট দেখুন |
 | ১০ | ~~Design — Logo~~ | `page-design-logo` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** |
-| ১১ | Design — Header | `page-design-header` | Header copy/config |
+| ১১ | ~~Design — Header~~ | `page-design-header` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** — legacy-তেই অকার্যকর mockup (Module ৯-এর মতোই), নিচে সেশন নোট দেখুন |
 | ১২ | ~~Design — Footer~~ | `page-design-footer` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** |
 | ১৩ | Offers | `page-offers-mgmt` | Discount campaign management |
 | ১৪ | Review Gallery | `page-review-gallery` | Customer review CRUD |
 | ১৫ | ~~FAQ Settings~~ | `page-faq-settings` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** |
-| ১৬ | Header Copy | `page-header-copy` | সাইট হেডারের টেক্সট |
+| ১৬ | Header Copy | `page-header-copy` | সাইট হেডারের টেক্সট — ⏸️ আপাতত স্কিপ (owner সিদ্ধান্ত), real/কার্যকর ফিচার, ভবিষ্যতে করা যাবে |
 | ১৭ | ~~Settings~~ | `page-settings`, `page-shipping-settings` | ❌ **স্কোপ থেকে বাদ (owner সিদ্ধান্ত)** — General + shipping config |
-| ১৮ | Info Pages | `ipage-about`, `ipage-privacy`, `ipage-returns`, `ipage-terms` | Static page content editor |
+| ১৮ | Info Pages | `ipage-about`, `ipage-privacy`, `ipage-returns`, `ipage-terms` | Static page content editor — ⏸️ আপাতত স্কিপ (owner সিদ্ধান্ত), real/কার্যকর ফিচার, ভবিষ্যতে করা যাবে |
 
-**নোট (owner সিদ্ধান্ত, দেখুন Progress Tracker-এর পরের সেশন নোট):** Module ৯, ১০, ১২, ১৫, ১৭ — এই পাঁচটা মডিউল সম্পূর্ণ স্কোপ থেকে বাদ দেওয়া হয়েছে, বানানো হবে না। Sidebar থেকেও সংশ্লিষ্ট নেভ আইটেম মুছে ফেলা হয়েছে (আগে "শীঘ্রই আসছে" disabled অবস্থায় ছিল)। Module ১১ (Design — Header) ও ১৮ (Info Pages) এখনো ⏳ বাকি হিসেবেই আছে — owner এগুলো বাদ দিতে বলেননি।
+**নোট (owner সিদ্ধান্ত, দেখুন Progress Tracker-এর পরের সেশন নোট):** Module ৯, ১০, ১১, ১২, ১৫, ১৭ — এই ছয়টা মডিউল সম্পূর্ণ স্কোপ থেকে বাদ দেওয়া হয়েছে, বানানো হবে না (১১ এই সেশনে যোগ হলো — legacy-তেই অকার্যকর mockup বলে)। Sidebar থেকেও সংশ্লিষ্ট নেভ আইটেম মুছে ফেলা হয়েছে (আগে "শীঘ্রই আসছে" disabled অবস্থায় ছিল)। Module ১৬ (Header Copy) ও ১৮ (Info Pages) real/কার্যকর ফিচার — এই সেশনে owner "আপাতত বানানোর দরকার নেই" বলেছেন (Phase C আগে করার জন্য), স্কোপ থেকে বাদ না — ভবিষ্যতে চাইলে আবার শুরু করা যাবে।
+
+**বোনাস আবিষ্কার (এই সেশনে):** legacy `page-design-footer`-এর ভেতর একটা "📞 যোগাযোগ তথ্য" কার্ড আছে (ফোন/WhatsApp/bKash/Messenger/Email/Facebook/ঠিকানা, `saveContactInfo()`) যেটা এই roadmap-এর কোনো module-এ কখনো লেখাই হয়নি। owner সিদ্ধান্ত: এটাও লাগবে না, স্কিপ।
 
 **প্রতিটা module convert করার নিয়ম (মূল সাইটের Phase B rule-ই এখানেও):**
 1. `.js` state/render logic → `.tsx` component + proper TS types
@@ -161,15 +163,15 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | B-৮ | Design — Category Cards (হিরো সেকশন কার্ড) | ✅ সম্পূর্ণ (গ্রিড ভিউ + এডিটর মোডাল — ছবি URL/আপলোড/প্রিভিউ, বাটন টেক্সট, ক্যাটাগরি লিংক, লাইভ প্রিভিউ; add/edit/delete + "ডিফল্টে রিসেট" (১৩টা ডিফল্ট কার্ড); `store_settings.vc_cath_cards`-এ সেভ হয়; সর্বোচ্চ ১৩টা কার্ড লিমিট UI-তেই আটকানো হয়েছে, নিচে নোট দেখুন) |
 | B-৯ | ~~Design — Colors~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত, নিচে সেশন নোট দেখুন |
 | B-১০ | ~~Design — Logo~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
-| B-১১ | Design — Header | ⏳ বাকি |
+| B-১১ | ~~Design — Header~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত (এই সেশনে): legacy-তেই অকার্যকর mockup পাওয়া গেছে (Module ৯-এর মতোই), নিচে সেশন নোট দেখুন |
 | B-১২ | ~~Design — Footer~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
 | B-১৩ | Offers Popup | ✅ সম্পূর্ণ (৩টা মডেল — টেক্সট নোটিশ/ব্যানার ইমেজ/হট প্রোডাক্ট প্রোমোশন; pill বাটন → এডিটর মোডাল, ৩-কলাম লাইভ প্রিভিউ গ্রিড, প্রতিটায় toggle switch — একবারে একটাই মডেল লাইভ থাকতে পারে, চালু করলে বাকি দুইটা অটো বন্ধ; `store_settings.vc_offer_popup`-এ সেভ হয়; মডেল ৩-এর প্রোডাক্ট ড্রপডাউন `custom_products` থেকে) |
 | B-১৪ | Review Gallery | ✅ সম্পূর্ণ (গ্রিড ভিউ, ছবি URL/আপলোড + প্রিভিউ, add/edit/delete, ক্লিক করলে ফুল-স্ক্রিন zoom প্রিভিউ; `customer_reviews` টেবিলে সেভ হয়, শুধু `image_url` কলাম touch করা হয় — টেবিলে অন্য কলাম থাকলেও admin সেগুলো ছোঁয় না, নিচে নোট দেখুন) |
 | B-১৫ | ~~FAQ Settings~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
-| B-১৬ | Header Copy | ⏳ বাকি |
+| B-১৬ | ~~Header Copy~~ | ⏸️ **আপাতত স্কিপ** — owner সিদ্ধান্ত (এই সেশনে), ভবিষ্যতে চাইলে আবার শুরু করা যাবে |
 | B-১৭ | ~~Settings (General + Shipping)~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
-| B-১৮ | Info Pages | ⏳ বাকি |
-| C | Server Actions & API routes (`sync-sheet` proxy সহ) | ⏳ বাকি — Orders-এর "confirmed" স্ট্যাটাসে Google Sheet sync call এখনো wire করা হয়নি, TODO কমেন্ট রাখা আছে `app/actions/orders.ts`-এ |
+| B-১৮ | ~~Info Pages~~ | ⏸️ **আপাতত স্কিপ** — owner সিদ্ধান্ত (এই সেশনে), ভবিষ্যতে চাইলে আবার শুরু করা যাবে |
+| C | Server Actions & API routes | 🔵 চলছে — Orders "confirmed" sync-sheet ✅ সম্পূর্ণ (নিচে সেশন নোট), বাকি item গুলো (image upload আগেই B-৮/B-১৪-এ হয়ে গেছে) মূলত সম্পূর্ণ |
 | D | Documentation (ARCHITECTURE.md, MIGRATION_NOTES.md) | ⏳ বাকি |
 
 ### সেশন নোট — Module ৭ (Design — Categories)
@@ -237,7 +239,28 @@ legacy `admin.html`-এর `#page-review-gallery` + TASK 30 JS (`loadReviewGalle
 
 **একটা ইচ্ছাকৃত পার্থক্য (owner-কে জানানো দরকার), Module ৮-এর মতোই একই কারণে:** **ছবি আপলোড: base64 থেকে আসল Storage upload** — legacy `handleReviewImgUpload()` ছবি সরাসরি base64 বানিয়ে `image_url` কলামেই বসিয়ে দিত (প্রতিটা রিভিউ রো ভারী হয়ে উঠত)। এখানে Products/Hero-Cards module-এর মতোই আসল Supabase Storage-এ আপলোড হয় (bucket `product-images` পুনর্ব্যবহার, path `reviews/...`) — কলামে শুধু ছোট URL string থাকে। এটা bug ফিক্সের মতো, ফিচার পাল্টায়নি (URL অথবা আপলোড দুটো অপশনই আগের মতোই আছে)।
 
-**পরের ধাপ:** Module ১১ (Design — Header) অথবা Module ১৮ (Info Pages) অথবা owner চাইলে Phase C (Server Actions/API routes, বিশেষ করে Orders-এর confirmed sync-sheet TODO)।
+### সেশন নোট — Module ১১ যাচাই + স্কোপ থেকে বাদ, Phase C (Orders confirmed sync-sheet)
+
+**Module ১১ (Design — Header) যাচাই:** legacy `#page-design-header` (নেভ লগইন বাটন টেক্সট, হেডার ব্যাকগ্রাউন্ড রং, announcement bar টেক্সট, ক্যাটাগরি বার টগল, sticky header টগল) সম্পূর্ণ কোড পড়ে নিশ্চিত হওয়া গেছে — `saveHeader()` আসলে কিছুই সেভ করে না (শুধু টোস্ট দেখায়), আর কোনো load ফাংশনও নেই এই ফিল্ডগুলো populate করার জন্য। অর্থাৎ Module ৯ (Colors)-এর মতোই legacy-তেই এটা অকার্যকর mockup ছিল। owner এই তথ্য দেখে **Module ৯-এর মতোই সম্পূর্ণ স্কোপ থেকে বাদ দিতে বলেছেন।** Sidebar-এ এই মডিউলের কোনো নেভ আইটেম কখনো যোগ হয়নি, তাই ফাইল পরিবর্তনের দরকার হয়নি।
+
+**Module ১৬ (Header Copy) ও ১৮ (Info Pages):** দুটোই কোড পড়ে verify করা হয়েছে — legacy-তে real/কার্যকর ফিচার (load+save সাইকেল আছে, `vc_navbar_texts`/`vc_about_desc`/`vc_info_pages`-এ সেভ হয়, সাইটের real পেজ চালায়)। owner এই সেশনে এগুলো **আপাতত স্কিপ করে সরাসরি Phase C করতে বলেছেন** — স্কোপ থেকে বাদ না, ভবিষ্যতে আবার শুরু করা যাবে।
+
+**বোনাস আবিষ্কার:** legacy `page-design-footer`-এর ভেতরে একটা "📞 যোগাযোগ তথ্য" কার্ড (ফোন/WhatsApp/bKash/Messenger/Email/Facebook/ঠিকানা) roadmap-এর কোনো module-এ কখনো লেখাই ছিল না। owner সিদ্ধান্ত: এটাও লাগবে না।
+
+**Phase C — Orders "confirmed" sync-sheet (আগের TODO এখন সম্পূর্ণ):**
+
+legacy `setOrderStatus()`-এর Google Sheet sync অংশ (`addConfirmed` payload) সম্পূর্ণ পড়ে port করা হলো। **একটা আর্কিটেকচারাল সিদ্ধান্ত owner-কে জিজ্ঞেস করা হয়েছিল** (roadmap Phase C-তে লেখা ছিল legacy-র মতোই আলাদা public `/api/sync-sheet` route বানানোর কথা) — legacy-তে এই আলাদা proxy route লাগত কারণ vanilla SPA-তে Google Apps Script URL গোপন রাখার আর কোনো উপায় ছিল না। Next.js-এ Server Action এমনিতেই সার্ভারে চলে, তাই একই কারণ প্রযোজ্য না। **owner অনুমোদন দিয়েছেন সহজ/বেশি নিরাপদ অপশনে যাওয়ার জন্য** — কোনো নতুন public route ছাড়াই, বিদ্যমান Server Action-এর ভেতর থেকেই সরাসরি Google Sheet-এ কল।
+
+- **[NEW FILE]** `lib/googleSheet.ts` — `syncConfirmedOrderToSheet(order)`, legacy-র `addConfirmed` payload শেপ হুবহু (orderNum/date/name/phone/dist/addr/email/items/itemsRaw/shippingCost/total/ip), `text/plain` content-type বজায় রাখা হয়েছে (Google Apps Script-এর doPost() এই ফরম্যাট আশা করে), ব্যর্থ হলে silently catch করে (legacy-ও তাই করত), ১০ সেকেন্ড টাইমআউট
+- **[REPLACE]** `app/actions/orders.ts` — `updateOrderStatus()`-এ status 'confirmed' হলে Next.js 15-এর `after()` API দিয়ে ব্যাকগ্রাউন্ডে sync ট্রিগার হয় (response আটকায় না, কিন্তু un-awaited fetch-এর মতো serverless-এ মাঝপথে থেমে যাওয়ার ঝুঁকিও নেই — `after()` ঠিক এই কাজের জন্যই বানানো)। `bulkUpdateOrderStatus()`-এ touch করা হয়নি — legacy-তেও bulk confirm sync ট্রিগার করত না, এটা যাচাই করেই নিশ্চিত হওয়া হয়েছে
+- মকড fetch দিয়ে payload শেপ আলাদাভাবে টেস্ট করে verify করা হয়েছে (legacy-র payload-এর সাথে field-by-field মিল)
+- `GOOGLE_SHEET_URL` env var আগে থেকেই owner-এর External Setup Checklist-এ ছিল (Phase A.1) — নতুন কিছু বসাতে হবে না
+
+**একটা আলাদা বাগ পাওয়া গেছে ও ফিক্স করা হয়েছে (এই সেশনের কাজের অংশ না, কিন্তু build ভেঙে ছিল):** `lib/constants/heroCards.ts` ফাইলটা repo-তে সম্পূর্ণ অনুপস্থিত ছিল (Module ৮-এর সেশনে তৈরি হয়েছিল বলে roadmap-এ লেখা আছে, কিন্তু GitHub-এ কখনো commit/upload হয়নি — সম্ভবত ZIP থেকে drag-drop করার সময় বাদ পড়ে গিয়েছিল), যার ফলে পুরো repo build ভাঙা ছিল। legacy `DEFAULT_CATH_CARDS` থেকে হুবহু পুনর্গঠন করে ফাইলটা রিস্টোর করা হলো — **[NEW FILE]** `lib/constants/heroCards.ts`।
+
+- `npx tsc --noEmit` ও `next build` — ক্লিন (এখন সব রুট build হয়)
+
+**পরের ধাপ:** owner চাইলে Module ১৬ (Header Copy) বা ১৮ (Info Pages) আবার শুরু করা যাবে, নয়তো Phase D (Documentation)।
 
 ---
 

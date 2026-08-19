@@ -1,8 +1,10 @@
 'use server';
 
+import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { mapOrderRow } from '@/lib/orders';
+import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import type { Order, OrderStatus } from '@/types';
 
 // ══════════════════════════════════════════════════════════════
@@ -40,18 +42,28 @@ export interface OrderActionResult {
   message?: string;
 }
 
-// legacy setOrderStatus() — শুধু Supabase আপডেট অংশ। sound/Google-Sheet-sync
-// side effect client-side-এই হ্যান্ডেল হয় (sync-sheet proxy route Phase C-তে
-// তৈরি হবে, তখন এখানে ওয়্যার করা হবে — TODO নিচে)।
+// legacy setOrderStatus() — শুধু Supabase আপডেট অংশ। sound legacy-তেও
+// client-side, তাই OrdersPageClient.tsx-এই আছে (এখানে না)।
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<OrderActionResult> {
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) return { status: 'error', message: error.message };
+
+  // legacy setOrderStatus()-এর addConfirmed sync — status 'confirmed' হলেই
+  // ট্রিগার হয় (bulkUpdateOrderStatus-এ হয় না, legacy-তেও হতো না)। `after()`
+  // ব্যবহার করা হচ্ছে যাতে response আটকে না থেকেও কাজটা নিশ্চিতভাবে শেষ
+  // পর্যন্ত চলে (serverless-এ response পাঠানোর পর সাধারণ un-awaited
+  // fetch মাঝপথে থেমে যেতে পারে — after() সেই ঝুঁকি ছাড়াই ব্যাকগ্রাউন্ডে চালায়)।
+  if (status === 'confirmed') {
+    after(async () => {
+      const { data } = await supabase.from('orders').select('*').eq('id', id).single();
+      if (data) await syncConfirmedOrderToSheet(mapOrderRow(data));
+    });
+  }
+
   revalidatePath('/orders');
   revalidatePath('/');
   return { status: 'ok' };
-  // TODO(Phase C): status==='confirmed' হলে legacy /api/sync-sheet (addConfirmed)
-  // এখানেও কল করতে হবে — route তৈরি হওয়ার পর।
 }
 
 export interface BulkOrderActionResult {
