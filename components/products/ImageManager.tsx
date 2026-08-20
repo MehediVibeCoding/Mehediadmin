@@ -77,6 +77,13 @@ export default function ImageManager({ images, onChange }: Props) {
             {/* প্রিভিউ */}
             <div className="relative h-[130px] w-[130px] shrink-0 overflow-hidden border-r border-border-base bg-surface-muted">
               {url ? (
+                // ইচ্ছাকৃত: admin যেকোনো https URL (শুধু Cloudinary না) বা data:
+                // URL পেস্ট করতে পারে — next/image-এর remotePatterns দিয়ে সব
+                // ডোমেইন আগে থেকে জানা সম্ভব না, তাই next/image ব্যবহার করলে
+                // unoptimized={true} লাগত (কোনো optimization-লাভ ছাড়াই) আর এখানকার
+                // কাস্টম zoom/crop প্রিভিউ (dynamic width/height% + objectFit)
+                // ভেঙে যাওয়ার ঝুঁকি থাকত। তাই plain <img> ইচ্ছাকৃতভাবে রাখা হলো।
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={row.value}
                   alt=""

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CategoryOption } from '@/lib/constants/categories';
-import type { Product } from '@/types';
 import { smartParse, SMART_PARSER_EXAMPLE } from '@/lib/smart-parser';
 import { parsedToFormState } from '@/lib/product-form';
 import ImageManager from '@/components/products/ImageManager';
@@ -53,7 +52,7 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
     }
   }
 
-  function handleSaved(product: Product) {
+  function handleSaved() {
     setModalState(null);
     router.push('/products');
     router.refresh();
