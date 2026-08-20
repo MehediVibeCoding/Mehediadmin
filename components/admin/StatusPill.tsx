@@ -9,6 +9,9 @@ const STATUS_META: Record<OrderStatus, { label: string; bg: string; text: string
   shipped: { label: 'Shipped', bg: '#E0E7FF', text: '#3730A3' },
   delivered: { label: 'Delivered', bg: '#D1FAE5', text: '#065F46' },
   cancelled: { label: 'Cancelled', bg: '#FEE2E2', text: '#991B1B' },
+  // cancelled-এর চেয়ে গাঢ় লাল — যাতে "গ্রাহক নিজে ক্যান্সেল করেছে" আর
+  // "admin fake/ভুল পেমেন্ট তথ্যের কারণে reject করেছে" টেবিলেই আলাদা বোঝা যায়
+  rejected: { label: 'Rejected', bg: '#FECACA', text: '#7F1D1D' },
 };
 
 export default function StatusPill({ status }: { status: OrderStatus }) {

@@ -4,9 +4,17 @@
 // লেখা যাবে না, প্রতিটা table-এর real schema Supabase Dashboard-এ
 // গিয়ে verify করে নিতে হবে।
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled' | 'rejected';
 
+// ⚠️ আপডেট (রিজেক্ট + স্টক রিস্টোর ফিচারের সাথে): checkout (Vangcur)-এর
+// cart item shape-এ আসলে `id` (আর `cat`) ফিল্ড থাকে (lib/cartData.ts-এর
+// addToCart()/CartItem দ্রষ্টব্য), যেটা `verifiedItems`-এর মাধ্যমে
+// অপরিবর্তিত অবস্থায় orders.items-এ সেভ হয়ে যায় — কিন্তু এই টাইপে আগে
+// `id` declare করা ছিল না। এখন যোগ করা হলো যাতে reject-এ স্টক রিস্টোর
+// করার সময় প্রতিটা item ঠিক কোন product-এর, সেটা চেনা যায়। পুরনো অর্ডার
+// (যদি কখনো id ছাড়া সেভ হয়ে থাকে) হ্যান্ডেল করতে optional রাখা হলো।
 export interface OrderItem {
+  id?: number | string;
   name: string;
   qty: number;
   price: number;

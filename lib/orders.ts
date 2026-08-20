@@ -3,12 +3,18 @@ import type { Order, OrderItem, OrderStatus } from '@/types';
 // legacy admin.html-এর ORD_STATUS_META/ORD_STATUS_ORDER থেকে হুবহু —
 // dot রং টেবিল, স্ট্যাটাস-ড্রপডাউন ও অর্ডার ডিটেইল মোডালে ব্যবহৃত হয়
 // (StatusPill কম্পোনেন্টের bg/text রং থেকে আলাদা, ওটা টেবিলের পিলের জন্য)।
+//
+// 'rejected' — নতুন যোগ হয়েছে (bKash manual পেমেন্ট verify ফ্লো, admin
+// fake/ভুল TxnID পেলে reject করে)। Vangcur-এর storefront (TrackOrderModal,
+// WaitingOverlay) আগে থেকেই এই স্ট্যাটাস হ্যান্ডেল করত, কিন্তু admin panel-এ
+// এটা সেট করার কোনো উপায় ছিল না — এখন যোগ হলো।
 export const ORDER_STATUS_ORDER: OrderStatus[] = [
   'pending',
   'confirmed',
   'shipped',
   'delivered',
   'cancelled',
+  'rejected',
 ];
 
 export const ORDER_STATUS_META: Record<OrderStatus, { label: string; dot: string }> = {
@@ -17,6 +23,7 @@ export const ORDER_STATUS_META: Record<OrderStatus, { label: string; dot: string
   shipped: { label: 'Shipped', dot: '#6366F1' },
   delivered: { label: 'Delivered', dot: '#10B981' },
   cancelled: { label: 'Cancelled', dot: '#EF4444' },
+  rejected: { label: 'Rejected', dot: '#B91C1C' },
 };
 
 // legacy viewOrder()-এ ফিক্সড অ্যাডভান্স ৳২০০ (সব অর্ডারে একই)
