@@ -142,18 +142,6 @@ export default function OffersPageClient({ config, products }: Props) {
         </button>
       </div>
 
-      {/* ⚠️ sync-gap নোটিশ — কোড-লেভেল ক্রস-চেকে ধরা পড়েছে: এই পেজ থেকে যা-ই
-          সেভ করা হোক, storefront (Vangcur)-এর OfferPopup.tsx এখনো এই
-          store_settings key (vc_offer_popup) পড়ে না — storefront বরং
-          স্বয়ংক্রিয়ভাবে discount থাকা প্রোডাক্ট দেখায়। storefront-এর কোড
-          আপডেট না হওয়া পর্যন্ত এখানের সেভ করা কনফিগারেশনের লাইভ সাইটে
-          কোনো effect নেই। */}
-      <div className="mb-5 rounded-brand border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-ink">
-        ⚠️ <b>এই ফিচারটা এখন লাইভ সাইটে কাজ করছে না।</b> এখানে যা সেভ করবে তা storefront
-        (Vangcur)-এর অটোমেটিক ডিসকাউন্ট পপআপ পড়ে না — ওয়েবসাইটের কোড আপডেট হওয়ার পর এটা আবার
-        সিঙ্ক হবে।
-      </div>
-
       <div className="mb-5 text-center">
         <div className="mb-1.5 text-[17px] font-extrabold text-ink">আপনার ওয়েবসাইটে অফার যুক্ত করুন</div>
         <div className="text-xs text-muted">একটি মডেল বেছে নিন, তথ্য সেট করুন এবং চালু করুন</div>

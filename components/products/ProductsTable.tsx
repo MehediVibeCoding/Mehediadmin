@@ -258,7 +258,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                     <td
                       className="cursor-grab select-none py-2 text-lg text-muted"
                       onPointerDown={(e) => handlePointerDown(p.id, e)}
-                      title="ধরে টানুন (⚠️ sync-gap: এই অর্ডার এখন storefront-এ apply হয় না — Vangcur কোড আপডেট হলে সিঙ্ক হবে)"
+                      title="ধরে টানুন"
                     >
                       ≡
                     </td>
