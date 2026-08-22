@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     return (
       <div>
         <div className="mb-5 text-center">
-          <h1 className="font-display text-xl text-ink md:text-2xl">Hi Mehedi, Welcome To Vangcur Dashboard</h1>
+          <h1 className="font-bold text-[22px] text-ink">Hi Mehedi, Welcome To Vangcur Dashboard</h1>
           <p className="mt-1 text-sm text-muted">{today}</p>
         </div>
 
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
 
         <StatGrid stats={data.stats} />
 
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr]">
           <RecentOrders orders={data.recentOrders} />
           <QuickActions />
         </div>
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
     const message = err instanceof Error ? err.message : String(err);
     return (
       <div className="rounded-brand border border-red-200 bg-red-50 p-6 text-red-700">
-        <h1 className="mb-2 font-display text-lg">ড্যাশবোর্ড লোড করতে সমস্যা হয়েছে</h1>
+        <h1 className="mb-2 font-bold text-lg">ড্যাশবোর্ড লোড করতে সমস্যা হয়েছে</h1>
         <p className="text-sm">{message}</p>
         <p className="mt-3 text-xs text-red-500">
           সাধারণত এর কারণ: Vercel-এ SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL ভুল বা

@@ -65,7 +65,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="max-h-[90vh] w-full max-w-[780px] overflow-y-auto rounded-brand bg-brand-surface p-6 shadow-sh3">
-        <h3 className="mb-4 font-display text-lg text-ink">
+        <h3 className="mb-4 font-bold text-lg text-ink">
           {titleOverride || (editingProduct ? 'প্রোডাক্ট এডিট করুন' : 'প্রোডাক্ট যোগ করুন')}
         </h3>
 

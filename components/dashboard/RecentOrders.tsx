@@ -4,7 +4,7 @@ import StatusPill from '@/components/admin/StatusPill';
 
 export default function RecentOrders({ orders }: { orders: Order[] }) {
   return (
-    <div className="rounded-brand bg-brand-surface p-5 shadow-sh1">
+    <div className="glass-card-strong rounded-brand p-4 shadow-glass md:p-5">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-sm font-bold text-ink">সর্বশেষ ৫টি অর্ডার</span>
         <Link href="/orders" className="text-xs font-semibold text-brand-primary hover:underline">

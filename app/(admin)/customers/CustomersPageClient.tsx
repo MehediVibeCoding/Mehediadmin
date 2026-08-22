@@ -18,7 +18,7 @@ export default function CustomersPageClient({ initialCustomers }: Props) {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-display text-xl text-ink">কাস্টমার তালিকা</h1>
+        <h1 className="font-bold text-xl text-ink">কাস্টমার তালিকা</h1>
         <p className="mt-0.5 text-sm text-muted">নিবন্ধিত গ্রাহকদের তথ্য</p>
       </div>
 

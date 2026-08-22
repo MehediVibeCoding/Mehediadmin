@@ -89,8 +89,8 @@ export default function RevenueChart({ revenueByDate }: Props) {
       const bh = Math.max(2, (values[i] / maxVal) * chartH);
       const y = pad.t + chartH - bh;
       const grad = ctx.createLinearGradient(0, y, 0, y + bh);
-      grad.addColorStop(0, '#0058C7');
-      grad.addColorStop(1, '#44A4FB');
+      grad.addColorStop(0, '#6366f1');
+      grad.addColorStop(1, '#a5b4fc');
       ctx.fillStyle = values[i] > 0 ? grad : '#e5e7eb';
 
       ctx.beginPath();
@@ -110,7 +110,7 @@ export default function RevenueChart({ revenueByDate }: Props) {
       ctx.fillText(lbl, x + barW / 2, H - pad.b + 12);
 
       if (values[i] > 0) {
-        ctx.fillStyle = '#0058C7';
+        ctx.fillStyle = '#3730a3';
         ctx.font = 'bold 11px sans-serif';
         ctx.fillText('৳' + (values[i] >= 1000 ? (values[i] / 1000).toFixed(1) + 'k' : values[i]), x + barW / 2, y - 5);
       }
@@ -122,7 +122,7 @@ export default function RevenueChart({ revenueByDate }: Props) {
   }
 
   return (
-    <div className="mt-4 rounded-brand bg-brand-surface p-5 shadow-sh1">
+    <div className="glass-card-strong mt-4 rounded-brand p-4 shadow-glass md:p-5">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-sm font-bold text-ink">📈 রেভিনিউ ট্রেন্ড</span>
         <select
@@ -141,7 +141,7 @@ export default function RevenueChart({ revenueByDate }: Props) {
         <canvas ref={canvasRef} height={160} className="block w-full max-w-full" />
       </div>
       <div className="flex flex-wrap gap-4 px-1 pt-1.5 text-[11px] text-muted">
-        <span className="font-semibold text-brand-primary">● নিশ্চিত রেভিনিউ</span>
+        <span className="font-semibold text-[#6366f1]">● নিশ্চিত রেভিনিউ</span>
         <span>মোট: ৳{legend.total.toLocaleString()}</span>
         <span>{legend.activeDays}টি দিনে অর্ডার</span>
       </div>

@@ -109,7 +109,7 @@ export default function HeroCardsPageClient({ cards, categories }: Props) {
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl text-ink">🖼️ হিরো সেকশন কার্ড</h1>
+          <h1 className="font-bold text-xl text-ink">🖼️ হিরো সেকশন কার্ড</h1>
           <p className="mt-0.5 text-sm text-muted">হোমপেজের স্লাইডার কার্ডগুলো ম্যানেজ করুন</p>
         </div>
         <div className="flex flex-wrap gap-2">

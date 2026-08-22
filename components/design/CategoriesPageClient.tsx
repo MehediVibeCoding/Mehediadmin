@@ -81,7 +81,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl text-ink">ক্যাটাগরি ম্যানেজমেন্ট</h1>
+          <h1 className="font-bold text-xl text-ink">ক্যাটাগরি ম্যানেজমেন্ট</h1>
           <p className="mt-0.5 text-sm text-muted">ক্যাটাগরি যোগ করুন, সম্পাদনা করুন</p>
         </div>
         <button

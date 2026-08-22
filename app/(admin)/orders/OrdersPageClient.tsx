@@ -87,7 +87,6 @@ export default function OrdersPageClient({ initialOrders }: Props) {
     return filtered.slice(from, from + PAGE_SIZE);
   }, [filtered, page]);
 
-  const hasActiveFilters = !!search || filterStatus !== 'all' || !!dateRange;
   const viewingOrder = viewingId ? orders.find((o) => o.id === viewingId) || null : null;
 
   function toggleSelect(id: string) {
@@ -173,11 +172,9 @@ export default function OrdersPageClient({ initialOrders }: Props) {
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="font-display text-xl text-ink">অর্ডার</h1>
-        <p className="mt-0.5 text-sm text-muted">
-          মোট {filtered.length}টি অর্ডার{hasActiveFilters ? ' (ফিল্টার করা)' : ''}
-        </p>
+      <div className="mx-auto mb-3.5 mt-2.5 max-w-full text-center">
+        <h1 className="font-bold text-xl text-ink">অর্ডার ম্যানেজমেন্ট</h1>
+        <p className="mt-0.5 text-[12.5px] text-muted">সকল গ্রাহকের অর্ডার — Confirm করুন বা Cancel করুন</p>
       </div>
 
       <OrdersToolbar
@@ -198,11 +195,10 @@ export default function OrdersPageClient({ initialOrders }: Props) {
         onExportRange={exportRange}
         onRefresh={handleRefresh}
         refreshing={refreshing}
-        hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
       />
 
-      <div className="rounded-brand bg-brand-surface shadow-sh1">
+      <div className="glass-card-strong rounded-brand p-4 shadow-glass md:p-5">
         <OrdersTable
           orders={paginated}
           selectedIds={selectedIds}

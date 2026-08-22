@@ -130,7 +130,7 @@ export default function OffersPageClient({ config, products }: Props) {
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl text-ink">📢 অফার পপআপ ম্যানেজমেন্ট</h1>
+          <h1 className="font-bold text-xl text-ink">📢 অফার পপআপ ম্যানেজমেন্ট</h1>
           <p className="mt-0.5 text-sm text-muted">ভিজিটরদের জন্য পপআপ ও অফার পেজ কনফিগার করুন</p>
         </div>
         <button

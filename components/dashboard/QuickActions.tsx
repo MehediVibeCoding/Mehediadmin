@@ -26,12 +26,12 @@ export default function QuickActions() {
   }
 
   return (
-    <div className="rounded-brand bg-brand-surface p-5 shadow-sh1">
+    <div className="glass-card-strong rounded-brand p-4 shadow-glass md:p-5">
       <div className="mb-4 text-sm font-bold text-ink">দ্রুত কাজ</div>
       <div className="flex flex-col gap-2">
         <Link
           href="/products"
-          className="flex items-center justify-center rounded-brand bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-brand hover:opacity-90"
+          className="flex items-center justify-center rounded-brand bg-brand-grad px-4 py-2.5 text-sm font-semibold text-white shadow-[0_3px_10px_rgba(0,61,143,.28)] transition-brand hover:opacity-90"
         >
           + নতুন প্রোডাক্ট
         </Link>

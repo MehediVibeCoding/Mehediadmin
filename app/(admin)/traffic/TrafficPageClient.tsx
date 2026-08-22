@@ -90,7 +90,7 @@ export default function TrafficPageClient({ initialData }: Props) {
   return (
     <div>
       <div className="mb-5 flex flex-col items-center text-center">
-        <h1 className="font-display text-xl text-ink">ট্রাফিক অ্যানালিটিক্স</h1>
+        <h1 className="font-bold text-xl text-ink">ট্রাফিক অ্যানালিটিক্স</h1>
         <p className="mt-0.5 text-sm text-muted">ভিজিটর, পিক আওয়ার ও প্রোডাক্ট ভিউ — বিস্তারিত পরিসংখ্যান</p>
         <div className="mt-3 flex items-center justify-center gap-2">
           <DateRangePicker active={true} range={dateRange} onApply={setDateRange} minDaysBack={89} allowClear={false} />

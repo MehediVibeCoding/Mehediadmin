@@ -30,14 +30,14 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
       <table className="w-full min-w-[640px] text-left">
         <thead>
           <tr>
-            <th className="rounded-tl-brand bg-brand-bg/40 p-2.5 text-[10px] font-bold uppercase tracking-wide text-brand-primary">
+            <th className="rounded-tl-[10px] border-b border-[rgba(0,88,199,.14)] bg-brand-bg p-2.5 text-[10px] font-bold uppercase tracking-[.6px] text-brand-dark">
               <input type="checkbox" checked={allChecked} onChange={(e) => onToggleSelectAll(e.target.checked)} className="cursor-pointer" />
             </th>
             {['অর্ডার নং', 'তারিখ', 'গ্রাহক', 'ফোন', 'মোট', 'স্ট্যাটাস', 'অ্যাকশন'].map((h, i) => (
               <th
                 key={h}
-                className={`bg-brand-bg/40 p-2.5 text-[10px] font-bold uppercase tracking-wide text-brand-primary ${
-                  i === 6 ? 'rounded-tr-brand' : ''
+                className={`border-b border-[rgba(0,88,199,.14)] bg-brand-bg p-2.5 text-[10px] font-bold uppercase tracking-[.6px] text-brand-dark ${
+                  i === 6 ? 'rounded-tr-[10px]' : ''
                 }`}
               >
                 {h}
@@ -54,7 +54,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
             </tr>
           ) : (
             orders.map((o, i) => (
-              <tr key={o.id} className={i % 2 === 1 ? 'bg-surface-muted/40' : ''}>
+              <tr key={o.id} className={`transition-brand hover:bg-brand-bg ${i % 2 === 1 ? 'bg-brand-bg/[.18]' : ''}`}>
                 <td className="border-b border-border-base p-2.5">
                   <input
                     type="checkbox"
@@ -63,8 +63,8 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                     className="cursor-pointer"
                   />
                 </td>
-                <td className="border-b border-border-base p-2.5 text-[12.5px] font-bold text-brand-primary">{o.order_num}</td>
-                <td className="whitespace-nowrap border-b border-border-base p-2.5 text-[11px] text-muted">
+                <td className="border-b border-border-base p-2.5 text-[12.5px] font-bold text-brand-dark">{o.order_num}</td>
+                <td className="whitespace-nowrap border-b border-border-base p-2.5 text-[12.5px] text-ink">
                   {new Date(o.created_at || Date.now()).toLocaleDateString('bn-BD')}
                 </td>
                 <td className="border-b border-border-base p-2.5 text-[12.5px] text-ink">{o.customer_name || '-'}</td>
@@ -87,7 +87,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                   <button
                     type="button"
                     onClick={() => onView(o.id)}
-                    className="rounded-brand border border-border-base px-2.5 py-1 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted"
+                    className="rounded-[8px] border border-border-base px-2.5 py-1 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted"
                   >
                     বিস্তারিত
                   </button>

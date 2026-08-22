@@ -113,11 +113,22 @@ export default function WeatherWidget() {
   }, []);
 
   return (
-    <div className="relative mb-4 flex flex-wrap items-center gap-4 overflow-hidden rounded-brand bg-gradient-to-br from-brand-primary to-brand-accent p-5 text-white shadow-sh2">
-      <div className="pointer-events-none absolute -right-6 -top-16 h-56 w-56 rounded-full bg-white/10" />
+    <div className="relative mb-4 flex flex-wrap items-center gap-3 overflow-hidden rounded-brand bg-brand-grad p-4 text-white shadow-[0_14px_40px_rgba(0,61,143,.28),inset_0_1px_0_rgba(255,255,255,.18)] md:gap-4 md:p-5">
+      {/* legacy .weather-card::before — top-right/bottom-left radial glow */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at 90% -20%, rgba(255,255,255,.22) 0%, transparent 45%), radial-gradient(circle at 0% 120%, rgba(0,18,41,.28) 0%, transparent 55%)',
+        }}
+      />
+      {/* legacy .weather-card::after — floating soft circle */}
+      <div className="pointer-events-none absolute -right-[6%] -top-[30%] h-56 w-56 animate-weather-float rounded-full bg-[radial-gradient(circle,rgba(255,255,255,.16),transparent_70%)]" />
 
       <div className="relative z-10 flex min-w-[220px] flex-1 items-center gap-3.5">
-        <div className="text-[44px] leading-none drop-shadow-[0_4px_10px_rgba(0,0,0,.25)]">{state.icon}</div>
+        <div className="animate-weather-icon-bob text-[44px] leading-none drop-shadow-[0_4px_10px_rgba(0,0,0,.25)]">
+          {state.icon}
+        </div>
         <div>
           <div className="text-[32px] font-bold tracking-tight">{state.temp}</div>
           <div className="mt-0.5 text-[12.5px] text-white/85">{state.desc}</div>
@@ -141,7 +152,7 @@ export default function WeatherWidget() {
       </div>
 
       {state.forecast.length > 0 && (
-        <div className="relative z-10 flex w-full flex-wrap justify-between gap-2.5 border-t border-white/20 pt-3 sm:w-auto sm:justify-start sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+        <div className="relative z-10 flex w-full flex-wrap justify-between gap-2.5 border-t border-white/20 pt-3 md:w-auto md:justify-start md:border-l md:border-t-0 md:pl-4 md:pt-0">
           {state.forecast.map((f, i) => (
             <div key={i} className="flex min-w-[34px] flex-col items-center gap-1">
               <div className="text-[9.5px] font-bold">{f.temp}°</div>

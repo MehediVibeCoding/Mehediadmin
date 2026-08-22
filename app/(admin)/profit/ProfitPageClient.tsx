@@ -75,7 +75,7 @@ export default function ProfitPageClient({ initialData }: Props) {
   return (
     <div>
       <div className="mb-5 flex flex-col items-center text-center">
-        <h1 className="font-display text-xl text-ink">নিট প্রফিট</h1>
+        <h1 className="font-bold text-xl text-ink">নিট প্রফিট</h1>
         <p className="mt-0.5 text-sm text-muted">কোন দিন কত টাকা আসল প্রফিট হয়েছে — বিস্তারিত পরিসংখ্যান</p>
         <div className="mt-3 flex items-center justify-center gap-2">
           <DateRangePicker

@@ -14,7 +14,7 @@ export default function LowStockAlert({ items }: { items: LowStockItem[] }) {
   if (!items.length) return null;
 
   return (
-    <div className="mt-4 rounded-brand bg-brand-surface p-5 shadow-sh1">
+    <div className="glass-card-strong mt-4 rounded-brand p-4 shadow-glass md:p-5">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-bold text-ink">⚠️ কম স্টক সতর্কতা (৫ বা কম)</span>
         <Link

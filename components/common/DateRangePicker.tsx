@@ -147,99 +147,123 @@ export default function DateRangePicker({
         <button
           type="button"
           onClick={() => (open ? setOpen(false) : openPicker())}
-          className="flex w-full items-center gap-2.5 rounded-brand px-3 py-2 text-left text-sm text-ink transition-brand hover:bg-surface-muted"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-ink transition-brand hover:bg-brand-bg hover:text-brand-dark"
         >
           {menuItemIcon}
           <span>
-            <span className="block font-medium">{menuItemLabel}</span>
-            {menuItemSubLabel && <span className="block text-[11px] text-muted">{menuItemSubLabel}</span>}
+            <span className="block">{menuItemLabel}</span>
+            {menuItemSubLabel && <span className="mt-px block text-[10.5px] font-medium text-muted">{menuItemSubLabel}</span>}
           </span>
         </button>
       ) : (
         <button
           type="button"
           onClick={() => (open ? setOpen(false) : openPicker())}
-          className="flex h-9 items-center gap-1.5 rounded-brand border border-border-base bg-brand-surface px-3 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted"
+          className="flex h-[38px] items-center gap-1.5 rounded-[10px] border border-border-base bg-brand-surface px-3.5 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-brand-accent">
             <rect x="3" y="4.5" width="18" height="16.5" rx="3" />
             <path d="M3 9.5h18" />
             <path d="M8 2.5v4M16 2.5v4" />
           </svg>
-          <span>{label}</span>
+          <span className="max-w-[130px] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
         </button>
       )}
 
+      {/* legacy .trf-cal-pop — anchored popover না, ফুল-স্ক্রিন সেন্টার্ড মোডাল
+          (backdrop blur সহ) — মোবাইলে anchored dropdown কাটা পড়ার সমস্যা এড়াতে
+          legacy ইচ্ছাকৃতভাবে এভাবেই বানিয়েছিল, তাই এখানেও একই প্যাটার্ন */}
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-[280px] rounded-brand bg-brand-surface p-3 shadow-sh3">
-          <div className="mb-2 flex items-center justify-between">
-            <button
-              type="button"
-              disabled={prevDisabled}
-              onClick={() => navMonth(-1)}
-              aria-label="আগের মাস"
-              className="flex h-7 w-7 items-center justify-center rounded-brand text-ink transition-brand hover:bg-surface-muted disabled:opacity-30"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <span className="text-sm font-semibold text-ink">
-              {viewMonth.toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' })}
-            </span>
-            <button
-              type="button"
-              disabled={nextDisabled}
-              onClick={() => navMonth(1)}
-              aria-label="পরের মাস"
-              className="flex h-7 w-7 items-center justify-center rounded-brand text-ink transition-brand hover:bg-surface-muted disabled:opacity-30"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <path d="M9 18l6-6 6-6" />
-              </svg>
-            </button>
-          </div>
-          <div className="mb-1 grid grid-cols-7 text-center text-[10px] font-semibold text-muted">
-            {DOW.map((d) => (
-              <span key={d}>{d}</span>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-y-1 text-center text-xs">
-            {cells.map((d, i) => {
-              if (!d) return <span key={`empty${i}`} />;
-              const disabled = d < minDate || d > today;
-              const isToday = sameDay(d, today);
-              const isEdge = sameDay(d, pendStart) || sameDay(d, pendEnd);
-              const inRange = d > pendStart && d < pendEnd;
-              let cls = 'mx-auto flex h-7 w-7 items-center justify-center rounded-full transition-brand';
-              if (disabled) cls += ' cursor-not-allowed text-border-base';
-              else if (isEdge) cls += ' bg-brand-primary font-bold text-white';
-              else if (inRange) cls += ' bg-brand-bg text-brand-primary';
-              else cls += ' text-ink hover:bg-surface-muted';
-              if (isToday && !isEdge) cls += ' ring-1 ring-brand-primary';
-              return (
-                <button key={dateKey(d)} type="button" disabled={disabled} onClick={() => selectDay(d)} className={cls}>
-                  {d.getDate()}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={apply}
-            className="mt-3 w-full rounded-brand bg-brand-primary py-2 text-xs font-bold text-white transition-brand hover:brightness-110"
+        <div
+          className="fixed inset-0 z-[999] flex items-center justify-center bg-[#0F0E1E]/[.46] p-5 backdrop-blur-[2px]"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-[300px] max-h-[88vh] overflow-y-auto rounded-2xl bg-brand-surface p-4 shadow-sh2"
+            onClick={(e) => e.stopPropagation()}
           >
-            {applyLabel}
-          </button>
-          {allowClear && (
+            <div className="mb-2.5 flex items-center justify-between">
+              <button
+                type="button"
+                disabled={prevDisabled}
+                onClick={() => navMonth(-1)}
+                aria-label="আগের মাস"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted transition-brand hover:bg-border-base disabled:opacity-30"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <span className="text-[13px] font-bold text-brand-dark">
+                {viewMonth.toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' })}
+              </span>
+              <button
+                type="button"
+                disabled={nextDisabled}
+                onClick={() => navMonth(1)}
+                aria-label="পরের মাস"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted transition-brand hover:bg-border-base disabled:opacity-30"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M9 18l6-6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div className="mb-1 grid grid-cols-7 text-center text-[10px] font-bold text-muted">
+              {DOW.map((d) => (
+                <span key={d}>{d}</span>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-[2px]">
+              {cells.map((d, i) => {
+                if (!d) return <span key={`empty${i}`} className="aspect-square" />;
+                const disabled = d < minDate || d > today;
+                const isToday = sameDay(d, today);
+                const isStart = sameDay(d, pendStart);
+                const isEnd = sameDay(d, pendEnd);
+                const isSingle = isStart && isEnd;
+                const inRange = d > pendStart && d < pendEnd;
+
+                let cls = 'aspect-square flex items-center justify-center text-xs font-medium transition-brand';
+                if (disabled) {
+                  cls += ' cursor-not-allowed text-border-base';
+                } else if (isSingle) {
+                  cls += ' rounded-lg bg-brand-grad font-bold text-white';
+                } else if (isStart) {
+                  cls += ' rounded-l-lg bg-brand-grad font-bold text-white';
+                } else if (isEnd) {
+                  cls += ' rounded-r-lg bg-brand-grad font-bold text-white';
+                } else if (inRange) {
+                  cls += ' rounded-none bg-brand-bg text-brand-dark';
+                } else {
+                  cls += ' rounded-lg text-ink hover:bg-brand-bg';
+                }
+                if (isToday && !isStart && !isEnd && !inRange) cls += ' font-bold text-brand-primary';
+
+                return (
+                  <button key={dateKey(d)} type="button" disabled={disabled} onClick={() => selectDay(d)} className={cls}>
+                    {d.getDate()}
+                  </button>
+                );
+              })}
+            </div>
             <button
               type="button"
-              onClick={clear}
-              className="mt-1.5 w-full rounded-brand bg-surface-muted py-2 text-xs font-semibold text-muted transition-brand hover:bg-border-base"
+              onClick={apply}
+              className="mt-3 w-full rounded-[9px] bg-brand-grad py-2.5 text-xs font-bold text-white transition-brand hover:brightness-110"
             >
-              সব তারিখ দেখাও
+              {applyLabel}
             </button>
-          )}
+            {allowClear && (
+              <button
+                type="button"
+                onClick={clear}
+                className="mt-1.5 w-full rounded-[9px] bg-surface-muted py-2.5 text-xs font-semibold text-muted transition-brand hover:bg-border-base"
+              >
+                সব তারিখ দেখাও
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

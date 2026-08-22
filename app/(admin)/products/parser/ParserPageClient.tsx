@@ -61,7 +61,7 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
   return (
     <div>
       <div className="mb-4">
-        <h1 className="font-display text-xl text-ink">🤖 AI Product Planner</h1>
+        <h1 className="font-bold text-xl text-ink">🤖 AI Product Planner</h1>
         <p className="mt-0.5 text-sm text-muted">প্রোডাক্টের তথ্য পেস্ট করুন — স্বয়ংক্রিয়ভাবে সব ফিল্ড পূরণ করে প্রোডাক্ট ফর্ম খুলবে</p>
       </div>
 

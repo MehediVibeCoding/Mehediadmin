@@ -32,9 +32,11 @@ export default function OrderStatusDropdown({ selectedCount, filterStatus, onSel
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 items-center gap-2 rounded-brand border border-border-base bg-brand-surface px-3 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted"
+        className={`flex h-[38px] items-center gap-2 rounded-[10px] border-[1.5px] bg-brand-surface px-3 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted ${
+          bulkMode ? 'border-brand-accent bg-brand-bg text-brand-dark' : 'border-border-base'
+        }`}
       >
-        <span className="h-2 w-2 rounded-full" style={{ background: dot }} />
+        <span className="h-[9px] w-[9px] shrink-0 rounded-full shadow-[0_0_0_3px_rgba(0,0,0,.04)]" style={{ background: dot }} />
         <span>{label}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
           <path d="m6 9 6 6 6-6" />
@@ -42,7 +44,7 @@ export default function OrderStatusDropdown({ selectedCount, filterStatus, onSel
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-[180px] overflow-hidden rounded-brand bg-brand-surface py-1.5 shadow-sh3">
+        <div className="absolute left-0 top-[calc(100%+8px)] z-30 min-w-[190px] overflow-hidden rounded-xl border border-border-base bg-brand-surface p-1.5 shadow-sh2">
           {!bulkMode && (
             <button
               type="button"
@@ -50,11 +52,11 @@ export default function OrderStatusDropdown({ selectedCount, filterStatus, onSel
                 onSelectFilter('all');
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-brand hover:bg-surface-muted ${
-                filterStatus === 'all' ? 'font-semibold text-brand-primary' : 'text-ink'
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-brand hover:bg-brand-bg ${
+                filterStatus === 'all' ? 'text-brand-dark' : 'text-ink'
               }`}
             >
-              <span className="h-2 w-2 rounded-full" style={{ background: '#6B7280' }} />
+              <span className="h-[9px] w-[9px] shrink-0 rounded-full" style={{ background: '#6B7280' }} />
               সব স্ট্যাটাস
             </button>
           )}
@@ -70,11 +72,11 @@ export default function OrderStatusDropdown({ selectedCount, filterStatus, onSel
                   else onSelectFilter(s);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-brand hover:bg-surface-muted ${
-                  active ? 'font-semibold text-brand-primary' : 'text-ink'
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-brand hover:bg-brand-bg ${
+                  active ? 'text-brand-dark' : 'text-ink'
                 }`}
               >
-                <span className="h-2 w-2 rounded-full" style={{ background: m.dot }} />
+                <span className="h-[9px] w-[9px] shrink-0 rounded-full" style={{ background: m.dot }} />
                 {m.label}
               </button>
             );

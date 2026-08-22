@@ -10,7 +10,7 @@ function Icon({ children }: { children: React.ReactNode }) {
       strokeWidth={1.8}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-5 w-5"
+      className="h-[17px] w-[17px] md:h-5 md:w-5"
     >
       {children}
     </svg>
@@ -21,28 +21,32 @@ interface CardProps {
   label: string;
   value: string;
   note?: string;
-  accentBg: string;
-  accentText: string;
+  iconBg: string; // legacy exact rgba() — inline hex, tailwind token দিয়ে approximate করা হয়নি
+  iconText: string;
   icon: React.ReactNode;
   isLive?: boolean;
   href?: string;
 }
 
-// stat card গুলোর টার্গেট পেজের (/orders, /traffic, /profit) মধ্যে যেগুলো
-// এখনো তৈরি হয়নি সেগুলো non-clickable থাকে; যে module-এর route তৈরি হয়ে
-// গেছে (যেমন /customers) সেটার card-এ href দিয়ে Link করা হয় — legacy
-// stat-card-cust-এর `onclick="showPage('customers',null)"` আচরণের মতোই।
-function StatCard({ label, value, note, accentBg, accentText, icon, isLive, href }: CardProps) {
+// legacy .stat-card — glassmorphism card, প্রতিটার icon রঙ legacy admin.html
+// থেকে হুবহু (rgba bg + hex text), কোনো generic token দিয়ে approximate করা
+// হয়নি যাতে ৬টা কার্ডের রঙ exactly আগের মতোই থাকে।
+function StatCard({ label, value, note, iconBg, iconText, icon, isLive, href }: CardProps) {
   const content = (
     <>
       {isLive && (
-        <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-warn shadow-[0_0_0_3px_rgba(245,158,11,.2)]" />
+        <span className="absolute right-3 top-3 h-[7px] w-[7px] rounded-full bg-warn shadow-[0_0_0_3px_rgba(245,158,11,.2)]" />
       )}
-      <div className={`mb-2.5 flex h-[42px] w-[42px] items-center justify-center rounded-full ${accentBg} ${accentText}`}>
+      <div
+        className="mb-2 flex h-9 w-9 items-center justify-center rounded-full md:mb-2.5 md:h-[42px] md:w-[42px]"
+        style={{ background: iconBg, color: iconText }}
+      >
         {icon}
       </div>
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tracking-tight text-ink">
+      <div className="mb-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted md:mb-1 md:text-[11px]">
+        {label}
+      </div>
+      <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-[18px] font-bold tracking-tight text-[#111] md:text-[21px]">
         {value}
       </div>
       {note && (
@@ -53,8 +57,8 @@ function StatCard({ label, value, note, accentBg, accentText, icon, isLive, href
     </>
   );
 
-  const className = `relative flex min-h-[148px] flex-col items-center justify-center rounded-2xl border bg-brand-surface p-5 text-center shadow-sh1 transition-brand hover:-translate-y-0.5 hover:shadow-sh2 ${
-    isLive ? 'border-warn/50' : 'border-border-base'
+  const className = `glass-card relative flex min-h-[126px] flex-col items-center justify-center rounded-2xl p-4 text-center shadow-glass transition-brand hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,61,143,.14)] md:min-h-[148px] md:p-5 ${
+    isLive ? 'stat-card-live animate-stat-live-sweep' : ''
   } ${href ? 'cursor-pointer' : ''}`;
 
   if (href) {
@@ -70,13 +74,15 @@ function StatCard({ label, value, note, accentBg, accentText, icon, isLive, href
 
 export default function StatGrid({ stats }: { stats: DashboardStats }) {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-6 md:gap-3">
+      {/* ১. মোট অর্ডার — pending থাকলে live sweep + dot দেখায়, /orders-এ যায় */}
       <StatCard
         label="মোট অর্ডার"
         value={String(stats.totalOrders)}
-        accentBg="bg-warn/10"
-        accentText="text-warn"
+        href="/orders"
         isLive={stats.pendingCount > 0}
+        iconBg="rgba(245,158,11,.14)"
+        iconText="#B45309"
         icon={
           <Icon>
             <path d="M21 8 12 3 3 8l9 5 9-5Z" />
@@ -85,11 +91,13 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           </Icon>
         }
       />
+      {/* ২. পেন্ডিং — /orders?status=pending */}
       <StatCard
         label="পেন্ডিং"
         value={String(stats.pendingCount)}
-        accentBg="bg-danger/10"
-        accentText="text-danger"
+        href="/orders?status=pending"
+        iconBg="rgba(230,57,70,.12)"
+        iconText="#E63946"
         icon={
           <Icon>
             <circle cx="12" cy="12" r="9" />
@@ -97,13 +105,14 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           </Icon>
         }
       />
+      {/* ৩. নিট প্রফিট — /profit */}
       <StatCard
         label="নিট প্রফিট"
         value={`৳${Math.round(stats.netProfit).toLocaleString()}`}
         note={`মোট রেভিনিউ: ৳${stats.confirmedRevenue.toLocaleString()}`}
         href="/profit"
-        accentBg="bg-success/10"
-        accentText="text-success"
+        iconBg="rgba(16,185,129,.14)"
+        iconText="#059669"
         icon={
           <Icon>
             <path d="M3 17l6-6 4 4 8-8" />
@@ -111,12 +120,13 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           </Icon>
         }
       />
+      {/* ৪. কাস্টমার — /customers */}
       <StatCard
         label="কাস্টমার"
         value={String(stats.uniqueCustomers)}
         href="/customers"
-        accentBg="bg-info/10"
-        accentText="text-info"
+        iconBg="rgba(59,130,246,.14)"
+        iconText="#2563EB"
         icon={
           <Icon>
             <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
@@ -126,13 +136,14 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           </Icon>
         }
       />
+      {/* ৫. আজকের ভিজিটর — /traffic */}
       <StatCard
         label="আজকের ভিজিটর"
         value={String(stats.todayVisitors)}
         note={stats.totalVisitors > 0 ? `+ ${stats.totalVisitors}টি Total` : undefined}
         href="/traffic"
-        accentBg="bg-brand-accent/10"
-        accentText="text-brand-accent"
+        iconBg="rgba(139,92,246,.14)"
+        iconText="#7C3AED"
         icon={
           <Icon>
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
@@ -140,12 +151,14 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           </Icon>
         }
       />
+      {/* ৬. ডেলিভার্ড — /orders?status=confirmed (legacy goToOrdersFiltered('confirmed')) */}
       <StatCard
         label="ডেলিভার্ড"
         value={String(stats.deliveredCount)}
         note={stats.confirmedCount > 0 ? `+ ${stats.confirmedCount}টি Confirmed` : undefined}
-        accentBg="bg-brand-primary/10"
-        accentText="text-brand-primary"
+        href="/orders?status=confirmed"
+        iconBg="rgba(13,148,136,.14)"
+        iconText="#0D9488"
         icon={
           <Icon>
             <path d="M1 3h13v11H1z" />

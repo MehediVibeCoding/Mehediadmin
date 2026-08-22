@@ -39,7 +39,7 @@ export default function ProductsPageClient({ initialProducts, categories }: Prop
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-display text-xl text-ink">প্রোডাক্ট ম্যানেজমেন্ট</h1>
+        <h1 className="font-bold text-xl text-ink">প্রোডাক্ট ম্যানেজমেন্ট</h1>
         <p className="mt-0.5 text-sm text-muted">প্রোডাক্ট যোগ, এডিট, মুছুন ও সাজান</p>
       </div>
 
