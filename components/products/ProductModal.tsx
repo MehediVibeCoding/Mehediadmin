@@ -274,6 +274,43 @@ export default function ProductModal({ categories, editingProduct, initialState,
               </div>
             </div>
 
+            {/* 🆕 Power Info + Extra Info Boxes — দুটোই সম্পূর্ণ optional, খালি
+                রাখলে প্রোডাক্ট পেজে সংশ্লিষ্ট অংশ একদম দেখাবে না। */}
+            <div className="mt-3.5 rounded-lg bg-[#FFF7ED] p-3.5">
+              <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#9A3412]">
+                🔌 Power Info{' '}
+                <span className="text-[11px] font-normal normal-case text-muted">
+                  (ঐচ্ছিক — যে প্রোডাক্টে power adapter নেই, সেটার জন্য খালি রাখুন)
+                </span>
+              </div>
+              <textarea
+                rows={3}
+                className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                placeholder={'Input: AC 100–240V, 50/60Hz\nOutput: DC 24V, 1A\nConnection: Wall Socket → Adapter → Inline Switch → Neon Light'}
+                value={form.powerInfo}
+                onChange={(e) => set('powerInfo', e.target.value)}
+              />
+            </div>
+
+            <div className="mt-3.5 rounded-lg bg-[#F0F9FF] p-3.5">
+              <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#0C4A6E]">
+                🗂️ Extra Info Boxes{' '}
+                <span className="text-[11px] font-normal normal-case text-muted">
+                  (ঐচ্ছিক — &ldquo;অতিরিক্ত তথ্য&rdquo; ট্যাবে আলাদা কার্ড হিসেবে দেখায়, যতগুলো ইচ্ছা যোগ করুন)
+                </span>
+              </div>
+              <textarea
+                rows={5}
+                className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                placeholder={'### কোথায় ব্যবহার করবেন\nBedroom, gaming room, study table...\n\n### 5 Meter আসলে কতটা\nপ্রায় 16.4 Feet, মেপে নেওয়া ভালো...'}
+                value={form.infoBoxesRaw}
+                onChange={(e) => set('infoBoxesRaw', e.target.value)}
+              />
+              <div className="mt-1.5 text-[11px] text-muted">
+                প্রতিটা বক্স <code className="rounded bg-white px-1 py-0.5">### শিরোনাম</code> দিয়ে শুরু করুন, তারপরের লাইনগুলো সেই বক্সের বডি — নতুন বক্সের আগে একটা ফাঁকা লাইন দিন।
+              </div>
+            </div>
+
             <div className="mt-3.5 rounded-lg bg-[#EFF6FF] p-3.5">
               <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#1D4ED8]">
                 🔍 স্পেসিফিকেশন এক নজরে{' '}

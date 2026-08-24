@@ -1,6 +1,7 @@
 import type { Product } from '@/types';
 import type { ProductFormInput, QuickSpecRow } from '@/app/actions/products';
 import type { ParsedProductData } from '@/lib/smart-parser';
+import { stringifyInfoBoxes } from '@/lib/smart-parser';
 
 export function emptyFormState(defaultCat: string): ProductFormInput {
   return {
@@ -21,6 +22,8 @@ export function emptyFormState(defaultCat: string): ProductFormInput {
     techSpecsRaw: '',
     featuresRaw: '',
     faqsRaw: '',
+    powerInfo: '',
+    infoBoxesRaw: '',
   };
 }
 
@@ -54,6 +57,8 @@ export function productToFormState(p: Product): ProductFormInput {
     techSpecsRaw,
     featuresRaw: (p.features || []).join('\n'),
     faqsRaw: (p.faqs || []).map((f) => `Q: ${f.q}\nA: ${f.a}`).join('\n\n'),
+    powerInfo: p.power_info || '',
+    infoBoxesRaw: stringifyInfoBoxes(p.info_boxes || []),
   };
 }
 
@@ -117,5 +122,7 @@ export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []
     featuresRaw: parsed.features.join('\n'),
     faqsRaw: parsed.faqs,
     closing: parsed.closing,
+    powerInfo: parsed.power_info,
+    infoBoxesRaw: parsed.info_boxes,
   };
 }

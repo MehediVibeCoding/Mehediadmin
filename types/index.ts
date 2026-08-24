@@ -69,6 +69,15 @@ export interface ProductSpecs {
   [key: string]: string | string[] | number | undefined;
 }
 
+// একটা optional "extra info box" — description-এর ভেতরে মিশে না গিয়ে
+// প্রোডাক্ট পেজে "অতিরিক্ত তথ্য" ট্যাবে আলাদা card হিসেবে দেখায় (যেমন
+// "৫ Meter আসলে কতটা", "কোথায় ব্যবহার করবেন")। যতগুলো ইচ্ছা যোগ করা যায়,
+// প্রোডাক্টে না থাকলে ফাঁকা array রাখলেই হবে।
+export interface ProductInfoBox {
+  title: string;
+  body: string;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -88,6 +97,10 @@ export interface Product {
   rating: number;
   faqs: ProductFaq[];
   closing: string;
+  // 🆕 (নিয়ন লাইট প্রোডাক্ট পেজ রিফরম্যাট, ২০২৬-০৮): দুটোই সম্পূর্ণ
+  // optional — খালি/null থাকলে প্রোডাক্ট পেজে সংশ্লিষ্ট অংশ একদম দেখাবে না।
+  power_info: string | null; // Power adapter/connection স্পেসিফিকেশন — Specification ট্যাবে টেবিলের নিচে আলাদা বক্সে বসে, সব প্রোডাক্টে থাকবে না
+  info_boxes: ProductInfoBox[]; // "অতিরিক্ত তথ্য" ট্যাবে আলাদা কার্ড হিসেবে দেখানো হয়
   created_at?: string;
 }
 

@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
 import { requireAdmin } from '@/lib/auth-guard';
-import type { Product, ProductFaq, ProductSpecs } from '@/types';
+import type { Product, ProductFaq, ProductInfoBox, ProductSpecs } from '@/types';
+import { parseInfoBoxes } from '@/lib/smart-parser';
 
 const TABLE = 'custom_products';
 const ORDER_KEY = 'vc_prod_order';
@@ -101,6 +102,8 @@ export interface ProductFormInput {
   featuresRaw: string; // প্রতি লাইনে একটা ফিচার
   faqsRaw: string; // "Q: ...\nA: ...\n\nQ: ...\nA: ..." ফরম্যাট
   closing?: string; // শুধু AI Parse ফ্লো থেকে আসে — ম্যানুয়াল ফর্মে কোনো ফিল্ড নেই (legacy-তেও নেই)
+  powerInfo: string; // 🆕 সম্পূর্ণ optional — খালি রাখলে প্রোডাক্ট পেজে সেকশনটাই দেখাবে না
+  infoBoxesRaw: string; // 🆕 "### Title\nBody" ফরম্যাট, একাধিক ব্লক blank line দিয়ে আলাদা
 }
 
 function parseTechSpecs(raw: string): Record<string, string> {
@@ -214,6 +217,8 @@ export async function createProduct(
     rating: input.rating || 4.5,
     faqs: parseFaqs(input.faqsRaw).map((f) => ({ q: sanitizeInput(f.q), a: sanitizeInput(f.a) })),
     closing: input.closing ? sanitizeInput(input.closing) : '',
+    power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
+    info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
   };
 
   const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
@@ -264,6 +269,8 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     badge: (input.badge || '').toUpperCase(),
     rating: input.rating || 4.5,
     faqs: parseFaqs(input.faqsRaw).map((f) => ({ q: sanitizeInput(f.q), a: sanitizeInput(f.a) })),
+    power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
+    info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
   };
 
   const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();

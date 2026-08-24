@@ -22,6 +22,8 @@ export interface ParsedProductData {
   tech_specs: string;
   faqs: string;
   closing: string;
+  power_info: string; // 🆕 Power/Connection Info — optional, নিচে "Power Info:" heading থেকে parse হয়
+  info_boxes: string; // 🆕 "### Title\nBody" ব্লক, একাধিক blank-line দিয়ে আলাদা — raw string হিসেবে থাকে, product-form.ts-এ parse হয়ে ProductInfoBox[] হবে
 }
 
 function escRe(s: string): string {
@@ -218,7 +220,11 @@ export function smartParse(raw: string): ParsedProductData {
         if (/^(Q:|A:|FAQ|Spec|Technical|বর্ণনা|Description|কিছু কমন)/i.test(l)) break;
         if (l.includes(':') && !l.startsWith('-') && l.length < 60 && !/^[-•*]/.test(l)) break;
         const feat = l.replace(/^[-•*✔✓]\s*/, '').trim();
-        if (feat && feat.length > 3 && features.length < 10) features.push(feat);
+        // আগে এখানে hard cap ছিল ১০টা ফিচার পর্যন্ত — কোনো error/warning ছাড়াই
+        // বাকিগুলো silently বাদ পড়ে যেত। ৩০ পর্যন্ত বাড়িয়ে দিলাম (বাস্তবে কোনো
+        // প্রোডাক্টেই ৩০টার বেশি ফিচার লাগার কথা না, এটা শুধু malformed paste
+        // থেকে রক্ষা পাওয়ার জন্য একটা safety cap)।
+        if (feat && feat.length > 3 && features.length < 30) features.push(feat);
       }
       if (features.length) break;
     }
@@ -270,6 +276,35 @@ export function smartParse(raw: string): ParsedProductData {
       packagingContent = pkgLines.join('\n').trim();
       break;
     }
+  }
+
+  // ── 🆕 Power/Connection Info (optional — সব প্রোডাক্টে থাকবে না) ──
+  let powerInfo = '';
+  const powerIdx = lines.findIndex((l) => /^Power\s*(Info|Adapter)\s*[:：]?/i.test(l.trim()) || /^পাওয়ার\s*(তথ্য|এডাপ্টার)\s*[:：]/i.test(l.trim()));
+  if (powerIdx >= 0) {
+    const powerLines: string[] = [];
+    const colonMatch = lines[powerIdx].match(/[:：]\s*(.+)/);
+    if (colonMatch && colonMatch[1].trim()) powerLines.push(colonMatch[1].trim());
+    for (let i = powerIdx + 1; i < lines.length; i++) {
+      const l = lines[i].trim();
+      if (!l) break;
+      if (/^(Q:|A:|FAQ|Extra\s*Info|অতিরিক্ত|ADMIN)/i.test(l)) break;
+      powerLines.push(l);
+    }
+    powerInfo = powerLines.join('\n').trim();
+  }
+
+  // ── 🆕 Extra Info Boxes (optional, একাধিক — "### Title" দিয়ে প্রতিটা বক্স শুরু) ──
+  let infoBoxesRaw = '';
+  const extraIdx = lines.findIndex((l) => /^Extra\s*Info\s*[:：]?/i.test(l.trim()) || /^অতিরিক্ত\s*তথ্য\s*[:：]?/i.test(l.trim()));
+  if (extraIdx >= 0) {
+    const rest: string[] = [];
+    for (let i = extraIdx + 1; i < lines.length; i++) {
+      const l = lines[i];
+      if (/^(Q:|FAQ|ADMIN)/i.test(l.trim())) break;
+      rest.push(l);
+    }
+    infoBoxesRaw = rest.join('\n').trim();
   }
 
   // ── FAQs ──
@@ -342,7 +377,32 @@ export function smartParse(raw: string): ParsedProductData {
     tech_specs,
     faqs,
     closing,
+    power_info: powerInfo,
+    info_boxes: infoBoxesRaw,
   };
+}
+
+// "### Title\nবডি লাইন...\n\n### আরেকটা Title\n..." ফরম্যাট → ProductInfoBox[]।
+// smart-parser-এর info_boxes raw output আর ProductModal-এর "Extra Info" textarea
+// দুটোই এই একই ফরম্যাট ব্যবহার করে, তাই parser দুই জায়গা থেকেই share করা হয়।
+export function parseInfoBoxes(raw: string): { title: string; body: string }[] {
+  if (!raw || !raw.trim()) return [];
+  const boxes: { title: string; body: string }[] = [];
+  const blocks = raw.split(/\n(?=###\s*)/).map((b) => b.trim()).filter(Boolean);
+  for (const block of blocks) {
+    const m = block.match(/^###\s*(.+?)\n([\s\S]*)$/);
+    if (m) {
+      const title = m[1].trim();
+      const body = m[2].trim();
+      if (title && body) boxes.push({ title, body });
+    }
+  }
+  return boxes;
+}
+
+// বিপরীত দিক — ProductInfoBox[] → "### Title\nবডি" raw text, ফর্ম prefill করার জন্য।
+export function stringifyInfoBoxes(boxes: { title: string; body: string }[]): string {
+  return boxes.map((b) => `### ${b.title}\n${b.body}`).join('\n\n');
 }
 
 // ── উদাহরণ টেক্সট (legacy loadExample() থেকে) — "উদাহরণ" বাটনে ব্যবহার হবে ──
@@ -384,6 +444,25 @@ Power: 24W
 Voltage: 24V
 Length: 5m
 Useful Life: 50000 hours
+
+Packaging Content:
+1 × GearUP NRGB50 5 Meter RGB Neon Light
+1 × 24V 1A DC Power Adapter
+1 × Inline Cord Switch
+1 × Remote Control
+8 × Plastic Mounting Clips + Screws
+
+Power Info:
+Input: AC 100–240V, 50/60Hz
+Output: DC 24V, 1A
+Connection: Wall Socket → Adapter → Inline Switch → Neon Light
+
+Extra Info:
+### কোথায় ব্যবহার করবেন
+বেডরুম, গেমিং সেটআপ, স্টাডি টেবিল বা যেকোনো ছোট রুমে — bed-এর পেছনের wall বা monitor wall-এ লাগালে সবচেয়ে ভালো দেখায়।
+
+### 5 Meter আসলে কতটা
+প্রায় 16.4 Feet — তিনজন প্রাপ্তবয়স্ক মানুষ পরপর দাঁড় করালে যে length হয়, তার কাছাকাছি। কেনার আগে জায়গাটা একবার মেপে নেওয়াই ভালো।
 
 FAQ:
 Q: এই নিয়ন লাইটটি কীভাবে কন্ট্রোল করা যায়?
