@@ -101,6 +101,15 @@ export interface Product {
   // optional — খালি/null থাকলে প্রোডাক্ট পেজে সংশ্লিষ্ট অংশ একদম দেখাবে না।
   power_info: string | null; // Power adapter/connection স্পেসিফিকেশন — Specification ট্যাবে টেবিলের নিচে আলাদা বক্সে বসে, সব প্রোডাক্টে থাকবে না
   info_boxes: ProductInfoBox[]; // "অতিরিক্ত তথ্য" ট্যাবে আলাদা কার্ড হিসেবে দেখানো হয়
+  // 🆕 (AI Planner + SEO ফিল্ড ওভারহল, ২০২৬-০৮): সবগুলো সম্পূর্ণ optional —
+  // খালি/null থাকলে সাইট auto-generated fallback ব্যবহার করে (নিচে দেখুন),
+  // পুরনো প্রোডাক্টের আচরণ অপরিবর্তিত থাকে।
+  seo_h1: string | null; // খালি হলে সাইটে প্রোডাক্টের `name`-ই <h1> হিসেবে দেখাবে
+  meta_title: string | null; // খালি হলে সাইট আগের মতোই "নাম - ৳দাম | Vangcur" অটো-জেনারেট করবে
+  meta_description: string | null; // খালি হলে সাইট আগের মতোই desc_text থেকে auto-truncate করবে
+  og_description: string | null; // খালি হলে meta_description (বা তার auto fallback) ব্যবহার হবে
+  quick_specs_text: string | null; // 🆕 "স্পেসিফিকেশন এক নজরে" — ফ্রি-ফ্লো টেক্সট, "•" দিয়ে আলাদা পিল হিসেবে দেখাবে (পুরনো প্রোডাক্টে এটা খালি থাকলে সাইট আগের _quick_keys সিস্টেমে ফলব্যাক করে)
+  packaging_content: string | null; // 🆕 Packaging Content — Power Info বক্সের ঠিক পরে (Power Info না থাকলে Technical Specification-এর পরে) আলাদা বক্সে দেখায়
   created_at?: string;
 }
 

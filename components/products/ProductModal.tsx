@@ -6,7 +6,6 @@ import type { CategoryOption } from '@/lib/constants/categories';
 import type { ProductFormInput } from '@/app/actions/products';
 import { createProduct, updateProduct } from '@/app/actions/products';
 import CategoryPicker from './CategoryPicker';
-import SpecEditor from './SpecEditor';
 import ImageManager from './ImageManager';
 
 type Tab = 'basic' | 'layout' | 'images';
@@ -219,66 +218,134 @@ export default function ProductModal({ categories, editingProduct, initialState,
           </div>
         )}
 
-        {/* TAB: FULL LAYOUT */}
+        {/* TAB: FULL LAYOUT — এখন থেকে সিরিয়াল সরাসরি SEO কনটেন্ট টেমপ্লেটের
+            ক্রম অনুযায়ী: SEO মেটা → এক নজরে → বিবরণ → ফিচারস → স্পেসিফিকেশন →
+            পাওয়ার তথ্য → Packaging → অতিরিক্ত তথ্য → FAQ। প্রতিটা লেবেল
+            ইচ্ছাকৃতভাবে মেইন সাইটে যে নামে সেকশনটা দেখা যায় সেই নামেই রাখা হলো,
+            যাতে এডমিন আর সাইটের মধ্যে কোনো বিভ্রান্তি না থাকে। */}
         {tab === 'layout' && (
           <>
-            <div className="rounded-lg bg-[#F0FDF4] p-3.5">
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[#065F46]">
-                ⬇️ BOTTOM SECTION — Description → Features → Tech Specs → FAQs
+            <div className="rounded-lg bg-[#F5F3FF] p-3.5">
+              <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[#5B21B6]">
+                🔎 SEO মেটা তথ্য{' '}
+                <span className="text-[11px] font-normal normal-case text-muted">
+                  (সবগুলো ঐচ্ছিক — খালি রাখলে সাইট নিজে থেকেই নাম/দাম দিয়ে বানিয়ে নেবে)
+                </span>
               </div>
               <div className="mb-3">
-                <label className="mb-1 block text-xs font-semibold text-ink">Description</label>
-                <textarea
-                  rows={3}
+                <label className="mb-1 block text-xs font-semibold text-ink">H1 (পেজের মূল হেডিং)</label>
+                <input
                   className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  placeholder="প্রোডাক্টের বিস্তারিত বিবরণ..."
+                  placeholder="খালি রাখলে প্রোডাক্টের নামই দেখাবে"
+                  value={form.h1}
+                  onChange={(e) => set('h1', e.target.value)}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-semibold text-ink">Meta Title</label>
+                <input
+                  className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                  placeholder="যেমন: প্রোডাক্টের নাম | Vangcur"
+                  value={form.metaTitle}
+                  onChange={(e) => set('metaTitle', e.target.value)}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-semibold text-ink">Meta Description</label>
+                <textarea
+                  rows={2}
+                  className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                  placeholder="সার্চ রেজাল্টে যে ছোট বিবরণ দেখাবে..."
+                  value={form.metaDescription}
+                  onChange={(e) => set('metaDescription', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-ink">
+                  Open Graph Description <span className="text-[11px] font-normal text-muted">(সোশ্যাল শেয়ার প্রিভিউ)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                  placeholder="খালি রাখলে Meta Description-ই ব্যবহার হবে"
+                  value={form.ogDescription}
+                  onChange={(e) => set('ogDescription', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3.5 rounded-lg bg-[#EFF6FF] p-3.5">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#1D4ED8]">
+                🔍 স্পেসিফিকেশন এক নজরে{' '}
+                <span className="text-[11px] font-normal normal-case text-muted">(প্রোডাক্ট পেজে ছোট পিল/ব্যাজ আকারে দেখায়)</span>
+              </div>
+              <textarea
+                rows={2}
+                className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                placeholder={'5 Meter (16.4 Feet) • App + Remote Control • 16M+ Colour Options • Bluetooth • 6 Months Replacement Warranty'}
+                value={form.quickSpecsText}
+                onChange={(e) => set('quickSpecsText', e.target.value)}
+              />
+              <div className="mt-1.5 text-[11px] text-muted">
+                &ldquo;•&rdquo; দিয়ে আলাদা করে যত ইচ্ছা পয়েন্ট লিখুন — প্রতিটা আলাদা পিল হিসেবে দেখাবে।
+              </div>
+            </div>
+
+            <div className="mt-3.5 rounded-lg bg-[#F0FDF4] p-3.5">
+              <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[#065F46]">
+                📄 প্রোডাক্টের বিস্তারিত বিবরণ → প্রধান ফিচারস → কারিগরি স্পেসিফিকেশন → FAQ
+              </div>
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-semibold text-ink">
+                  প্রোডাক্টের বিস্তারিত বিবরণ <span className="text-[11px] font-normal text-muted">(একাধিক প্যারা লিখতে চাইলে মাঝে একটা ফাঁকা লাইন দিন)</span>
+                </label>
+                <textarea
+                  rows={5}
+                  className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                  placeholder={'প্রথম প্যারা...\n\nদ্বিতীয় প্যারা...'}
                   value={form.desc}
                   onChange={(e) => set('desc', e.target.value)}
                 />
               </div>
               <div className="mb-3">
                 <label className="mb-1 block text-xs font-semibold text-ink">
-                  Features <span className="text-[11px] font-normal text-muted">(প্রতিটি লাইনে একটি)</span>
+                  প্রধান ফিচারস{' '}
+                  <span className="text-[11px] font-normal text-muted">
+                    (প্রতিটা ফিচার আলাদা প্যারায় — চাইলে শুধু এক লাইনের বুলেট, অথবা আইকন+টাইটেল লাইন তারপর বিবরণ লাইন)
+                  </span>
                 </label>
                 <textarea
-                  rows={4}
+                  rows={5}
                   className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  placeholder={'1.96 inch AMOLED display\nIP68 waterproof\nHeart rate + SpO2 + BP monitor\nBluetooth call feature'}
+                  placeholder={'🌈 16 Million+ Colour Options\nআপনার পছন্দের রং বেছে নিন, অথবা নিজের custom shade তৈরি করুন।\n\n📱 App + Remote, দুটোই একসাথে\nফোন হাতের কাছে না থাকলে Remote দিয়ে কাজ চালান।'}
                   value={form.featuresRaw}
                   onChange={(e) => set('featuresRaw', e.target.value)}
                 />
               </div>
-              <div className="mb-3">
+              <div>
                 <label className="mb-1 block text-xs font-semibold text-ink">
-                  Technical Specs <span className="text-[11px] font-normal text-muted">(Key: Value, প্রতিটি লাইনে)</span>
+                  কারিগরি স্পেসিফিকেশন <span className="text-[11px] font-normal text-muted">(Key: Value, প্রতিটি লাইনে)</span>
                 </label>
                 <textarea
-                  rows={4}
+                  rows={5}
                   className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  placeholder={'Display: 1.96 AMOLED\nBattery: 300mAh\nWater Resistance: IP68\nHealth: HR + SpO2 + BP'}
+                  placeholder={'Brand: GearUP\nModel: NRGB50\nLength: 5 Meter\nConnectivity: Bluetooth'}
                   value={form.techSpecsRaw}
                   onChange={(e) => set('techSpecsRaw', e.target.value)}
                 />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-ink">
-                  Product FAQ <span className="text-[11px] font-normal text-muted">(Q: ... A: ... format)</span>
-                </label>
-                <textarea
-                  rows={4}
-                  className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  placeholder={'Q: পানিতে ব্যবহার করা যাবে?\nA: হ্যাঁ, IP68 রেটিং আছে।\n\nQ: চার্জ কতক্ষণ যায়?\nA: সাধারণত ৫-৭ দিন।'}
-                  value={form.faqsRaw}
-                  onChange={(e) => set('faqsRaw', e.target.value)}
-                />
+                <div className="mt-1.5 text-[11px] text-muted">
+                  &ldquo;Power Adapter:&rdquo; / &ldquo;Connection:&rdquo; দিয়ে শুরু কোনো লাইন এখানে থাকলে সেটা এখানে না বসিয়ে নিচের &ldquo;পাওয়ার / কানেকশন তথ্য&rdquo; বক্সে বসান।
+                </div>
               </div>
             </div>
 
-            {/* 🆕 Power Info + Extra Info Boxes — দুটোই সম্পূর্ণ optional, খালি
-                রাখলে প্রোডাক্ট পেজে সংশ্লিষ্ট অংশ একদম দেখাবে না। */}
+            {/* Power Info + Packaging Content — দুটোই সম্পূর্ণ optional, খালি
+                রাখলে প্রোডাক্ট পেজে সংশ্লিষ্ট অংশ একদম দেখাবে না। মেইন সাইটে
+                Power Info থাকলে তার ঠিক পরে, না থাকলে স্পেসিফিকেশন টেবিলের
+                পরে Packaging Content বক্স দেখায় (কোনো অতিরিক্ত সেটিং লাগে না)। */}
             <div className="mt-3.5 rounded-lg bg-[#FFF7ED] p-3.5">
               <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#9A3412]">
-                🔌 Power Info{' '}
+                🔌 পাওয়ার / কানেকশন তথ্য{' '}
                 <span className="text-[11px] font-normal normal-case text-muted">
                   (ঐচ্ছিক — যে প্রোডাক্টে power adapter নেই, সেটার জন্য খালি রাখুন)
                 </span>
@@ -286,15 +353,29 @@ export default function ProductModal({ categories, editingProduct, initialState,
               <textarea
                 rows={3}
                 className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                placeholder={'Input: AC 100–240V, 50/60Hz\nOutput: DC 24V, 1A\nConnection: Wall Socket → Adapter → Inline Switch → Neon Light'}
+                placeholder={'Power Adapter: Input AC 100–240V, 50/60Hz → Output DC 24V, 1A → 2-pin plug\nConnection flow: Wall Socket → Adapter → Inline Switch → Neon Light'}
                 value={form.powerInfo}
                 onChange={(e) => set('powerInfo', e.target.value)}
               />
             </div>
 
+            <div className="mt-3.5 rounded-lg bg-[#ECFEFF] p-3.5">
+              <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#155E75]">
+                📦 Packaging Content{' '}
+                <span className="text-[11px] font-normal normal-case text-muted">(ঐচ্ছিক — বক্সে কী কী থাকবে, প্রতি লাইনে একটা আইটেম)</span>
+              </div>
+              <textarea
+                rows={4}
+                className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                placeholder={'1 × GearUP NRGB50 5 Meter RGB Neon Light\n1 × 24V 1A DC Power Adapter\n1 × Remote Control'}
+                value={form.packagingContent}
+                onChange={(e) => set('packagingContent', e.target.value)}
+              />
+            </div>
+
             <div className="mt-3.5 rounded-lg bg-[#F0F9FF] p-3.5">
               <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#0C4A6E]">
-                🗂️ Extra Info Boxes{' '}
+                🗂️ অতিরিক্ত তথ্য{' '}
                 <span className="text-[11px] font-normal normal-case text-muted">
                   (ঐচ্ছিক — &ldquo;অতিরিক্ত তথ্য&rdquo; ট্যাবে আলাদা কার্ড হিসেবে দেখায়, যতগুলো ইচ্ছা যোগ করুন)
                 </span>
@@ -311,12 +392,17 @@ export default function ProductModal({ categories, editingProduct, initialState,
               </div>
             </div>
 
-            <div className="mt-3.5 rounded-lg bg-[#EFF6FF] p-3.5">
-              <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#1D4ED8]">
-                🔍 স্পেসিফিকেশন এক নজরে{' '}
-                <span className="text-[11px] font-normal normal-case text-muted">(প্রোডাক্ট কার্ড ও পেজে দেখায়)</span>
+            <div className="mt-3.5 rounded-lg bg-[#FDF2F8] p-3.5">
+              <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#9D174D]">
+                ❓ কমন প্রশ্নোত্তর (FAQ) <span className="text-[11px] font-normal normal-case text-muted">(Q: ... A: ... ফরম্যাটে)</span>
               </div>
-              <SpecEditor rows={form.quickSpecs} onChange={(v) => set('quickSpecs', v)} />
+              <textarea
+                rows={5}
+                className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                placeholder={'Q: পানিতে ব্যবহার করা যাবে?\nA: হ্যাঁ, IP68 রেটিং আছে।\n\nQ: চার্জ কতক্ষণ যায়?\nA: সাধারণত ৫-৭ দিন।'}
+                value={form.faqsRaw}
+                onChange={(e) => set('faqsRaw', e.target.value)}
+              />
             </div>
           </>
         )}
