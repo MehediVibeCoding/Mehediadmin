@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
 import { requireAdmin } from '@/lib/auth-guard';
 import type { Product, ProductFaq, ProductInfoBox, ProductSpecs } from '@/types';
-import { parseInfoBoxes } from '@/lib/smart-parser';
+import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
 
 const TABLE = 'custom_products';
 const ORDER_KEY = 'vc_prod_order';
@@ -78,11 +78,6 @@ export async function listProducts(): Promise<Product[]> {
 //  ডেটা নিয়ে legacy saveProd()-এর মতোই parse করে DB কলামে সাজায়।
 // ══════════════════════════════════════════════════════════════
 
-export interface QuickSpecRow {
-  key: string;
-  value: string;
-}
-
 export interface ProductFormInput {
   name: string;
   nameBn: string;
@@ -95,15 +90,21 @@ export interface ProductFormInput {
   warranty: string;
   rating: number;
   profit: number;
+  // 🆕 SEO ফিল্ডস — সবগুলো ঐচ্ছিক, খালি রাখলে সাইট auto-generated fallback ব্যবহার করে
+  h1: string;
+  metaTitle: string;
+  metaDescription: string;
+  ogDescription: string;
+  quickSpecsText: string; // 🆕 "স্পেসিফিকেশন এক নজরে" — ফ্রি-ফ্লো টেক্সট (আগে ছিল ৫টা key:value pair — SpecEditor বাদ)
   desc: string;
   imgs: string[];
-  quickSpecs: QuickSpecRow[]; // সর্বোচ্চ ৫টা — "স্পেসিফিকেশন এক নজরে"
+  featuresRaw: string; // blank-line দিয়ে আলাদা ব্লক — একলাইন হলে bullet, দুই+ লাইন হলে প্রথমটা title (bold) বাকিটা description
   techSpecsRaw: string; // "Key: Value" প্রতি লাইনে
-  featuresRaw: string; // প্রতি লাইনে একটা ফিচার
+  powerInfo: string; // ঐচ্ছিক — খালি রাখলে প্রোডাক্ট পেজে সেকশনটাই দেখাবে না
+  packagingContent: string; // 🆕 ঐচ্ছিক — খালি রাখলে প্রোডাক্ট পেজে সেকশনটাই দেখাবে না
+  infoBoxesRaw: string; // "### Title\nBody" ফরম্যাট, একাধিক ব্লক blank line দিয়ে আলাদা
   faqsRaw: string; // "Q: ...\nA: ...\n\nQ: ...\nA: ..." ফরম্যাট
   closing?: string; // শুধু AI Parse ফ্লো থেকে আসে — ম্যানুয়াল ফর্মে কোনো ফিল্ড নেই (legacy-তেও নেই)
-  powerInfo: string; // 🆕 সম্পূর্ণ optional — খালি রাখলে প্রোডাক্ট পেজে সেকশনটাই দেখাবে না
-  infoBoxesRaw: string; // 🆕 "### Title\nBody" ফরম্যাট, একাধিক ব্লক blank line দিয়ে আলাদা
 }
 
 function parseTechSpecs(raw: string): Record<string, string> {
@@ -123,12 +124,13 @@ function parseTechSpecs(raw: string): Record<string, string> {
   return out;
 }
 
+// 🆕 আগে এখানে শুধু "প্রতি লাইনে একটা ফিচার" ধরা হতো — এখন AI Planner-এর
+// মতোই blank-line-separated ব্লক সাপোর্ট করে (icon+title লাইন, তারপর
+// description লাইন), তাই ম্যানুয়ালি টাইপ করা আর AI Parse করা — দুই পথেই
+// একই ফরম্যাটে ফিচার সেভ হয়। parseFeatureBlocks() smart-parser.ts থেকে
+// shared (single source of truth)।
 function parseFeatures(raw: string): string[] {
-  return raw
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => l.replace(/^[-•*]\s*/, ''));
+  return parseFeatureBlocks(raw);
 }
 
 function parseFaqs(raw: string): ProductFaq[] {
@@ -146,17 +148,10 @@ function parseFaqs(raw: string): ProductFaq[] {
 
 function buildSpecs(input: ProductFormInput): ProductSpecs {
   const specs: ProductSpecs = {};
-  const quickKeys: string[] = [];
-  input.quickSpecs.slice(0, 5).forEach(({ key, value }) => {
-    const k = sanitizeInput(key);
-    const v = sanitizeInput(value);
-    if (k && v) {
-      specs[k] = v;
-      quickKeys.push(k);
-    }
-  });
-  if (quickKeys.length) specs._quick_keys = quickKeys;
-
+  // 🆕 "স্পেসিফিকেশন এক নজরে" এখন থেকে specs._quick_keys-এর বদলে top-level
+  // quick_specs_text কলামে সরাসরি সেভ হয় (নিচে createProduct/updateProduct
+  // দ্রষ্টব্য) — এই ফাংশনে আর quick-spec হ্যান্ডলিং নেই। পুরনো প্রোডাক্টের
+  // specs._quick_keys ডেটা অক্ষত থাকে, শুধু নতুন সেভে আর তৈরি হয় না।
   const tech = parseTechSpecs(input.techSpecsRaw);
   Object.entries(tech).forEach(([k, v]) => {
     specs[sanitizeInput(k)] = sanitizeInput(v);
@@ -219,6 +214,12 @@ export async function createProduct(
     closing: input.closing ? sanitizeInput(input.closing) : '',
     power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
     info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
+    seo_h1: input.h1 ? sanitizeInput(input.h1) : null,
+    meta_title: input.metaTitle ? sanitizeInput(input.metaTitle) : null,
+    meta_description: input.metaDescription ? sanitizeInput(input.metaDescription) : null,
+    og_description: input.ogDescription ? sanitizeInput(input.ogDescription) : null,
+    quick_specs_text: input.quickSpecsText ? sanitizeInput(input.quickSpecsText) : null,
+    packaging_content: input.packagingContent ? sanitizeInput(input.packagingContent) : null,
   };
 
   const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
@@ -271,6 +272,12 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     faqs: parseFaqs(input.faqsRaw).map((f) => ({ q: sanitizeInput(f.q), a: sanitizeInput(f.a) })),
     power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
     info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
+    seo_h1: input.h1 ? sanitizeInput(input.h1) : null,
+    meta_title: input.metaTitle ? sanitizeInput(input.metaTitle) : null,
+    meta_description: input.metaDescription ? sanitizeInput(input.metaDescription) : null,
+    og_description: input.ogDescription ? sanitizeInput(input.ogDescription) : null,
+    quick_specs_text: input.quickSpecsText ? sanitizeInput(input.quickSpecsText) : null,
+    packaging_content: input.packagingContent ? sanitizeInput(input.packagingContent) : null,
   };
 
   const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
