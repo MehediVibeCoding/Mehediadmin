@@ -36,6 +36,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/products/parser', label: 'AI Planner', enabled: true, badge: { text: 'AUTO', bg: '#4CAF50' }, icon: <><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" /><line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" /><line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" /><line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" /></> },
       { href: '/offers-mgmt', label: 'অফার পপআপ', enabled: true, icon: <><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" /><path d="M14 8a4 4 0 0 1 0 8" /><path d="M17.5 5a8 8 0 0 1 0 14" /></> },
       { href: '/customers', label: 'কাস্টমার', enabled: true, icon: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></> },
+      { href: '/reviews-qa', label: 'রিভিউ ও প্রশ্নোত্তর', enabled: true, icon: <><path d="M11 3a8 8 0 1 0 6.32 12.906L21 20l-1.094-3.68A8 8 0 0 0 11 3Z" /><path d="M8 10h6" /><path d="M8 13h4" /></> },
       { href: '/traffic', label: 'ট্রাফিক অ্যানালিটিক্স', enabled: true, icon: <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" /><circle cx="12" cy="12" r="3" /></> },
       { href: '/profit', label: 'নিট প্রফিট', enabled: true, icon: <><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></> },
     ],

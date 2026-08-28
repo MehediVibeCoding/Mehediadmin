@@ -184,3 +184,54 @@ export interface TrafficDay {
   date: string;
   page_views: number;
 }
+
+// 🆕 (রিভিউ ও প্রশ্নোত্তর মডারেশন মডিউল): Supabase টেবিল `product_reviews` —
+// প্রোডাক্ট পেজে গ্রাহকদের রেটিং/রিভিউ, admin approve/reject না করা পর্যন্ত
+// সাইটে দেখায় না। `product_name` কোনো DB কলাম না — action লেয়ারে
+// `custom_products` থেকে জয়েন করে বসানো হয় (UI-তে দেখানোর জন্য)।
+export interface ProductReview {
+  id: number;
+  product_id: number;
+  user_id: string | null;
+  user_name: string;
+  rating: number; // ১-৫
+  review_text: string;
+  image_url: string | null;
+  like_count: number;
+  is_verified_buyer: boolean;
+  is_approved: boolean;
+  is_rejected: boolean;
+  rejection_reason: string | null;
+  created_at: string;
+  product_name?: string;
+}
+
+export type ReviewModerationStatus = 'pending' | 'approved' | 'rejected';
+
+// 🆕 Supabase টেবিল `product_questions` — গ্রাহকের প্রোডাক্ট-সম্পর্কিত প্রশ্ন।
+export interface ProductQuestion {
+  id: number;
+  product_id: number;
+  user_id: string | null;
+  user_name: string;
+  question: string;
+  created_at: string;
+  product_name?: string;
+}
+
+// 🆕 Supabase টেবিল `product_question_answers` — একটা প্রশ্নের একাধিক
+// উত্তর হতে পারে (admin + অন্য গ্রাহক), `is_admin: true` হলে Vangcur টিমের
+// অফিসিয়াল উত্তর হিসেবে দেখানো হয়।
+export interface ProductQuestionAnswer {
+  id: number;
+  question_id: number;
+  user_id: string | null;
+  author_name: string;
+  is_admin: boolean;
+  answer: string;
+  created_at: string;
+}
+
+export interface ProductQuestionWithAnswers extends ProductQuestion {
+  answers: ProductQuestionAnswer[];
+}
