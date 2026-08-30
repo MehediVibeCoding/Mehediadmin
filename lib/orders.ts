@@ -26,8 +26,31 @@ export const ORDER_STATUS_META: Record<OrderStatus, { label: string; dot: string
   rejected: { label: 'Rejected', dot: '#B91C1C' },
 };
 
-// legacy viewOrder()-এ ফিক্সড অ্যাডভান্স ৳২০০ (সব অর্ডারে একই)
-export const ORDER_ADVANCE = 200;
+// ⚠️ আপডেট: storefront-এ এখন ডায়নামিক অ্যাডভান্স (৳৮,০০০-এর নিচে ৳২০০ ফিক্সড,
+// ৳৮,০০০–২০,০০০ রেঞ্জে 5% + তার উপর 1.5% bKash ট্রানজেকশন ফি)। তাই এই ধ্রুবক
+// আর সরাসরি ব্যবহার করা হয় না — শুধু legacy/পুরনো অর্ডারের জন্য ফলব্যাক ডিফল্ট
+// হিসেবে রাখা হয়েছে, যেখানে DB-তে advance_paid null/undefined। আসল মান সবসময়
+// order.advance_paid থেকে পড়তে হবে: `order.advance_paid ?? ORDER_ADVANCE_FALLBACK`
+export const ORDER_ADVANCE_FALLBACK = 200;
+/** @deprecated ব্যাকওয়ার্ড কম্প্যাটিবিলিটির জন্য রাখা — নতুন কোডে ORDER_ADVANCE_FALLBACK বা getOrderAdvance() ব্যবহার করো */
+export const ORDER_ADVANCE = ORDER_ADVANCE_FALLBACK;
+
+/** legacy অর্ডারে advance_paid না থাকলে নিরাপদ ফলব্যাক (৳২০০) — কখনো `total - 200` হার্ডকোড করা যাবে না */
+export function getOrderAdvance(order: Pick<Order, 'advance_paid'>): number {
+  const v = Number(order.advance_paid);
+  return Number.isFinite(v) && v > 0 ? v : ORDER_ADVANCE_FALLBACK;
+}
+
+/** ডেলিভারিতে বাকি (COD) — total - advance_paid, কখনো ঋণাত্মক না */
+export function getOrderDueCOD(order: Pick<Order, 'total' | 'advance_paid'>): number {
+  const total = Number(order.total) || 0;
+  return Math.max(0, total - getOrderAdvance(order));
+}
+
+/** ৳২০০-এর বেশি অ্যাডভান্স মানেই ডায়নামিক ৫% + bKash ফি টিয়ার প্রযোজ্য হয়েছে */
+export function isAdvanceTier2(order: Pick<Order, 'advance_paid'>): boolean {
+  return getOrderAdvance(order) > ORDER_ADVANCE_FALLBACK;
+}
 
 function parseItems(raw: unknown): OrderItem[] {
   if (Array.isArray(raw)) return raw as OrderItem[];
@@ -60,9 +83,15 @@ export function mapOrderRow(o: any): Order {
     shipping: o.shipping || '',
     shipping_cost: o.shipping_cost || 0,
     subtotal: o.subtotal || 0,
+    discount_amount: Number(o.discount_amount) || 0,
+    coupon_code: o.coupon_code || null,
     total: o.total || 0,
+    // legacy অর্ডারে column null/undefined থাকলে ফলব্যাক ৳২০০ — কখনো hardcode `200` লেখা যাবে না,
+    // এই একটামাত্র জায়গাতেই ফলব্যাকটা বসে, বাকি সব জায়গায় order.advance_paid সরাসরি পড়া হয়
+    advance_paid: Number.isFinite(Number(o.advance_paid)) && Number(o.advance_paid) > 0 ? Number(o.advance_paid) : ORDER_ADVANCE_FALLBACK,
     payment_txn: o.payment_txn || '',
     payment_last4: o.payment_last4 || '',
+    fingerprint_id: o.fingerprint_id || null,
     ip: o.ip || '',
   };
 }

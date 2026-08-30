@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Order, OrderStatus } from '@/types';
-import { ORDER_STATUS_META, ORDER_STATUS_ORDER, ORDER_ADVANCE } from '@/lib/orders';
+import { ORDER_STATUS_META, ORDER_STATUS_ORDER, getOrderAdvance, getOrderDueCOD, isAdvanceTier2 } from '@/lib/orders';
 import { useToast } from '@/components/admin/Toast';
 
 interface Props {
@@ -47,7 +47,10 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
     : order.payment_last4
       ? 'শেষ ৪ ডিজিট: ' + order.payment_last4
       : '—';
-  const due = Math.max(0, (order.total || 0) - ORDER_ADVANCE);
+  const advancePaid = getOrderAdvance(order);
+  const due = getOrderDueCOD(order);
+  const tier2 = isAdvanceTier2(order);
+  const hasDiscount = (order.discount_amount || 0) > 0;
 
   async function copyTxt(t: string) {
     try {
@@ -149,10 +152,36 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
 
         {/* সামারি */}
         <div className="mt-2.5 rounded-xl border border-border-base bg-white px-4">
-          <Row label="শিপিং চার্জ" value={`৳${(order.shipping_cost || 0).toLocaleString()}`} />
+          <Row label="সাবটোটাল" value={`৳${(order.subtotal || 0).toLocaleString()}`} />
+          {hasDiscount && (
+            <Row
+              label={`🏷️ কুপন ছাড়${order.coupon_code ? ` (${order.coupon_code})` : ''}`}
+              value={`-৳${(order.discount_amount || 0).toLocaleString()}`}
+              tone="success"
+            />
+          )}
+          <Row
+            label="শিপিং চার্জ"
+            value={order.shipping_cost ? `৳${order.shipping_cost.toLocaleString()}` : 'ফ্রি'}
+          />
           <Row label="সর্বমোট" value={`৳${(order.total || 0).toLocaleString()}`} bold />
-          <Row label="পরিশোধিত অ্যাডভান্স" value={`৳${ORDER_ADVANCE.toLocaleString()}`} tone="success" />
-          <Row label="বাকি (ডেলিভারিতে)" value={`৳${due.toLocaleString()}`} tone="danger" last />
+          <Row label="পরিশোধিত অ্যাডভান্স" value={`৳${advancePaid.toLocaleString()}`} tone="success" />
+          <Row label="বাকি (ডেলিভারিতে)" value={`৳${due.toLocaleString()}`} tone="danger" last={!tier2} />
+          {tier2 && (
+            <div className="pb-2.5 pt-0.5 text-right text-[10.5px] font-medium italic text-muted">
+              5% ডায়নামিক অ্যাডভান্স + 1.5% bKash ট্রানজেকশন ফি প্রযোজ্য হয়েছে
+            </div>
+          )}
+        </div>
+
+        {/* পেমেন্ট ভেরিফিকেশন */}
+        <SectionTitle icon={<><path d="M9 12l2 2 4-4" /><path d="M12 3c-2.5 2-5.5 3-9 3v6c0 5 3.5 8.5 9 10 5.5-1.5 9-5 9-10V6c-3.5 0-6.5-1-9-3Z" /></>}>
+          পেমেন্ট ভেরিফিকেশন
+        </SectionTitle>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <VerifyBox label="bKash TXN ID" value={order.payment_txn} onCopy={copyTxt} />
+          <VerifyBox label="সেন্ডারের শেষ ৪ ডিজিট" value={order.payment_last4} onCopy={copyTxt} />
+          <VerifyBox label="ডিভাইস ফিঙ্গারপ্রিন্ট" value={order.fingerprint_id} onCopy={copyTxt} />
         </div>
 
         {/* স্ট্যাটাস পরিবর্তন */}
@@ -231,6 +260,26 @@ function InfoCard({
           <div className="break-words text-[13px] font-semibold text-ink">{value}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+function VerifyBox({ label, value, onCopy }: { label: string; value?: string | null; onCopy: (t: string) => void }) {
+  const has = !!value;
+  return (
+    <div className="rounded-[10px] border border-border-base bg-surface-muted p-2.5">
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted">{label}</div>
+      {has ? (
+        <button
+          type="button"
+          onClick={() => onCopy(value!)}
+          className="w-full rounded-md bg-white px-2 py-1.5 text-left font-mono text-[12px] font-semibold text-ink transition-brand hover:bg-brand-bg"
+        >
+          {value}
+        </button>
+      ) : (
+        <div className="rounded-md bg-white px-2 py-1.5 font-mono text-[12px] text-muted">N/A</div>
+      )}
     </div>
   );
 }

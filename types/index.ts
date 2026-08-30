@@ -41,9 +41,18 @@ export interface Order {
   shipping: string;
   shipping_cost: number;
   subtotal: number;
+  // কুপন ছাড়ের পরিমাণ (৳) — কুপন প্রয়োগ না হলে ০। total = (subtotal - discount_amount) + shipping_cost
+  discount_amount: number;
+  // প্রয়োগ করা কুপন কোড (যেমন 'SAVE100'), কুপন ছাড়া অর্ডারে null
+  coupon_code: string | null;
   total: number;
+  // ডায়নামিক অ্যাডভান্স — storefront-এ total অনুযায়ী গণনা করা (৳২০০ ফিক্সড না, ৳৮,০০০+ অর্ডারে 5% + 1.5% bKash ফি)।
+  // legacy অর্ডারে কলাম না থাকলে (null/undefined) mapOrderRow ফলব্যাক হিসেবে ২০০ বসায়।
+  advance_paid: number;
   payment_txn: string;
   payment_last4: string;
+  // গ্রাহকের ডিভাইস ফিঙ্গারপ্রিন্ট আইডি (bKash manual verify ফ্লো থেকে) — না থাকলে null
+  fingerprint_id: string | null;
   ip: string;
 }
 

@@ -1,9 +1,30 @@
 import type { Order } from '@/types';
+import { getOrderAdvance, getOrderDueCOD } from '@/lib/orders';
 
-// legacy csvRowsFromOrders() — headers + rows হুবহু একই কলাম ক্রম
+// legacy csvRowsFromOrders() — headers + rows হুবহু একই কলাম ক্রম, পরে
+// ডায়নামিক অ্যাডভান্স/কুপন কলাম যোগ করা হয়েছে (Subtotal, Coupon,
+// Discount, Advance Paid, COD Due) — অ্যাকাউন্টিং এক্সপোর্টে হিসাব মেলাতে দরকার
 export function ordersToCsvRows(orders: Order[]): string[][] {
   return [
-    ['Order#', 'Date', 'Name', 'Phone', 'District', 'Address', 'Items', 'Total', 'Shipping', 'Status', 'TXN', 'IP'],
+    [
+      'Order#',
+      'Date',
+      'Name',
+      'Phone',
+      'District',
+      'Address',
+      'Items',
+      'Subtotal',
+      'Coupon',
+      'Discount',
+      'Shipping',
+      'Total',
+      'Advance Paid',
+      'COD Due',
+      'Status',
+      'TXN',
+      'IP',
+    ],
     ...orders.map((o) => [
       o.order_num,
       new Date(o.created_at).toLocaleDateString(),
@@ -12,8 +33,13 @@ export function ordersToCsvRows(orders: Order[]): string[][] {
       o.customer_district,
       o.customer_address,
       (o.items || []).map((i) => `${i.name}×${i.qty}`).join('; '),
-      String(o.total ?? ''),
+      String(o.subtotal ?? ''),
+      o.coupon_code || '',
+      String(o.discount_amount ?? 0),
       o.shipping,
+      String(o.total ?? ''),
+      String(getOrderAdvance(o)),
+      String(getOrderDueCOD(o)),
       o.status,
       o.payment_txn || o.payment_last4 || '',
       o.ip || '',
