@@ -235,3 +235,36 @@ export interface ProductQuestionAnswer {
 export interface ProductQuestionWithAnswers extends ProductQuestion {
   answers: ProductQuestionAnswer[];
 }
+
+// ✅ VERIFIED (Coupon Management মডিউল): Supabase টেবিল `coupons` — owner
+// নিজে schema দিয়ে দিয়েছেন (অনুমান করা হয়নি)। `free_shipping` টাইপে
+// `discount_value`-এর বাস্তব কোনো অর্থ নেই, কিন্তু DB constraint অনুযায়ী
+// এটা সবসময় > 0 হতে হবে — তাই ফর্মে (CouponModal) এই টাইপের জন্য ফিল্ডটা
+// লুকিয়ে রেখে ১ (placeholder) সেট করে দেওয়া হয়, UI-তে এটা কোথাও দেখানো হয় না।
+export type CouponDiscountType = 'fixed' | 'percent' | 'free_shipping';
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: CouponDiscountType;
+  discount_value: number;
+  max_discount_amount: number | null;
+  min_order_amount: number;
+  max_uses_total: number | null;
+  used_count: number;
+  max_uses_per_user: number;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+// UI-only ডেরাইভড স্ট্যাটাস — কোনো DB কলাম না। `is_active` আর `expires_at`
+// দুটো মিলিয়ে হিসাব করা হয় (lib/coupons.ts-এর getCouponStatus())।
+export type CouponStatus = 'active' | 'expired' | 'inactive';
+
+export interface CouponStats {
+  totalCoupons: number;
+  activeCoupons: number;
+  totalUsedCount: number;
+  totalDiscountGiven: number;
+}
