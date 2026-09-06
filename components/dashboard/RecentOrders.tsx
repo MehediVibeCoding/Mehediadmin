@@ -12,7 +12,7 @@ export default function RecentOrders({ orders }: Props) {
       {/* হেডার ও অ্যাকশন ক্যাপসুল */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border-base/50 pb-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-bg/50 text-brand-primary">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light/15 text-brand-light">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
               <path d="M3 6h18" />
@@ -27,7 +27,7 @@ export default function RecentOrders({ orders }: Props) {
 
         <Link
           href="/orders"
-          className="group inline-flex items-center gap-1.5 rounded-full border border-border-base/80 bg-white px-3.5 py-1.5 font-body text-[11.5px] font-bold text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-primary active:scale-95"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-border-base/80 bg-white px-3.5 py-1.5 font-body text-[11.5px] font-bold text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-light active:scale-95"
         >
           <span>সব দেখুন</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-brand group-hover:translate-x-0.5">
@@ -64,9 +64,10 @@ export default function RecentOrders({ orders }: Props) {
               orders.map((o) => (
                 <tr
                   key={o.id}
-                  className="transition-colors duration-brand hover:bg-brand-bg/25"
+                  className="transition-colors duration-brand hover:bg-brand-bg/30"
                 >
-                  <td className="py-3 pr-4 font-bold text-brand-primary">
+                  {/* গাঢ় নীল চিরতরে বর্জন — ১০০% খাঁটি সিগনেচার স্কাই-ব্লু (#44A7FC) */}
+                  <td className="py-3 pr-4 font-black text-brand-light">
                     <Link href="/orders" className="hover:underline">
                       {o.order_num}
                     </Link>
