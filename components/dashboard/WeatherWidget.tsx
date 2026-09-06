@@ -8,8 +8,8 @@ interface ForecastHour {
   pct: number;
 }
 
-interface WeatherState {
-  icon: string;
+interface WeatherData {
+  code: number;
   temp: string;
   desc: string;
   loc: string;
@@ -19,92 +19,147 @@ interface WeatherState {
   forecast: ForecastHour[];
 }
 
-const INITIAL_STATE: WeatherState = {
-  icon: '⛅',
-  temp: '--°',
+const INITIAL_WEATHER: WeatherData = {
+  code: 0,
+  temp: '--°C',
   desc: 'আবহাওয়া লোড হচ্ছে...',
-  loc: '📍 লোকেশন খোঁজা হচ্ছে...',
+  loc: 'লোকেশন খোঁজা হচ্ছে...',
   feels: '--°',
   hum: '--%',
   wind: '-- km/h',
   forecast: [],
 };
 
-// legacy weatherCodeInfo() থেকে হুবহু — Open-Meteo weather_code → [ইমোজি, বাংলা বর্ণনা]
-const WEATHER_CODE_MAP: Record<number, [string, string]> = {
-  0: ['☀️', 'পরিষ্কার আকাশ'], 1: ['🌤️', 'মোটামুটি পরিষ্কার'], 2: ['⛅', 'আংশিক মেঘলা'], 3: ['☁️', 'মেঘলা'],
-  45: ['🌫️', 'কুয়াশা'], 48: ['🌫️', 'ঘন কুয়াশা'],
-  51: ['🌦️', 'হালকা গুঁড়ি বৃষ্টি'], 53: ['🌦️', 'মাঝারি গুঁড়ি বৃষ্টি'], 55: ['🌧️', 'ভারী গুঁড়ি বৃষ্টি'],
-  61: ['🌦️', 'হালকা বৃষ্টি'], 63: ['🌧️', 'মাঝারি বৃষ্টি'], 65: ['🌧️', 'ভারী বৃষ্টি'],
-  66: ['🌧️', 'হিমশীতল বৃষ্টি'], 67: ['🌧️', 'ভারী হিমশীতল বৃষ্টি'],
-  71: ['🌨️', 'হালকা তুষারপাত'], 73: ['🌨️', 'মাঝারি তুষারপাত'], 75: ['❄️', 'ভারী তুষারপাত'], 77: ['🌨️', 'তুষার দানা'],
-  80: ['🌦️', 'হালকা বৃষ্টির ঝাপটা'], 81: ['🌧️', 'মাঝারি বৃষ্টির ঝাপটা'], 82: ['⛈️', 'প্রবল বৃষ্টির ঝাপটা'],
-  85: ['🌨️', 'হালকা তুষার ঝাপটা'], 86: ['❄️', 'ভারী তুষার ঝাপটা'],
-  95: ['⛈️', 'বজ্রঝড়'], 96: ['⛈️', 'বজ্রঝড় সহ শিলাবৃষ্টি'], 99: ['⛈️', 'ভারী বজ্রঝড় সহ শিলাবৃষ্টি'],
-};
+function WeatherIcon({ code, className = 'h-8 w-8' }: { code: number; className?: string }) {
+  if (code === 0) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+      </svg>
+    );
+  }
+  if (code === 1 || code === 2) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 2v2M4.93 4.93l1.41 1.41M20 12h2M19.07 4.93l-1.41 1.41" />
+        <path d="M15.5 12a4.5 4.5 0 0 0-4.5-4.5 4.4 4.4 0 0 0-1.7.35" />
+        <path d="M17.5 19H9a5 5 0 0 1-1-9.9 5.5 5.5 0 0 1 10.5 2.4A4 4 0 0 1 17.5 19Z" />
+      </svg>
+    );
+  }
+  if (code === 3) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M17.5 19H9a5 5 0 0 1-1-9.9 5.5 5.5 0 0 1 10.5 2.4A4 4 0 0 1 17.5 19Z" />
+      </svg>
+    );
+  }
+  if (code >= 51 && code <= 67) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M16 13v6M8 13v6M12 15v6" />
+        <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
+      </svg>
+    );
+  }
+  if (code >= 95) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M19 16.9A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
+        <polyline points="13 11 9 17 15 17 11 23" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M17.5 19H9a5 5 0 0 1-1-9.9 5.5 5.5 0 0 1 10.5 2.4A4 4 0 0 1 17.5 19Z" />
+      <circle cx="12" cy="7" r="3" />
+    </svg>
+  );
+}
 
-function weatherInfo(code: number): [string, string] {
-  return WEATHER_CODE_MAP[code] || ['⛅', 'আবহাওয়া'];
+function getWeatherDescription(code: number): string {
+  const map: Record<number, string> = {
+    0: 'পরিষ্কার আকাশ',
+    1: 'মোটামুটি পরিষ্কার',
+    2: 'আংশিক মেঘলা',
+    3: 'মেঘলা আকাশ',
+    45: 'কুয়াশাচ্ছন্ন',
+    48: 'ঘন কুয়াশা',
+    51: 'হালকা গুঁড়ি বৃষ্টি',
+    53: 'মাঝারি গুঁড়ি বৃষ্টি',
+    55: 'ভারী গুঁড়ি বৃষ্টি',
+    61: 'হালকা বৃষ্টিপাত',
+    63: 'মাঝারি বৃষ্টিপাত',
+    65: 'ভারী বৃষ্টিপাত',
+    71: 'হালকা তুষারপাত',
+    80: 'বৃষ্টির ঝাপটা',
+    82: 'প্রবল বৃষ্টির ঝাপটা',
+    95: 'বজ্রবিদ্যুৎ সহ বৃষ্টি',
+  };
+  return map[code] || 'স্বাভাবিক আবহাওয়া';
 }
 
 export default function WeatherWidget() {
-  const [state, setState] = useState<WeatherState>(INITIAL_STATE);
+  const [data, setData] = useState<WeatherData>(INITIAL_WEATHER);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchWeatherFor(lat: number, lon: number, label: string) {
+    async function fetchWeather(lat: number, lon: number, locationName: string) {
       try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&forecast_days=1&timezone=auto`;
         const res = await fetch(url);
-        const data = await res.json();
+        const json = await res.json();
         if (cancelled) return;
 
-        const cur = data.current;
-        const [icon, desc] = weatherInfo(cur.weather_code);
+        const cur = json.current;
+        const code = cur.weather_code;
+        const desc = getWeatherDescription(code);
 
-        const hourlyTimes: string[] = data.hourly.time;
-        const hourlyTemps: number[] = data.hourly.temperature_2m;
-        const nowIdx = hourlyTimes.findIndex((t) => new Date(t) >= new Date());
-        const startIdx = nowIdx >= 0 ? nowIdx : 0;
-        const hours = hourlyTimes.slice(startIdx, startIdx + 6);
-        const temps = hourlyTemps.slice(startIdx, startIdx + 6);
-        const maxT = Math.max(...temps);
-        const minT = Math.min(...temps);
-        const range = maxT - minT || 1;
+        const hourlyTimes: string[] = json.hourly.time;
+        const hourlyTemps: number[] = json.hourly.temperature_2m;
+        const nowIndex = hourlyTimes.findIndex((t) => new Date(t) >= new Date());
+        const startIndex = nowIndex >= 0 ? nowIndex : 0;
+        const times = hourlyTimes.slice(startIndex, startIndex + 6);
+        const temps = hourlyTemps.slice(startIndex, startIndex + 6);
+        const maxTemp = Math.max(...temps);
+        const minTemp = Math.min(...temps);
+        const diff = maxTemp - minTemp || 1;
 
-        const forecast: ForecastHour[] = hours.map((t, i) => {
-          const hr = new Date(t).getHours();
-          const pct = Math.max(18, Math.round(((temps[i] - minT) / range) * 100));
-          const label12 = (hr % 12 === 0 ? 12 : hr % 12) + (hr < 12 ? 'AM' : 'PM');
-          return { label: label12, temp: Math.round(temps[i]), pct };
+        const forecast: ForecastHour[] = times.map((t, i) => {
+          const hour = new Date(t).getHours();
+          const pct = Math.max(20, Math.round(((temps[i] - minTemp) / diff) * 100));
+          const label = (hour % 12 === 0 ? 12 : hour % 12) + (hour < 12 ? ' AM' : ' PM');
+          return { label, temp: Math.round(temps[i]), pct };
         });
 
-        setState({
-          icon,
-          temp: Math.round(cur.temperature_2m) + '°C',
+        setData({
+          code,
+          temp: `${Math.round(cur.temperature_2m)}°C`,
           desc,
-          loc: '📍 ' + label,
-          feels: Math.round(cur.apparent_temperature) + '°',
-          hum: cur.relative_humidity_2m + '%',
-          wind: Math.round(cur.wind_speed_10m) + ' km/h',
+          loc: locationName,
+          feels: `${Math.round(cur.apparent_temperature)}°`,
+          hum: `${cur.relative_humidity_2m}%`,
+          wind: `${Math.round(cur.wind_speed_10m)} km/h`,
           forecast,
         });
       } catch {
         if (!cancelled) {
-          setState((s) => ({ ...s, desc: 'আবহাওয়ার তথ্য লোড করা যায়নি' }));
+          setData((prev) => ({ ...prev, desc: 'আবহাওয়া তথ্য লোড করা যায়নি' }));
         }
       }
     }
 
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => fetchWeatherFor(pos.coords.latitude, pos.coords.longitude, 'আপনার বর্তমান অবস্থান'),
-        () => fetchWeatherFor(23.8103, 90.4125, 'ঢাকা, বাংলাদেশ'),
+        (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'বর্তমান অবস্থান'),
+        () => fetchWeather(23.8103, 90.4125, 'ঢাকা, বাংলাদেশ'),
         { timeout: 6000 }
       );
     } else {
-      fetchWeatherFor(23.8103, 90.4125, 'ঢাকা, বাংলাদেশ');
+      fetchWeather(23.8103, 90.4125, 'ঢাকা, বাংলাদেশ');
     }
 
     return () => {
@@ -113,60 +168,72 @@ export default function WeatherWidget() {
   }, []);
 
   return (
-    <div className="relative mb-4 flex flex-wrap items-center gap-3 overflow-hidden rounded-brand bg-brand-grad p-4 text-white shadow-[0_14px_40px_rgba(0,61,143,.28),inset_0_1px_0_rgba(255,255,255,.18)] md:gap-4 md:p-5">
-      {/* legacy .weather-card::before — top-right/bottom-left radial glow */}
+    <div className="card-hover-glow relative mb-5 overflow-hidden rounded-[24px] border border-white/90 bg-white/80 p-4 shadow-sh1 backdrop-blur-xl sm:p-5 md:p-6">
+      {/* ব্যাকগ্রাউন্ড সফট গ্লাস অ্যাম্বিয়েন্স */}
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(circle at 90% -20%, rgba(255,255,255,.22) 0%, transparent 45%), radial-gradient(circle at 0% 120%, rgba(0,18,41,.28) 0%, transparent 55%)',
-        }}
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gradient-to-br from-brand-light/15 to-transparent blur-2xl"
       />
-      {/* legacy .weather-card::after — floating soft circle */}
-      <div className="pointer-events-none absolute -right-[6%] -top-[30%] h-56 w-56 animate-weather-float rounded-full bg-[radial-gradient(circle,rgba(255,255,255,.16),transparent_70%)]" />
 
-      <div className="relative z-10 flex min-w-[220px] flex-1 items-center gap-3.5">
-        <div className="animate-weather-icon-bob text-[44px] leading-none drop-shadow-[0_4px_10px_rgba(0,0,0,.25)]">
-          {state.icon}
-        </div>
-        <div>
-          <div className="text-[32px] font-bold tracking-tight">{state.temp}</div>
-          <div className="mt-0.5 text-[12.5px] text-white/85">{state.desc}</div>
-          <div className="mt-0.5 text-[11px] text-white/60">{state.loc}</div>
-        </div>
-      </div>
-
-      <div className="relative z-10 flex flex-wrap gap-4">
-        <div className="text-center">
-          <div className="text-sm font-bold">{state.feels}</div>
-          <div className="text-[9.5px] uppercase tracking-wide text-white/60">অনুভূত হয়</div>
-        </div>
-        <div className="text-center">
-          <div className="text-sm font-bold">{state.hum}</div>
-          <div className="text-[9.5px] uppercase tracking-wide text-white/60">আর্দ্রতা</div>
-        </div>
-        <div className="text-center">
-          <div className="text-sm font-bold">{state.wind}</div>
-          <div className="text-[9.5px] uppercase tracking-wide text-white/60">বাতাস</div>
-        </div>
-      </div>
-
-      {state.forecast.length > 0 && (
-        <div className="relative z-10 flex w-full flex-wrap justify-between gap-2.5 border-t border-white/20 pt-3 md:w-auto md:justify-start md:border-l md:border-t-0 md:pl-4 md:pt-0">
-          {state.forecast.map((f, i) => (
-            <div key={i} className="flex min-w-[34px] flex-col items-center gap-1">
-              <div className="text-[9.5px] font-bold">{f.temp}°</div>
-              <div className="flex h-[46px] w-1.5 items-end overflow-hidden rounded-full bg-white/15">
-                <div
-                  className="w-full rounded-full bg-gradient-to-b from-white to-white/55 transition-[height] duration-500"
-                  style={{ height: `${f.pct}%` }}
-                />
-              </div>
-              <div className="text-[9px] text-white/60">{f.label}</div>
+      <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        {/* ১. বাম পাশ: লাইভ আইকন ও তাপমাত্রা */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-brand-light to-brand-primary text-white shadow-[0_6px_20px_rgba(68,167,252,0.35)]">
+            <WeatherIcon code={data.code} className="h-7 w-7" />
+          </div>
+          <div>
+            <div className="font-body text-[32px] font-black tracking-tight text-ink sm:text-[36px]">
+              {data.temp}
             </div>
-          ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-body text-[13px] font-bold text-ink/85">{data.desc}</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-0.5 font-body text-[10.5px] font-semibold text-muted">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-brand-light">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {data.loc}
+              </span>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* ২. মাঝের অংশ: ৩টি ট্যাকটাইল মেট্রিক ক্যাপসুল (ইমেজ ২ ও ৩ ইন্সপায়ারেশন) */}
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+          <div className="flex flex-col items-center justify-center rounded-[16px] border border-border-base/50 bg-surface-muted/50 px-3 py-2.5 text-center shadow-xs transition-colors hover:bg-white">
+            <span className="mb-0.5 font-body text-[10px] font-extrabold uppercase tracking-wider text-muted">অনুভূত</span>
+            <span className="font-body text-[14px] font-black text-ink">{data.feels}</span>
+          </div>
+
+          <div className="flex flex-col items-center justify-center rounded-[16px] border border-border-base/50 bg-surface-muted/50 px-3 py-2.5 text-center shadow-xs transition-colors hover:bg-white">
+            <span className="mb-0.5 font-body text-[10px] font-extrabold uppercase tracking-wider text-muted">আর্দ্রতা</span>
+            <span className="font-body text-[14px] font-black text-brand-primary">{data.hum}</span>
+          </div>
+
+          <div className="flex flex-col items-center justify-center rounded-[16px] border border-border-base/50 bg-surface-muted/50 px-3 py-2.5 text-center shadow-xs transition-colors hover:bg-white">
+            <span className="mb-0.5 font-body text-[10px] font-extrabold uppercase tracking-wider text-muted">বাতাস</span>
+            <span className="font-body text-[14px] font-black text-ink">{data.wind}</span>
+          </div>
+        </div>
+
+        {/* ৩. ডান পাশ: ৬-ঘণ্টার স্লিক ফোরকাস্ট ট্র্যাক */}
+        {data.forecast.length > 0 && (
+          <div className="flex items-end justify-between gap-3 border-t border-border-base/60 pt-3 sm:gap-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            {data.forecast.map((item, idx) => (
+              <div key={idx} className="flex min-w-[34px] flex-col items-center gap-1.5">
+                <span className="font-body text-[10px] font-bold text-ink">{item.temp}°</span>
+                <div className="flex h-10 w-2 items-end overflow-hidden rounded-full bg-surface-muted">
+                  <div
+                    className="w-full rounded-full bg-gradient-to-t from-brand-primary to-brand-light transition-[height] duration-500"
+                    style={{ height: `${item.pct}%` }}
+                  />
+                </div>
+                <span className="whitespace-nowrap font-body text-[9px] font-semibold text-muted">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
