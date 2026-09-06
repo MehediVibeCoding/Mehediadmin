@@ -244,7 +244,7 @@ function NavIcon({ children, className = 'h-[18px] w-[18px]' }: { children: Reac
 function LogoMark({ isExpanded }: { isExpanded: boolean }) {
   return (
     <div className="flex items-center gap-3 overflow-hidden">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-light to-brand-primary text-white shadow-[0_4px_14px_rgba(68,167,252,0.38)]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.38)]">
         <span className="font-body text-[20px] font-black tracking-tight">V</span>
       </div>
       <div
@@ -280,14 +280,14 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ══ ডেস্কটপ এক্সপ্যান্ডেবল গ্লাস সাইডবার (≥768px) — ইমেজ ১ ইন্সপায়ারেশন ══ */}
+      {/* ══ ডেস্কটপ এক্সপ্যান্ডেবল গ্লাস সাইডবার (≥768px) ══ */}
       <div className="relative hidden md:block md:w-[76px] md:shrink-0">
         <aside
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           className={`fixed left-3 top-3 bottom-3 z-50 flex flex-col overflow-hidden rounded-[26px] border border-white/80 bg-white/80 shadow-[0_8px_32px_rgba(68,167,252,0.12)] backdrop-blur-2xl transition-[width,box-shadow] duration-300 ease-[cubic-bezier(.4,0,.2,1)] ${
             isHovered
-              ? 'w-[260px] shadow-[0_14px_45px_rgba(0,42,110,0.14)] bg-white/95'
+              ? 'w-[260px] shadow-[0_14px_45px_rgba(68,167,252,0.18)] bg-white/95'
               : 'w-[72px]'
           }`}
         >
@@ -300,7 +300,6 @@ export default function Sidebar() {
           <nav className="sleek-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3">
             {NAV_SECTIONS.map((section) => (
               <div key={section.title} className="mb-2">
-                {/* সেকশন হেডিং (এক্সপ্যান্ডেড মোডে দেখাবে) */}
                 <div
                   className={`px-3 py-1 font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted/70 transition-all duration-200 ${
                     isHovered ? 'opacity-100 h-auto' : 'opacity-0 h-0 overflow-hidden py-0'
@@ -344,15 +343,14 @@ export default function Sidebar() {
                           isHovered ? 'justify-start gap-3 px-3.5' : 'justify-center px-0'
                         } ${
                           active
-                            ? 'bg-gradient-to-r from-brand-light to-brand-primary text-white shadow-[0_4px_16px_rgba(68,167,252,0.35)]'
-                            : 'text-ink/75 hover:bg-brand-bg/35 hover:text-brand-primary'
+                            ? 'bg-brand-light text-white shadow-[0_4px_16px_rgba(68,167,252,0.35)]'
+                            : 'text-ink/75 hover:bg-brand-bg/35 hover:text-brand-light'
                         }`}
                       >
-                        <NavIcon className={`h-5 w-5 ${active ? 'text-white' : 'text-ink/70 group-hover:text-brand-primary'}`}>
+                        <NavIcon className={`h-5 w-5 ${active ? 'text-white' : 'text-ink/70 group-hover:text-brand-light'}`}>
                           {item.icon}
                         </NavIcon>
 
-                        {/* টেক্সট লেবেল (হোভার এক্সপ্যান্ডেড মোড) */}
                         <span
                           className={`whitespace-nowrap font-body text-[13px] font-bold tracking-tight transition-all duration-200 ${
                             isHovered ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden pointer-events-none'
@@ -361,7 +359,6 @@ export default function Sidebar() {
                           {item.label}
                         </span>
 
-                        {/* ব্যাজসমূহ */}
                         {isHovered && item.badge && (
                           <span
                             className="ml-auto rounded-full px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white shadow-xs"
@@ -412,9 +409,9 @@ export default function Sidebar() {
         </aside>
       </div>
 
-      {/* ══ মোবাইল ফ্রস্টেড বটম ক্যাপসুল বার (<768px) — ইমেজ ৪ ও ৫ ইন্সপায়ারেশন ══ */}
+      {/* ══ মোবাইল ফ্রস্টেড বটম ক্যাপসুল বার — অ্যাপল লিকুইড স্কাই-ব্লু লুক ══ */}
       <div
-        className="fixed bottom-3 left-1/2 z-[500] flex w-[calc(100%-20px)] max-w-[420px] -translate-x-1/2 items-center justify-between rounded-full border border-white/80 bg-white/90 p-1.5 shadow-[0_10px_35px_rgba(68,167,252,0.22)] backdrop-blur-2xl md:hidden"
+        className="fixed bottom-3 left-1/2 z-[500] flex w-[calc(100%-20px)] max-w-[420px] -translate-x-1/2 items-center justify-between rounded-full border border-white/80 bg-white/90 p-1.5 shadow-[0_8px_32px_rgba(68,167,252,0.18)] backdrop-blur-2xl md:hidden"
         style={{ bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}
       >
         {TAB_ITEMS.slice(0, 2).map((item) => {
@@ -424,7 +421,7 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 transition-all duration-brand ${
-                active ? 'bg-gradient-to-r from-brand-light to-brand-primary text-white shadow-xs' : 'text-ink/65 hover:text-brand-light'
+                active ? 'bg-brand-light text-white shadow-xs' : 'text-ink/65 hover:text-brand-light'
               }`}
             >
               <NavIcon className="h-[19px] w-[19px]">{item.icon}</NavIcon>
@@ -433,13 +430,13 @@ export default function Sidebar() {
           );
         })}
 
-        {/* মাঝের এলিভেটেড ৩D সার্কেল বাটন (AI Planner) */}
+        {/* অ্যাপল স্টাইল লিকুইড ট্রান্সপারেন্ট স্কাই-ব্লু সেন্ট্রাল বাটন (Flush Level, No -mt-5) */}
         <Link
           href="/products/parser"
           aria-label="AI Planner"
-          className="relative -mt-5 flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full border-[3.5px] border-white bg-gradient-to-tr from-brand-primary to-brand-light shadow-[0_8px_20px_rgba(68,167,252,0.45)] transition-transform duration-brand active:scale-90"
+          className="relative mx-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/20 text-brand-light shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.85),0_3px_12px_rgba(68,167,252,0.22)] backdrop-blur-md transition-all duration-brand active:scale-95 hover:bg-brand-light/30"
         >
-          <NavIcon className="h-5 w-5 text-white">
+          <NavIcon className="h-5 w-5 text-brand-light">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </NavIcon>
@@ -452,7 +449,7 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 transition-all duration-brand ${
-                active ? 'bg-gradient-to-r from-brand-light to-brand-primary text-white shadow-xs' : 'text-ink/65 hover:text-brand-light'
+                active ? 'bg-brand-light text-white shadow-xs' : 'text-ink/65 hover:text-brand-light'
               }`}
             >
               <NavIcon className="h-[19px] w-[19px]">{item.icon}</NavIcon>
@@ -476,7 +473,7 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* ══ মোবাইল ব্যাকড্রপ ওভারলে ও ফ্রস্টেড স্লাইড-আপ ড্রয়ার ══ */}
+      {/* ══ মোবাইল ফ্রস্টেড স্লাইড-আপ ড্রয়ার ══ */}
       <div
         className={`fixed inset-0 z-[550] bg-ink/40 backdrop-blur-[3px] transition-opacity duration-300 md:hidden ${
           mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
@@ -485,7 +482,7 @@ export default function Sidebar() {
       />
 
       <div
-        className={`fixed inset-x-0 bottom-0 z-[560] flex max-h-[85vh] flex-col overflow-hidden rounded-t-[32px] border-t border-white/80 bg-white/95 px-4 pt-3 pb-6 shadow-[0_-14px_45px_rgba(0,18,41,0.18)] backdrop-blur-2xl transition-transform duration-[380ms] ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-[560] flex max-h-[85vh] flex-col overflow-hidden rounded-t-[32px] border-t border-white/80 bg-white/95 px-4 pt-3 pb-6 shadow-[0_-14px_45px_rgba(68,167,252,0.18)] backdrop-blur-2xl transition-transform duration-[380ms] ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
           mobileOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
@@ -522,8 +519,8 @@ export default function Sidebar() {
                       onClick={() => setMobileOpen(false)}
                       className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-body text-[13px] font-bold transition-all duration-brand ${
                         active
-                          ? 'bg-gradient-to-r from-brand-light to-brand-primary text-white shadow-xs'
-                          : 'text-ink/80 hover:bg-surface-muted'
+                          ? 'bg-brand-light text-white shadow-xs'
+                          : 'text-ink/80 hover:bg-surface-muted hover:text-brand-light'
                       }`}
                     >
                       <NavIcon className={`h-5 w-5 ${active ? 'text-white' : 'text-ink/65'}`}>
