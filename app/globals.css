@@ -6,4 +6,232 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
+  html, body {
+    touch-action: manipulation;
+    min-height: 100vh;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  @supports (overflow-x: clip) {
+    html, body {
+      overflow-x: clip;
+    }
+  }
+  img {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input, textarea, select {
+    outline: none !important;
+    -webkit-appearance: none;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none !important;
+  }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px #44A7FC !important;
+    border-color: #44A7FC !important;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role='button']:focus-visible {
+    outline: 2px solid #44A7FC;
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   গ্লোবাল ইন্টারঅ্যাকশন ও অ্যানিমেশন ফাউন্ডেশন (Vangcur Signature)
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ১. অ্যাম্বিয়েন্ট শিমার শীন (Ambient Shimmer Sheen for Primary CTAs) */
+.shimmer-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shimmer-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  left: -150%;
+  width: 55%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: shimmerSweep 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes shimmerSweep {
+  0% { left: -150%; }
+  16% { left: 150%; }
+  100% { left: 150%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-sheen::after {
+    animation: none;
+    display: none;
+  }
+}
+
+/* ২. ওয়ান-শট শিমার (One-shot Shimmer Effect) */
+.shimmer-sheen-oneshot {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shimmer-sheen-oneshot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 55%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-220%) skewX(-20deg);
+  pointer-events: none;
+}
+.shimmer-sheen-oneshot.shimmer-sheen-play::after {
+  animation: shimmerSweepOnce 0.8s cubic-bezier(.4,0,.2,1) 1;
+}
+@keyframes shimmerSweepOnce {
+  0%   { transform: translateX(-220%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+/* ৩. কার্ড হোভার গ্লো — ডেস্কটপ (Card Hover Glow) */
+@media (hover: hover) and (pointer: fine) {
+  .card-hover-glow {
+    transition: box-shadow 250ms cubic-bezier(.4,0,.2,1), transform 250ms cubic-bezier(.4,0,.2,1);
+  }
+  .card-hover-glow:hover {
+    box-shadow: 0 8px 30px rgba(68, 167, 252, 0.22);
+    transform: translateY(-2px);
+  }
+}
+
+/* ৪. গ্লাস মডাল ও সারফেস ইউটিলিটি (Frosted Glass Utilities) */
+.navbar-glass {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.search-dropdown-glass {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .navbar-glass {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+  }
+  .search-dropdown-glass {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ফর্ম ও ইনপুট অটোফিল ফিক্স
+   ══════════════════════════════════════════════════════════════════════ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #1A1A1A;
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+  box-shadow: 0 0 0 1000px #FFFFFF inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type='search']::-webkit-search-decoration,
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-results-button,
+input[type='search']::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   প্রিমিয়াম ইউনিভার্সাল ও স্লিক স্ক্রলবার আর্কিটেকচার (Vangcur Sky-Blue)
+   ══════════════════════════════════════════════════════════════════════ */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(68, 167, 252, 0.35) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(68, 167, 252, 0.35);
+  border-radius: 9999px;
+  border: none;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(68, 167, 252, 0.70);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.sleek-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(68, 167, 252, 0.35) transparent;
+}
+.sleek-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.sleek-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sleek-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(68, 167, 252, 0.35);
+  border-radius: 9999px;
+  border: none;
+}
+.sleek-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(68, 167, 252, 0.70);
+}
+.sleek-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
