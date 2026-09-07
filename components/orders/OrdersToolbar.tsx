@@ -55,42 +55,46 @@ export default function OrdersToolbar({
   onClearFilters,
 }: Props) {
   return (
-    <>
-      {/* সারি ১ — legacy .trf-controls (হেডারের অংশ, সেন্টার্ড): সার্চ + তারিখ + CSV + রিফ্রেশ (ডেস্কটপ) */}
-      <div className="mx-auto mb-3.5 flex max-w-full flex-wrap items-center justify-center gap-2.5 max-[640px]:w-full">
-        <div className="relative min-w-[180px] max-w-[320px] flex-1 max-[640px]:max-w-full max-[640px]:basis-full">
+    <div className="mb-5 space-y-3">
+      {/* ══ সারি ১ — অ্যাপল ফ্রস্টেড সার্চ ক্যাপসুল + ডেট + CSV + রিফ্রেশ ══ */}
+      <div className="mx-auto flex max-w-full flex-wrap items-center justify-center gap-2.5">
+        {/* ফ্রস্টেড গ্লাস সার্চ ক্যাপসুল */}
+        <div className="relative min-w-[200px] max-w-[340px] flex-1 max-[640px]:max-w-full max-[640px]:basis-full">
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="pointer-events-none absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-brand-accent"
+            className="pointer-events-none absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-brand-light"
           >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.3-4.3" />
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
           </svg>
+
           <input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="অর্ডার নম্বর / গ্রাহকের নাম / ফোন নম্বর..."
-            className="h-[38px] w-full rounded-[10px] border border-border-base bg-brand-surface pl-9 pr-8 text-xs text-ink outline-none transition-brand placeholder:text-muted focus:border-brand-accent"
+            placeholder="অর্ডার নং / গ্রাহকের নাম / ফোন নম্বর..."
+            className="h-[40px] w-full rounded-full border border-white/90 bg-white/80 pl-10 pr-9 font-body text-[12.5px] text-ink placeholder:text-muted/70 shadow-xs backdrop-blur-md outline-none transition-all duration-brand focus:border-brand-light focus:bg-white focus:shadow-sh1"
           />
+
           {search && (
             <button
               type="button"
               onClick={() => onSearchChange('')}
-              aria-label="মুছুন"
-              className="absolute right-1.5 top-1/2 flex h-[22px] w-[22px] -translate-y-1/2 items-center justify-center rounded-full bg-surface-muted text-muted transition-brand hover:bg-border-base"
+              aria-label="সার্চ মুছুন"
+              className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-surface-muted text-muted transition-colors hover:bg-brand-light hover:text-white"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" className="h-3 w-3">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
           )}
         </div>
 
+        {/* ডেট রেঞ্জ পিকার (ট্যাকটাইল পিল) */}
         <DateRangePicker
           active={dateActive}
           range={dateRange}
@@ -100,24 +104,26 @@ export default function OrdersToolbar({
           inactiveLabel="সব তারিখ"
         />
 
+        {/* CSV রিপোর্ট এক্সপোর্ট ড্রপডাউন */}
         <CsvExportMenu onExportAll={onExportAll} onExportRange={onExportRange} />
 
+        {/* রিফ্রেশ বাটন — ডেস্কটপ */}
         <button
           type="button"
           onClick={onRefresh}
           disabled={refreshing}
-          title="রিফ্রেশ"
-          aria-label="রিফ্রেশ"
-          className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] border border-border-base bg-brand-surface text-brand-accent transition-brand hover:bg-surface-muted disabled:opacity-50 max-[640px]:hidden"
+          title="রিফ্রেশ করুন"
+          aria-label="রিফ্রেশ করুন"
+          className="hidden h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-border-base/80 bg-white text-ink shadow-xs backdrop-blur-md transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-light active:scale-90 disabled:opacity-50 sm:flex"
         >
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+            className={`h-4 w-4 ${refreshing ? 'animate-spin text-brand-light' : ''}`}
           >
             <path d="M21 12a9 9 0 1 1-3-6.7" />
             <path d="M21 4v5h-5" />
@@ -125,9 +131,8 @@ export default function OrdersToolbar({
         </button>
       </div>
 
-      {/* সারি ২ — legacy .ord-toolbar (নিজস্ব আলাদা সারি, কার্ডের বাইরে, সেন্টার্ড, max-width:760px):
-          স্ট্যাটাস ফিল্টার + পরিষ্কার করুন + (মোবাইলে) রিফ্রেশ + বাল্ক-কনফার্ম পিল */}
-      <div className="mx-auto mb-4.5 flex max-w-[760px] flex-wrap items-center justify-center gap-2.5">
+      {/* ══ সারি ২ — স্ট্যাটাস ড্রপডাউন + পরিষ্কার বাটন + বাল্ক অ্যাকশন বার ══ */}
+      <div className="mx-auto flex max-w-[760px] flex-wrap items-center justify-center gap-2">
         <OrderStatusDropdown
           selectedCount={selectedCount}
           filterStatus={filterStatus}
@@ -135,72 +140,78 @@ export default function OrdersToolbar({
           onSelectBulk={onSelectBulk}
         />
 
+        {/* পরিষ্কার করুন বাটন */}
         <button
           type="button"
           onClick={onClearFilters}
-          className="flex h-[38px] shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] border border-border-base bg-brand-surface py-0 pl-2 pr-3.5 text-xs font-semibold text-[#374151] transition-brand hover:bg-surface-muted"
+          className="group flex h-[38px] shrink-0 items-center gap-1.5 rounded-full border border-border-base/80 bg-white px-3.5 font-body text-[12px] font-bold text-ink shadow-xs backdrop-blur-md transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-light active:scale-95"
         >
-          <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-surface-muted text-muted">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" className="h-2.5 w-2.5">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </span>
-          পরিষ্কার করুন
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted transition-colors group-hover:text-brand-light">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+          <span>পরিষ্কার করুন</span>
         </button>
 
-        {/* মোবাইলে হেডারে জায়গা না থাকায় রিফ্রেশ বাটনের দ্বিতীয় কপি এখানে (ডেস্কটপে লুকানো) */}
+        {/* মোবাইলের জন্য রিফ্রেশ বাটন */}
         <button
           type="button"
           onClick={onRefresh}
           disabled={refreshing}
           aria-label="রিফ্রেশ"
-          className="hidden h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] border border-border-base bg-brand-surface text-brand-accent transition-brand hover:bg-surface-muted disabled:opacity-50 max-[640px]:flex"
+          className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-border-base/80 bg-white text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:text-brand-light active:scale-90 disabled:opacity-50 sm:hidden"
         >
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+            className={`h-4 w-4 ${refreshing ? 'animate-spin text-brand-light' : ''}`}
           >
             <path d="M21 12a9 9 0 1 1-3-6.7" />
             <path d="M21 4v5h-5" />
           </svg>
         </button>
 
+        {/* ══ বাল্ক-কনফার্ম ফ্রস্টেড ক্যাপসুল বার (গাঢ় নীল সম্পূর্ণ বর্জন) ══ */}
         {selectedCount > 0 && bulkPendingStatus && (
-          <div className="flex h-[38px] shrink-0 items-center gap-2 rounded-[10px] border border-border-base bg-brand-surface py-0 pl-3.5 pr-1.5 shadow-sh1">
-            <span className="max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold text-[#374151]">
-              <b>{selectedCount}</b>টি অর্ডারের স্ট্যাটাস{' '}
-              <b style={{ color: ORDER_STATUS_META[bulkPendingStatus].dot }}>{ORDER_STATUS_META[bulkPendingStatus].label}</b>
+          <div className="flex h-[38px] shrink-0 items-center gap-2 rounded-full border border-brand-light/40 bg-white px-3 shadow-sh1 backdrop-blur-md">
+            <span className="font-body text-[12px] font-bold text-ink">
+              <b className="text-brand-light">{selectedCount}</b>টি অর্ডার →{' '}
+              <span style={{ color: ORDER_STATUS_META[bulkPendingStatus].dot }}>
+                {ORDER_STATUS_META[bulkPendingStatus].label}
+              </span>
             </span>
+
+            {/* কনফার্ম বাটন: খাঁটি সিগনেচার স্কাই-ব্লু (#44A7FC), কোনো কড়া গাঢ় নীল নেই */}
             <button
               type="button"
               onClick={onConfirmBulk}
               disabled={bulkBusy}
-              className="flex h-[30px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-brand-grad px-3.5 text-xs font-bold text-white transition-brand hover:brightness-110 disabled:opacity-60"
+              className="flex h-[28px] items-center gap-1 rounded-full bg-brand-light px-3 font-body text-[11.5px] font-extrabold text-white shadow-xs transition-all duration-brand hover:bg-brand-light-hover active:scale-95 disabled:opacity-60"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
-                <path d="M20 6 9 17l-5-5" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
               </svg>
-              {bulkBusy ? 'হচ্ছে…' : 'ওকে, পরিবর্তন করুন'}
+              <span>{bulkBusy ? 'হচ্ছে...' : 'পরিবর্তন করুন'}</span>
             </button>
+
+            {/* বাতিল বাটন */}
             <button
               type="button"
               onClick={onCancelBulk}
               disabled={bulkBusy}
-              aria-label="বাতিল"
-              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-border-base bg-surface-muted text-muted transition-brand hover:border-danger/30 hover:bg-danger/[.12] hover:text-danger disabled:opacity-50"
+              aria-label="বাতিল করুন"
+              className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-surface-muted text-muted transition-colors hover:bg-red-50 hover:text-danger active:scale-90"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" className="h-3 w-3">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
