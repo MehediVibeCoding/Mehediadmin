@@ -7,6 +7,7 @@ import { getCleanIcon } from '@/lib/constants/categories';
 import { sanitizeSvgHtml } from '@/lib/sanitizeSvg';
 import { addCategory, updateCategory, deleteCategory, reorderCategories } from '@/app/actions/categories';
 import { useToast } from '@/components/admin/Toast';
+import GuidePagesListModal from '@/components/guides/GuidePagesListModal';
 
 interface Props {
   categories: CategoryOption[];
@@ -26,6 +27,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
   const { showToast } = useToast();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [guidePagesFor, setGuidePagesFor] = useState<CategoryOption | null>(null);
   const dragIdx = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const touchDragging = useRef(false);
@@ -173,6 +175,14 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
               </a>
               <button
                 type="button"
+                onClick={() => setGuidePagesFor(c)}
+                className="shrink-0 rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-medium text-brand-primary transition-brand hover:bg-blue-50"
+                title="গাইড পেজ (Pillar/Comparison/Design Ideas SEO পেজ)"
+              >
+                📄 গাইড পেজ
+              </button>
+              <button
+                type="button"
                 onClick={() => openEdit(c)}
                 className="shrink-0 rounded-md border border-border-base bg-white p-1.5 text-ink transition-brand hover:border-brand-primary"
                 title="এডিট করুন"
@@ -261,6 +271,15 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
             </div>
           </div>
         </div>
+      )}
+
+      {guidePagesFor && (
+        <GuidePagesListModal
+          scope="category"
+          entityId={guidePagesFor.id}
+          entityLabel={guidePagesFor.name}
+          onClose={() => setGuidePagesFor(null)}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import type { Product } from '@/types';
 import { getCleanIcon, type CategoryOption } from '@/lib/constants/categories';
 import { deleteProduct, updateBadge, updateProductOrder, updateStock } from '@/app/actions/products';
 import QuickEditPopover from './QuickEditPopover';
+import GuidePagesListModal from '@/components/guides/GuidePagesListModal';
 
 const PG_SIZE = 14;
 
@@ -21,6 +22,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
   const [catFilter, setCatFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [popover, setPopover] = useState<{ product: Product; kind: 'stock' | 'badge' } | null>(null);
+  const [guidePagesFor, setGuidePagesFor] = useState<Product | null>(null);
   const [dragOrder, setDragOrder] = useState<number[] | null>(null); // বর্তমান পেজের rows-এর id, ড্র্যাগ চলাকালীন লাইভ অর্ডার
   const dragState = useRef<{ id: number } | null>(null);
 
@@ -270,7 +272,10 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                         <span className="text-xl">{firstImg}</span>
                       )}
                     </td>
-                    <td className="max-w-[180px] py-1.5 text-xs font-semibold">{p.name}</td>
+                    <td className="max-w-[180px] py-1.5 text-xs font-semibold">
+                      {p.name}
+                      <div className="text-[10px] font-normal text-muted">#{p.id}</div>
+                    </td>
                     <td>
                       <div className="flex items-center gap-1.5">
                         {p.badge ? (
@@ -322,6 +327,13 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                           ✎
                         </button>
                         <button
+                          onClick={() => setGuidePagesFor(p)}
+                          className="rounded-md border border-blue-200 p-1.5 text-brand-primary hover:bg-blue-50"
+                          title="গাইড পেজ (Installation/App-Remote SEO পেজ)"
+                        >
+                          📄
+                        </button>
+                        <button
                           onClick={() => handleDelete(p)}
                           className="rounded-md border border-red-200 p-1.5 text-danger hover:bg-red-50"
                           title="ডিলিট করুন"
@@ -367,6 +379,15 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
           initialValue={popover.kind === 'stock' ? popover.product.stock ?? 0 : popover.product.badge || ''}
           onSave={handleQuickSave}
           onClose={() => setPopover(null)}
+        />
+      )}
+
+      {guidePagesFor && (
+        <GuidePagesListModal
+          scope="product"
+          entityId={guidePagesFor.id}
+          entityLabel={guidePagesFor.name}
+          onClose={() => setGuidePagesFor(null)}
         />
       )}
     </div>
