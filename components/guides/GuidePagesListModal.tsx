@@ -5,6 +5,14 @@
 // guide_page_templates থেকে লাইভ লোড হয়, তাই নতুন টেমপ্লেট যোগ করলে এখানে
 // কোনো কোড পরিবর্তন ছাড়াই দেখা যাবে। নতুন পেজ তৈরি করলে টেমপ্লেটের block_skeleton
 // অটো-ফিল হয়ে আসে (দেখুন app/actions/guidePages.ts-এর createGuidePage)।
+//
+// [২০২৬-০৯ আপডেট] আগে এখানে স্লাগ + টাইটেল (বাংলা/English) — তিনটাই আগে থেকে
+// টাইপ করা বাধ্যতামূলক ছিল, তৈরি করার আগেই। কিন্তু আসল SEO কনটেন্ট paste করলে
+// GuideEditorModal-এর "পেস্ট করে বসান" ট্যাব (lib/guide-content-parser.ts) এমনিতেই
+// H1/Slug/Meta — সব parse করে বসিয়ে দেয়, তাই এই ফর্মে আগে থেকে সেগুলো চাওয়াটা
+// শুধু ডাবল-এন্ট্রি তৈরি করছিল। এখন থেকে শুধু টেমপ্লেট বেছে নিলেই হয় — slug একটা
+// অস্থায়ী ইউনিক draft-id দিয়ে অটো-জেনারেট হয়, h1 সার্ভার-সাইড ডিফল্ট ('শিরোনাম দিন')
+// পায় (দেখুন createGuidePage), এডিটর সরাসরি পেস্ট-ট্যাব খোলা অবস্থায় ওপেন হয়ে যায়।
 
 'use client';
 
@@ -35,10 +43,14 @@ export default function GuidePagesListModal({
   const [editing, setEditing] = useState<GuidePage | null>(null);
   const [creating, setCreating] = useState(false);
   const [newTypeKey, setNewTypeKey] = useState<string>('');
-  const [newSlug, setNewSlug] = useState('');
-  const [newH1Bn, setNewH1Bn] = useState('');
-  const [newH1En, setNewH1En] = useState('');
   const [saving, setSaving] = useState(false);
+
+  /** স্লাগ আপাতত অস্থায়ী — content paste করে parse করার সাথে সাথে আসল স্লাগ
+   *  এটাকে ওভাররাইট করে দেয় (দেখুন GuideEditorModal-এর "পেস্ট করে বসান" ট্যাব)।
+   *  শুধু DB-এর not-null/unique constraint সন্তুষ্ট করার জন্য একটা ইউনিক মান দরকার। */
+  function generateDraftSlug(): string {
+    return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  }
 
   const availableTemplates = (templates ?? []).filter((t) => t.is_active && t.scope === scope);
 
@@ -66,29 +78,26 @@ export default function GuidePagesListModal({
   }
 
   async function handleCreate() {
-    if (!newSlug.trim() || !newH1Bn.trim() || !newTypeKey) {
-      showToast('পেজের ধরন, স্লাগ আর টাইটেল (বাংলা) দিতে হবে');
+    if (!newTypeKey) {
+      showToast('একটা টেমপ্লেট বেছে নিতে হবে');
       return;
     }
     setSaving(true);
     const res = await createGuidePage({
       page_type: newTypeKey,
-      slug: newSlug,
+      slug: generateDraftSlug(),
       category_id: scope === 'category' ? String(entityId) : null,
       product_id: scope === 'product' ? Number(entityId) : null,
-      h1_bn: newH1Bn,
-      h1_en: newH1En || newH1Bn,
+      h1_bn: '',
+      h1_en: '',
     });
     setSaving(false);
     if (!res.ok || !res.page) {
       showToast('❌ ' + (res.message || 'তৈরি ব্যর্থ'));
       return;
     }
-    showToast('✅ টেমপ্লেট থেকে নতুন পেজ তৈরি হয়েছে — এখন এডিট করুন');
+    showToast('✅ ড্রাফট তৈরি হয়েছে — এখন কনটেন্ট পেস্ট করুন');
     setCreating(false);
-    setNewSlug('');
-    setNewH1Bn('');
-    setNewH1En('');
     await load();
     setEditing(res.page);
   }
@@ -152,27 +161,17 @@ export default function GuidePagesListModal({
                 <label className="mb-1 block text-[11px] font-semibold text-ink">টেমপ্লেট বেছে নিন</label>
                 <select value={newTypeKey} onChange={(e) => setNewTypeKey(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]">
                   {availableTemplates.map((t) => (
-                    <option key={t.key} value={t.key}>{t.name_bn} ({t.block_skeleton.length} ব্লক দিয়ে শুরু হবে)</option>
+                    <option key={t.key} value={t.key}>{t.name_bn}</option>
                   ))}
                 </select>
               </div>
-              <div className="mb-2.5">
-                <label className="mb-1 block text-[11px] font-semibold text-ink">URL Slug</label>
-                <input value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="neon-light-bangladesh-guide" className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-              </div>
-              <div className="mb-2.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">টাইটেল (বাংলা)</label>
-                  <input value={newH1Bn} onChange={(e) => setNewH1Bn(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">টাইটেল (English)</label>
-                  <input value={newH1En} onChange={(e) => setNewH1En(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-              </div>
+              <p className="mb-2.5 text-[11px] text-muted">
+                পরের ধাপে সরাসরি এডিটরের &quot;পেস্ট করে বসান&quot; ট্যাব খুলবে — সেখানে কনটেন্ট পেস্ট করলেই
+                URL Slug, টাইটেল, মেটা — সবকিছু নিজে থেকে বসে যাবে।
+              </p>
               <div className="flex gap-2">
                 <button disabled={saving} onClick={handleCreate} className="flex-1 rounded-brand bg-ink py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">
-                  {saving ? 'তৈরি হচ্ছে...' : 'তৈরি করুন ও এডিট করুন'}
+                  {saving ? 'তৈরি হচ্ছে...' : 'তৈরি করুন'}
                 </button>
                 <button onClick={() => setCreating(false)} className="rounded-brand border border-border-base px-4 py-2 text-sm">বাতিল</button>
               </div>
