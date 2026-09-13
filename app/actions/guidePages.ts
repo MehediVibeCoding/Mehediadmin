@@ -1,17 +1,36 @@
 // ফাইলের পাথ: app/actions/guidePages.ts
 // [NEW] guide_pages টেবিলের সব সার্ভার অ্যাকশন — list/create/update/delete/publish।
 // প্যাটার্ন app/actions/products.ts আর app/actions/categories.ts-এর সাথে হুবহু মিলিয়ে লেখা:
-// প্রতিটা অ্যাকশন নিজে requireAdmin() কল করে, service-role client দিয়ে DB টাচ করে, revalidatePath করে।
+// প্রতিটা অ্যাকশন নিজে requireAdmin() কল করে, service-role client দিয়ে DB টাচ করে।
+// ⚠️ revalidatePath() এখানে ব্যবহার করা হয় না — এই রিপো আর Vangcur আলাদা ডিপ্লয়মেন্ট,
+// তাই এখান থেকে revalidatePath(...) কল করলে Vangcur-এর লাইভ ক্যাশ ছোঁয় না, নিজের
+// (অস্তিত্বহীন) রুট রিভ্যালিডেট করে মাত্র। এর বদলে revalidateGuidePage() দিয়ে
+// Vangcur-এর /api/revalidate-guide এন্ডপয়েন্ট হিট করা হয় — দেখুন lib/revalidateGuidePage.ts।
 
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { sanitizeInput } from '@/lib/security';
-import type { GuideBlock, GuidePage, GuidePageType } from '@/types/guides';
+import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
+import { guidePageUrlPath } from '@/types/guides';
+import type { GuideBlock, GuidePage, GuidePageTemplate, GuidePageType } from '@/types/guides';
 
 const TABLE = 'guide_pages';
+
+/** guide_page_templates থেকে একটা key-এর url_prefix + block_skeleton আনা — নতুন পেজ
+ *  তৈরি করার সময় (block prefill) আর revalidation path বানানোর সময়, দুই জায়গাতেই লাগে */
+async function fetchTemplate(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  key: string
+): Promise<Pick<GuidePageTemplate, 'url_prefix' | 'block_skeleton'> | null> {
+  const { data } = await supabase
+    .from('guide_page_templates')
+    .select('url_prefix, block_skeleton')
+    .eq('key', key)
+    .maybeSingle();
+  return data ?? null;
+}
 
 /** blocks[]-এর ভেতরের সব string leaf value থেকে script/HTML ট্যাগ সরানো — গভীর পর্যন্ত recursive */
 function deepSanitize<T>(value: T): T {
@@ -34,6 +53,29 @@ export interface GuidePageActionResult {
 // ══════════════════════════════════════════════════════════════
 //  READ
 // ══════════════════════════════════════════════════════════════
+
+export interface LinkableGuidePage {
+  id: string;
+  slug: string;
+  h1_bn: string;
+  h1_en: string;
+  page_type: string;
+  is_published: boolean;
+}
+
+/** RelatedLinks/CTA ব্লক-এডিটরে "অন্য একটা গাইড পেজ বেছে নিন" পিকার বসানোর জন্য —
+ *  পুরো blocks[] না, শুধু হালকা কয়েকটা ফিল্ড, তাই পুরো অ্যাডমিনে ড্রপডাউন-ভারী
+ *  হয়ে গেলেও পারফরম্যান্স সমস্যা হয় না */
+export async function listAllGuidePagesForLinking(): Promise<LinkableGuidePage[]> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id, slug, h1_bn, h1_en, page_type, is_published')
+    .order('h1_bn', { ascending: true });
+  if (error) return [];
+  return (data || []) as LinkableGuidePage[];
+}
 
 export async function listGuidePagesByProduct(productId: number): Promise<GuidePage[]> {
   await requireAdmin();
@@ -97,6 +139,12 @@ export async function createGuidePage(input: CreateGuidePageInput): Promise<Guid
   const h1_bn = sanitizeInput(input.h1_bn) || 'শিরোনাম দিন';
   const h1_en = sanitizeInput(input.h1_en) || h1_bn;
 
+  // নতুন পেজ খালি ব্লক দিয়ে না, বেছে নেওয়া টেমপ্লেটের block_skeleton দিয়ে শুরু হয় —
+  // এটাই "টেমপ্লেট থেকে নতুন পেজ" ফ্লো-র মূল অংশ। টেমপ্লেট না পাওয়া গেলেও (edge case)
+  // পেজ তৈরি আটকাবে না, শুধু খালি ব্লক দিয়ে শুরু হবে।
+  const template = await fetchTemplate(supabase, input.page_type);
+  const initialBlocks = (template?.block_skeleton ?? []) as GuideBlock[];
+
   const { data, error } = await supabase
     .from(TABLE)
     .insert({
@@ -111,7 +159,7 @@ export async function createGuidePage(input: CreateGuidePageInput): Promise<Guid
       h1_bn,
       h1_en,
       target_keywords: [],
-      blocks: [] as GuideBlock[],
+      blocks: initialBlocks,
       is_published: false,
       updated_by: email,
     })
@@ -123,7 +171,7 @@ export async function createGuidePage(input: CreateGuidePageInput): Promise<Guid
     return { ok: false, message: dup ? 'এই স্লাগ আগে থেকেই ব্যবহার হচ্ছে' : 'তৈরি ব্যর্থ: ' + error?.message };
   }
 
-  revalidatePath('/guides');
+  await revalidateGuidePage(guidePageUrlPath(slug, template?.url_prefix ?? ''));
   return { ok: true, page: data as GuidePage };
 }
 
@@ -155,6 +203,12 @@ export async function updateGuidePage(input: UpdateGuidePageInput): Promise<Guid
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
+  // slug বদলে গেলে পুরনো URL-টাও রিভ্যালিডেট করতে হবে, তাই আপডেটের আগেই বর্তমান slug/page_type ধরে রাখা
+  const { data: existing } = await supabase.from(TABLE).select('slug, page_type').eq('id', input.id).maybeSingle();
+  const oldSlug = existing?.slug as string | undefined;
+  const pageType = existing?.page_type as string | undefined;
+  const template = pageType ? await fetchTemplate(supabase, pageType) : null;
+
   const { data, error } = await supabase
     .from(TABLE)
     .update({
@@ -178,7 +232,12 @@ export async function updateGuidePage(input: UpdateGuidePageInput): Promise<Guid
     return { ok: false, message: dup ? 'এই স্লাগ আগে থেকেই ব্যবহার হচ্ছে' : 'সেভ ব্যর্থ: ' + error?.message };
   }
 
-  revalidatePath('/guides');
+  const prefix = template?.url_prefix ?? '';
+  // slug বদলে গেলে পুরনো URL-টাও রিভ্যালিডেট করা দরকার (নাহলে সেটা স্টেল ক্যাশ নিয়ে পড়ে থাকতে পারে)
+  await Promise.all([
+    revalidateGuidePage(guidePageUrlPath(slug, prefix)),
+    ...(oldSlug && oldSlug !== slug ? [revalidateGuidePage(guidePageUrlPath(oldSlug, prefix))] : []),
+  ]);
   return { ok: true, page: data as GuidePage };
 }
 
@@ -202,8 +261,10 @@ export async function setGuidePagePublished(id: string, published: boolean): Pro
 
   if (error || !data) return { ok: false, message: 'স্ট্যাটাস বদলানো ব্যর্থ: ' + error?.message };
 
-  revalidatePath('/guides');
-  return { ok: true, page: data as GuidePage };
+  const page = data as GuidePage;
+  const template = await fetchTemplate(supabase, page.page_type);
+  await revalidateGuidePage(guidePageUrlPath(page.slug, template?.url_prefix ?? ''));
+  return { ok: true, page };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -213,9 +274,17 @@ export async function setGuidePagePublished(id: string, published: boolean): Pro
 export async function deleteGuidePage(id: string): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
+
+  // ডিলিট করার আগেই slug/page_type ধরে রাখা — রো মুছে যাওয়ার পর আর সেটা জানার উপায় থাকবে না
+  const { data: existing } = await supabase.from(TABLE).select('slug, page_type').eq('id', id).maybeSingle();
+
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) return { ok: false, message: 'ডিলিট ব্যর্থ: ' + error.message };
-  revalidatePath('/guides');
+
+  if (existing) {
+    const template = await fetchTemplate(supabase, existing.page_type as string);
+    await revalidateGuidePage(guidePageUrlPath(existing.slug as string, template?.url_prefix ?? ''));
+  }
   return { ok: true };
 }
 

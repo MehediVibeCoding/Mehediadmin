@@ -1,13 +1,18 @@
 // ফাইলের পাথ: components/guides/GuidePagesListModal.tsx
-// [NEW] প্রোডাক্ট/ক্যাটাগরি লিস্টের "গাইড পেজ" বাটনে ক্লিক করলে এটা খোলে —
+// [REPLACE] প্রোডাক্ট/ক্যাটাগরি লিস্টের "গাইড পেজ" বাটনে ক্লিক করলে এটা খোলে —
 // এই প্রোডাক্ট/ক্যাটাগরির সব গাইড পেজ দেখায়, নতুন পেজ তৈরির ফর্মও এখানেই।
+// আগে পেজ-টাইপের লিস্ট কোডে হার্ডকোড করা ছিল (GUIDE_PAGE_TYPE_LABELS) — এখন
+// guide_page_templates থেকে লাইভ লোড হয়, তাই নতুন টেমপ্লেট যোগ করলে এখানে
+// কোনো কোড পরিবর্তন ছাড়াই দেখা যাবে। নতুন পেজ তৈরি করলে টেমপ্লেটের block_skeleton
+// অটো-ফিল হয়ে আসে (দেখুন app/actions/guidePages.ts-এর createGuidePage)।
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { GuidePage, GuidePageType } from '@/types/guides';
-import { GUIDE_PAGE_TYPE_LABELS, GUIDE_PAGE_SCOPE } from '@/types/guides';
+import type { GuidePage, GuidePageTemplate } from '@/types/guides';
+import { guidePageUrlPath } from '@/types/guides';
 import { listGuidePagesByProduct, listGuidePagesByCategory, createGuidePage } from '@/app/actions/guidePages';
+import { listGuideTemplates } from '@/app/actions/guideTemplates';
 import { useToast } from '@/components/admin/Toast';
 import GuideEditorModal from './GuideEditorModal';
 
@@ -26,19 +31,24 @@ export default function GuidePagesListModal({
 }) {
   const { showToast } = useToast();
   const [pages, setPages] = useState<GuidePage[] | null>(null);
+  const [templates, setTemplates] = useState<GuidePageTemplate[] | null>(null);
   const [editing, setEditing] = useState<GuidePage | null>(null);
   const [creating, setCreating] = useState(false);
-  const [newType, setNewType] = useState<GuidePageType>(scope === 'product' ? 'installation_guide' : 'pillar');
+  const [newTypeKey, setNewTypeKey] = useState<string>('');
   const [newSlug, setNewSlug] = useState('');
   const [newH1Bn, setNewH1Bn] = useState('');
   const [newH1En, setNewH1En] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const availableTypes = (Object.keys(GUIDE_PAGE_SCOPE) as GuidePageType[]).filter((t) => GUIDE_PAGE_SCOPE[t] === scope);
+  const availableTemplates = (templates ?? []).filter((t) => t.is_active && t.scope === scope);
 
   async function load() {
-    const data = scope === 'product' ? await listGuidePagesByProduct(Number(entityId)) : await listGuidePagesByCategory(String(entityId));
-    setPages(data);
+    const [pageData, templateData] = await Promise.all([
+      scope === 'product' ? listGuidePagesByProduct(Number(entityId)) : listGuidePagesByCategory(String(entityId)),
+      listGuideTemplates(),
+    ]);
+    setPages(pageData);
+    setTemplates(templateData);
   }
 
   useEffect(() => {
@@ -46,14 +56,23 @@ export default function GuidePagesListModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!newTypeKey && availableTemplates.length > 0) setNewTypeKey(availableTemplates[0].key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates]);
+
+  function templateFor(pageType: string): GuidePageTemplate | undefined {
+    return (templates ?? []).find((t) => t.key === pageType);
+  }
+
   async function handleCreate() {
-    if (!newSlug.trim() || !newH1Bn.trim()) {
-      showToast('স্লাগ আর টাইটেল (বাংলা) দিতে হবে');
+    if (!newSlug.trim() || !newH1Bn.trim() || !newTypeKey) {
+      showToast('পেজের ধরন, স্লাগ আর টাইটেল (বাংলা) দিতে হবে');
       return;
     }
     setSaving(true);
     const res = await createGuidePage({
-      page_type: newType,
+      page_type: newTypeKey,
       slug: newSlug,
       category_id: scope === 'category' ? String(entityId) : null,
       product_id: scope === 'product' ? Number(entityId) : null,
@@ -65,7 +84,7 @@ export default function GuidePagesListModal({
       showToast('❌ ' + (res.message || 'তৈরি ব্যর্থ'));
       return;
     }
-    showToast('✅ নতুন পেজ তৈরি হয়েছে — এখন এডিট করুন');
+    showToast('✅ টেমপ্লেট থেকে নতুন পেজ তৈরি হয়েছে — এখন এডিট করুন');
     setCreating(false);
     setNewSlug('');
     setNewH1Bn('');
@@ -95,23 +114,26 @@ export default function GuidePagesListModal({
 
           {pages && pages.length > 0 && (
             <div className="mb-3 space-y-1.5">
-              {pages.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setEditing(p)}
-                  className="flex w-full items-center justify-between rounded-lg border border-border-base bg-white p-2.5 text-left transition-brand hover:border-brand-primary"
-                >
-                  <div>
-                    <div className="text-[12.5px] font-semibold text-ink">{p.h1_bn}</div>
-                    <div className="text-[10.5px] text-muted">
-                      {GUIDE_PAGE_TYPE_LABELS[p.page_type].bn} · /guides/{p.slug}
+              {pages.map((p) => {
+                const t = templateFor(p.page_type);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setEditing(p)}
+                    className="flex w-full items-center justify-between rounded-lg border border-border-base bg-white p-2.5 text-left transition-brand hover:border-brand-primary"
+                  >
+                    <div>
+                      <div className="text-[12.5px] font-semibold text-ink">{p.h1_bn}</div>
+                      <div className="text-[10.5px] text-muted">
+                        {t?.name_bn ?? p.page_type} · {t ? guidePageUrlPath(p.slug, t.url_prefix) : `/${p.slug}`}
+                      </div>
                     </div>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${p.is_published ? 'bg-green-50 text-[#065F46]' : 'bg-amber-50 text-amber-700'}`}>
-                    {p.is_published ? 'লাইভ' : 'ড্রাফট'}
-                  </span>
-                </button>
-              ))}
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${p.is_published ? 'bg-green-50 text-[#065F46]' : 'bg-amber-50 text-amber-700'}`}>
+                      {p.is_published ? 'লাইভ' : 'ড্রাফট'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -119,17 +141,18 @@ export default function GuidePagesListModal({
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-brand bg-ink py-2.5 text-sm font-semibold text-white hover:opacity-90"
+              disabled={availableTemplates.length === 0}
+              className="flex w-full items-center justify-center gap-1.5 rounded-brand bg-ink py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
             >
-              + নতুন গাইড পেজ যোগ করুন
+              + টেমপ্লেট থেকে নতুন গাইড পেজ
             </button>
           ) : (
             <div className="rounded-lg border border-border-base bg-white p-3">
               <div className="mb-2.5">
-                <label className="mb-1 block text-[11px] font-semibold text-ink">পেজের ধরন</label>
-                <select value={newType} onChange={(e) => setNewType(e.target.value as GuidePageType)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]">
-                  {availableTypes.map((t) => (
-                    <option key={t} value={t}>{GUIDE_PAGE_TYPE_LABELS[t].bn}</option>
+                <label className="mb-1 block text-[11px] font-semibold text-ink">টেমপ্লেট বেছে নিন</label>
+                <select value={newTypeKey} onChange={(e) => setNewTypeKey(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]">
+                  {availableTemplates.map((t) => (
+                    <option key={t.key} value={t.key}>{t.name_bn} ({t.block_skeleton.length} ব্লক দিয়ে শুরু হবে)</option>
                   ))}
                 </select>
               </div>

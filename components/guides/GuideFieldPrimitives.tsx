@@ -4,7 +4,69 @@
 
 'use client';
 
+import { createContext, useContext } from 'react';
 import type { LocalizedText } from '@/types/guides';
+import type { LinkableGuidePage } from '@/app/actions/guidePages';
+
+/** RelatedLinks/CTA এডিটরে "অন্য একটা গাইড পেজ বেছে নিন" ড্রপডাউন বসাতে — GuideEditorModal
+ *  একবার listAllGuidePagesForLinking() কল করে পুরো ব্লক-লিস্টের চারপাশে এই Provider বসায়,
+ *  তাই প্রতিটা এডিটর কম্পোনেন্টে আলাদা করে prop-drill করতে হয় না */
+const LinkablePagesContext = createContext<LinkableGuidePage[]>([]);
+export const LinkablePagesProvider = LinkablePagesContext.Provider;
+export function useLinkablePages(): LinkableGuidePage[] {
+  return useContext(LinkablePagesContext);
+}
+
+/** targetPageId (অন্য গাইড পেজ) অথবা raw href — দুটোর একটা বেছে নেওয়ার কম্বো ফিল্ড।
+ *  targetPageId সেট থাকলে সেটাই প্রেফার্ড; ড্রপডাউনে "— নিজে URL লিখুন —" বেছে নিলে
+ *  নিচের raw URL ইনপুট দেখায়। */
+export function GuideLinkTargetField({
+  label,
+  targetPageId,
+  href,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  targetPageId?: string;
+  href?: string;
+  onChange: (next: { targetPageId?: string; href?: string }) => void;
+  placeholder?: string;
+}) {
+  const pages = useLinkablePages();
+  const useCustomUrl = !targetPageId;
+
+  return (
+    <div className="mb-2.5">
+      <label className="mb-1 block text-[11.5px] font-semibold text-muted">{label}</label>
+      <select
+        value={targetPageId ?? '__custom__'}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === '__custom__') onChange({ targetPageId: undefined, href: href ?? '' });
+          else onChange({ targetPageId: v, href: undefined });
+        }}
+        className="mb-1.5 w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]"
+      >
+        <option value="__custom__">— নিজে URL লিখুন —</option>
+        {pages.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.h1_bn || p.slug} {!p.is_published ? '(draft)' : ''}
+          </option>
+        ))}
+      </select>
+      {useCustomUrl && (
+        <input
+          type="text"
+          value={href ?? ''}
+          onChange={(e) => onChange({ targetPageId: undefined, href: e.target.value })}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]"
+        />
+      )}
+    </div>
+  );
+}
 
 export function LocalizedTextInput({
   label,

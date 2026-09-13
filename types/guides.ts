@@ -1,4 +1,4 @@
-// ফাইলের পাথ: types/guides.ts (Vangcur রিপোর সাথে হুবহু মিলিয়ে রাখা — GuideBlock শেপ দুই রিপোতেই একই থাকা জরুরি)
+// ফাইলের পাথ: types/guides.ts
 // [NEW] প্রোগ্রামেটিক SEO "Guide Pages" সিস্টেমের সব টাইপ ডেফিনিশন।
 // এখানে টাইপ পাল্টালে guide_pages টেবিলের `blocks` কলামের শেপও সেভাবেই বদলাতে হবে।
 
@@ -117,7 +117,12 @@ export interface FaqBlock extends BaseBlock {
 
 export interface RelatedLinkItem {
   title: LocalizedText;
-  href: string;
+  /** পুরনো raw href — এখনো সাপোর্টেড (বাইরের লিংক, বা যেকোনো non-guide পেজের জন্য) */
+  href?: string;
+  /** নতুন, প্রেফার্ড উপায় — অন্য একটা guide_pages রো-কে সরাসরি রেফারেন্স করে।
+   *  থাকলে href-এর বদলে এটাই ব্যবহার হয়, আর URL রেন্ডার-টাইমে resolve হয় (টেমপ্লেটের
+   *  url_prefix + slug দিয়ে) — তাই টার্গেট পেজের slug/prefix বদলালেও লিংক ভাঙে না। */
+  targetPageId?: string;
   icon?: string;
 }
 
@@ -143,7 +148,10 @@ export interface CtaBlock extends BaseBlock {
   type: 'cta';
   heading: LocalizedText;
   buttonLabel: LocalizedText;
-  href: string;
+  /** raw href (বাইরের লিংক/product পেজ/ইত্যাদির জন্য) — targetPageId না থাকলে এটা ব্যবহার হয় */
+  href?: string;
+  /** অন্য একটা guide page-কে রেফারেন্স করলে — RelatedLinkItem.targetPageId-এর মতোই আচরণ করে */
+  targetPageId?: string;
 }
 
 /** নতুন ব্লক-টাইপ যোগ করতে হলে এখানে union-এ একটা লাইন যোগ করলেই GuideBlockRenderer-এ সুইচ-কেস যোগ করার আগ পর্যন্ত TS এরর দেখাবে */
@@ -162,12 +170,9 @@ export type GuideBlock =
   | GalleryBlock
   | CtaBlock;
 
-export type GuidePageType =
-  | 'pillar'
-  | 'comparison'
-  | 'design_ideas'
-  | 'installation_guide'
-  | 'app_remote_guide';
+/** guide_page_templates.key-কে রেফারেন্স করে — এখন থেকে fixed union না, কারণ নতুন
+ *  টেমপ্লেট Mehediadmin-এর Template Manager দিয়ে কোডে হাত না দিয়েই যোগ করা যায় */
+export type GuidePageType = string;
 
 export interface GuidePage {
   id: string;
@@ -188,20 +193,40 @@ export interface GuidePage {
   updated_at: string;
 }
 
-/** অ্যাডমিনে "+" বাটনে ক্লিক করলে পেজ-টাইপ পিকারে যা দেখানো হবে */
-export const GUIDE_PAGE_TYPE_LABELS: Record<GuidePageType, LocalizedText> = {
-  pillar: { bn: 'পিলার / হাব পেজ', en: 'Pillar / Hub Page' },
-  comparison: { bn: 'কম্প্যারিজন পেজ', en: 'Comparison Page' },
-  design_ideas: { bn: 'ডিজাইন আইডিয়াস পেজ', en: 'Design Ideas Page' },
-  installation_guide: { bn: 'ইনস্টলেশন গাইড', en: 'Installation Guide' },
-  app_remote_guide: { bn: 'অ্যাপ/রিমোট গাইড', en: 'App & Remote Guide' },
-};
+/** guide_page_templates টেবিলের একটা রো — কোন page_type-এর জন্য কী ব্লক-স্কেলিটন,
+ *  কোন URL prefix, category না product-ভিত্তিক — সবকিছু এখন এখান থেকে আসে,
+ *  কোডে হার্ডকোড করা কিছু না। */
+export interface GuidePageTemplate {
+  id: string;
+  key: string;
+  name_bn: string;
+  name_en: string;
+  scope: 'category' | 'product';
+  /** খালি স্ট্রিং হলে /guides/[slug] সরাসরি; নাহলে /guides/{url_prefix}/[slug] */
+  url_prefix: string;
+  block_skeleton: GuideBlock[];
+  is_active: boolean;
+  updated_at: string;
+}
 
-/** কোন পেজ-টাইপ ক্যাটাগরির সাথে যুক্ত, কোনটা প্রোডাক্টের সাথে — UI-তে সঠিক পিকার দেখাতে ব্যবহার হয় */
-export const GUIDE_PAGE_SCOPE: Record<GuidePageType, 'category' | 'product'> = {
-  pillar: 'category',
-  comparison: 'category',
-  design_ideas: 'category',
-  installation_guide: 'product',
-  app_remote_guide: 'product',
-};
+/** নতুন টেমপ্লেট বানানোর সময় url_prefix হিসেবে Vangcur-এর existing top-level static
+ *  route-এর নাম বসানো যাবে না — নাহলে সেই রুটের সাথে সংঘর্ষ হতে পারে। গাইড পেজগুলো
+ *  এখন root-level ক্যাচ-অল দিয়ে সার্ভ হয় (কোনো ভাগাভাগি "/guides" ছাতা নেই), তাই
+ *  এই লিস্টে Vangcur-এর প্রতিটা প্রকৃত top-level রুট থাকা জরুরি। নতুন static রুট
+ *  যোগ হলে এই লিস্টেও যোগ করে দিতে হবে (Vangcur ও Mehediadmin দুই জায়গাতেই)। */
+export const RESERVED_URL_PREFIXES = [
+  'account', 'api', 'category', 'checkout', 'guide', 'guides', 'offers',
+  'product', 'reset-password', 'search', 'track-order',
+  'privacy-policy', 'refund-policy', 'shipping', 'terms',
+];
+
+/** guide_page_templates-এর একটা রো থেকে লাইভ URL পাথ বানানো — root-level, কোনো
+ *  ভাগাভাগি "/guides" ছাতা ছাড়া। প্রতিটা টেমপ্লেট তার নিজের url_prefix দিয়ে
+ *  নিজস্ব namespace পায় (pillar খালি prefix দিয়ে সরাসরি রুটে, comparison
+ *  /compare-এ, ইত্যাদি) — সব জায়গায় (sitemap, breadcrumb, related-links
+ *  resolution) এই একই ফাংশন ব্যবহার করা উচিত, যাতে prefix বদলালে একজায়গায়
+ *  বদলালেই সব জায়গায় সঠিক থাকে। */
+export function guidePageUrlPath(slug: string, urlPrefix: string): string {
+  const prefix = urlPrefix.replace(/^\/|\/$/g, '');
+  return prefix ? `/${prefix}/${slug}` : `/${slug}`;
+}

@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import type {
   GuideBlock,
   HeroBlock,
@@ -29,7 +30,7 @@ import type {
   RelatedLinkItem,
   GalleryItem,
 } from '@/types/guides';
-import { LocalizedTextInput, LocalizedTextarea, TextField, SelectField, RepeatingSection, GUIDE_ICON_KEYS } from './GuideFieldPrimitives';
+import { LocalizedTextInput, LocalizedTextarea, TextField, SelectField, RepeatingSection, GUIDE_ICON_KEYS, GuideLinkTargetField } from './GuideFieldPrimitives';
 
 const EMPTY_LOC = { bn: '', en: '' };
 
@@ -336,7 +337,13 @@ function RelatedLinksEditor({ block, onChange }: { block: RelatedLinksBlock; onC
           <>
             <SelectField label="আইকন" value={item.icon ?? ''} onChange={(icon) => update({ ...item, icon })} options={GUIDE_ICON_KEYS.map((k) => ({ value: k, label: k || '(কোনোটাই না)' }))} />
             <LocalizedTextInput label="টাইটেল" value={item.title} onChange={(title) => update({ ...item, title })} />
-            <TextField label="URL" value={item.href} onChange={(href) => update({ ...item, href })} placeholder="/guides/..." />
+            <GuideLinkTargetField
+              label="কোথায় লিংক করবে"
+              targetPageId={item.targetPageId}
+              href={item.href}
+              onChange={(next) => update({ ...item, ...next })}
+              placeholder="/compare/... বা বাইরের কোনো লিংক"
+            />
           </>
         )}
       />
@@ -375,7 +382,13 @@ function CtaEditor({ block, onChange }: { block: CtaBlock; onChange: (b: CtaBloc
     <>
       <LocalizedTextInput label="হেডিং" value={block.heading} onChange={(heading) => onChange({ ...block, heading })} />
       <LocalizedTextInput label="বাটনের টেক্সট" value={block.buttonLabel} onChange={(buttonLabel) => onChange({ ...block, buttonLabel })} />
-      <TextField label="বাটনের লিংক" value={block.href} onChange={(href) => onChange({ ...block, href })} placeholder="/product/..." />
+      <GuideLinkTargetField
+        label="বাটনের লিংক"
+        targetPageId={block.targetPageId}
+        href={block.href}
+        onChange={(next) => onChange({ ...block, ...next })}
+        placeholder="/product/... বা বাইরের কোনো লিংক"
+      />
     </>
   );
 }
@@ -413,4 +426,78 @@ export function BlockEditorSwitch({ block, onChange }: { block: GuideBlock; onCh
     default:
       return null;
   }
+}
+
+/* ────────────────────────────── শেয়ার্ড ব্লক-লিস্ট UI ────────────────────────────── */
+// GuideEditorModal (আসল পেজ) আর Template Manager (block_skeleton) — দুই জায়গাতেই
+// ব্লক যোগ/মুছা/রিঅর্ডার/এক্সপ্যান্ড করার UI হুবহু একই, তাই এখানে একবারই লেখা।
+
+export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[]; onChange: (b: GuideBlock[]) => void }) {
+  const [openBlockId, setOpenBlockId] = useState<string | null>(blocks[0]?.id ?? null);
+  const [addType, setAddType] = useState<GuideBlock['type']>('richText');
+  const allTypes = Object.keys(BLOCK_TYPE_LABELS) as GuideBlock['type'][];
+
+  function moveBlock(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= blocks.length) return;
+    const next = [...blocks];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  }
+
+  function removeBlock(id: string) {
+    if (!confirm('এই ব্লকটা মুছে দেবেন?')) return;
+    onChange(blocks.filter((b) => b.id !== id));
+  }
+
+  function updateBlock(id: string, next: GuideBlock) {
+    onChange(blocks.map((b) => (b.id === id ? next : b)));
+  }
+
+  function addBlock() {
+    const b = createEmptyBlock(addType);
+    onChange([...blocks, b]);
+    setOpenBlockId(b.id);
+  }
+
+  return (
+    <div>
+      <div className="mb-3 space-y-2">
+        {blocks.map((b, i) => {
+          const open = openBlockId === b.id;
+          return (
+            <div key={b.id} className="rounded-lg border border-border-base bg-white">
+              <div className="flex items-center justify-between gap-2 p-2.5">
+                <button type="button" onClick={() => setOpenBlockId(open ? null : b.id)} className="flex-1 text-left text-[12.5px] font-semibold text-ink">
+                  {i + 1}. {BLOCK_TYPE_LABELS[b.type]}
+                </button>
+                <div className="flex shrink-0 gap-1">
+                  <button type="button" disabled={i === 0} onClick={() => moveBlock(i, -1)} className="rounded border border-border-base px-1.5 py-0.5 text-[10px] disabled:opacity-30">↑</button>
+                  <button type="button" disabled={i === blocks.length - 1} onClick={() => moveBlock(i, 1)} className="rounded border border-border-base px-1.5 py-0.5 text-[10px] disabled:opacity-30">↓</button>
+                  <button type="button" onClick={() => removeBlock(b.id)} className="rounded border border-[#FECACA] bg-[#FEE2E2] px-1.5 py-0.5 text-[10px] text-[#991B1B]">মুছুন</button>
+                </div>
+              </div>
+              {open && (
+                <div className="border-t border-border-base p-2.5">
+                  <BlockEditorSwitch block={b} onChange={(next) => updateBlock(b.id, next)} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {blocks.length === 0 && <div className="rounded-lg border border-dashed border-border-base p-4 text-center text-[11.5px] text-muted">এখনো কোনো ব্লক যোগ করা হয়নি</div>}
+      </div>
+
+      <div className="flex items-center gap-2 rounded-lg border border-border-base bg-white p-2.5">
+        <select value={addType} onChange={(e) => setAddType(e.target.value as GuideBlock['type'])} className="flex-1 rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]">
+          {allTypes.map((t) => (
+            <option key={t} value={t}>{BLOCK_TYPE_LABELS[t]}</option>
+          ))}
+        </select>
+        <button type="button" onClick={addBlock} className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">
+          + ব্লক যোগ করুন
+        </button>
+      </div>
+    </div>
+  );
 }
