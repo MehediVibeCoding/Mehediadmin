@@ -12,6 +12,14 @@
 // প্যারামিটার হিসেবে বেয়ার slug না, পুরো resolved path (যেমন '/compare/xyz')
 // পাঠানো হয় — কারণ টেমপ্লেট-ভিত্তিক url_prefix থাকায় সব guide page-এর URL আর
 // একই প্যাটার্নে হয় না। কলার সাইটে guidePageUrlPath() দিয়ে path বানিয়ে দিতে হবে।
+//
+// ⚠️ [বাগফিক্স] আগে এই fetch-এ কোনো timeout ছিল না — VANGCUR_SITE_URL ভুল হলে
+// (যেমন domain resolve না হওয়া, বা deployment ধীর/অনুপলব্ধ) fetch() অনেকক্ষণ ধরে
+// hang করে থাকতে পারত, যার ফলে পুরো updateGuidePage/setGuidePagePublished সার্ভার
+// অ্যাকশনই আটকে থাকত — অ্যাডমিনে "পাবলিশ করুন" বাটন চিরস্থায়ীভাবে "..." দেখাতে
+// থাকার আসল কারণ এটাই ছিল সম্ভবত। এখন AbortController দিয়ে ৫ সেকেন্ডের হার্ড
+// টাইমআউট বসানো হয়েছে — এর বেশি সময় লাগলে রিভ্যালিডেশন স্কিপ হয়ে যাবে, কিন্তু
+// সেভ/পাবলিশ ফ্লো কখনো আটকে থাকবে না।
 
 export async function revalidateGuidePage(path?: string | null): Promise<void> {
   const base = process.env.VANGCUR_SITE_URL;
@@ -19,14 +27,20 @@ export async function revalidateGuidePage(path?: string | null): Promise<void> {
 
   if (!base || !secret) return;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
   try {
     await fetch(`${base.replace(/\/$/, '')}/api/revalidate-guide`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret },
       body: JSON.stringify({ path: path ?? undefined }),
       cache: 'no-store',
+      signal: controller.signal,
     });
   } catch {
-    // best-effort — নেটওয়ার্ক ব্যর্থতায়ও অ্যাডমিনের সেভ/পাবলিশ ফ্লো ব্লক করব না
+    // best-effort — নেটওয়ার্ক ব্যর্থতা বা timeout, দুটোতেই অ্যাডমিনের সেভ/পাবলিশ ফ্লো ব্লক করব না
+  } finally {
+    clearTimeout(timeout);
   }
 }
