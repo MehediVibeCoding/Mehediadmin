@@ -81,32 +81,44 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
 
   async function handleSave() {
     setSaving(true);
-    const res = await updateGuidePage(currentPayload());
-    setSaving(false);
-    if (!res.ok) {
-      showToast('❌ ' + (res.message || 'সেভ ব্যর্থ'));
-      return;
+    try {
+      const res = await updateGuidePage(currentPayload());
+      if (!res.ok) {
+        showToast('❌ ' + (res.message || 'সেভ ব্যর্থ'));
+        return;
+      }
+      showToast('✅ সেভ হয়েছে');
+      onSaved();
+    } catch (err) {
+      // ⚠️ [বাগফিক্স] আগে try/catch ছিল না — এখানে কোনো unexpected এরর/টাইমআউট হলে
+      // setSaving(false) কখনো কল হতো না, বাটন চিরস্থায়ীভাবে "..." দেখাতে থাকত
+      showToast('❌ অপ্রত্যাশিত এরর: ' + (err instanceof Error ? err.message : 'আবার চেষ্টা করুন'));
+    } finally {
+      setSaving(false);
     }
-    showToast('✅ সেভ হয়েছে');
-    onSaved();
   }
 
   async function handlePublishToggle() {
     setPublishing(true);
-    const saveRes = await updateGuidePage(currentPayload());
-    if (!saveRes.ok) {
+    try {
+      const saveRes = await updateGuidePage(currentPayload());
+      if (!saveRes.ok) {
+        showToast('❌ সেভ ব্যর্থ হয়েছে, তাই পাবলিশ করা হয়নি: ' + (saveRes.message || ''));
+        return;
+      }
+      const res = await setGuidePagePublished(page.id, !page.is_published);
+      if (!res.ok) {
+        showToast('❌ ' + (res.message || 'ব্যর্থ'));
+        return;
+      }
+      showToast(page.is_published ? 'আনপাবলিশ করা হয়েছে' : '✅ সেভ + পাবলিশ করা হয়েছে');
+      onSaved();
+    } catch (err) {
+      // ⚠️ [বাগফিক্স] উপরের মতোই — try/catch/finally ছাড়া এরর হলে বাটন আটকে থাকত
+      showToast('❌ অপ্রত্যাশিত এরর: ' + (err instanceof Error ? err.message : 'আবার চেষ্টা করুন'));
+    } finally {
       setPublishing(false);
-      showToast('❌ সেভ ব্যর্থ হয়েছে, তাই পাবলিশ করা হয়নি: ' + (saveRes.message || ''));
-      return;
     }
-    const res = await setGuidePagePublished(page.id, !page.is_published);
-    setPublishing(false);
-    if (!res.ok) {
-      showToast('❌ ' + (res.message || 'ব্যর্থ'));
-      return;
-    }
-    showToast(page.is_published ? 'আনপাবলিশ করা হয়েছে' : '✅ সেভ + পাবলিশ করা হয়েছে');
-    onSaved();
   }
 
   async function handleDelete() {
