@@ -83,23 +83,29 @@ export default function GuidePagesListModal({
       return;
     }
     setSaving(true);
-    const res = await createGuidePage({
-      page_type: newTypeKey,
-      slug: generateDraftSlug(),
-      category_id: scope === 'category' ? String(entityId) : null,
-      product_id: scope === 'product' ? Number(entityId) : null,
-      h1_bn: '',
-      h1_en: '',
-    });
-    setSaving(false);
-    if (!res.ok || !res.page) {
-      showToast('❌ ' + (res.message || 'তৈরি ব্যর্থ'));
-      return;
+    try {
+      const res = await createGuidePage({
+        page_type: newTypeKey,
+        slug: generateDraftSlug(),
+        category_id: scope === 'category' ? String(entityId) : null,
+        product_id: scope === 'product' ? Number(entityId) : null,
+        h1_bn: '',
+        h1_en: '',
+      });
+      if (!res.ok || !res.page) {
+        showToast('❌ ' + (res.message || 'তৈরি ব্যর্থ'));
+        return;
+      }
+      setCreating(false);
+      // ⚠️ [বাগফিক্স] আগে এখানে `await load()` করে পুরো লিস্ট আবার fetch করার পর
+      // এডিটর খোলা হতো — এই অতিরিক্ত রাউন্ড-ট্রিপটাই "তৈরি করুন" চাপার পর এডিটর
+      // খুলতে দেরি হওয়ার আসল কারণ ছিল। এখন নতুন পেজটা সরাসরি লোকাল লিস্টে যোগ করে
+      // (optimistic update) সঙ্গে সঙ্গে এডিটর খুলে দেওয়া হচ্ছে — আলাদা fetch লাগছে না।
+      setPages((prev) => (prev ? [...prev, res.page as GuidePage] : [res.page as GuidePage]));
+      setEditing(res.page);
+    } finally {
+      setSaving(false);
     }
-    showToast('✅ ড্রাফট তৈরি হয়েছে — এখন কনটেন্ট পেস্ট করুন');
-    setCreating(false);
-    await load();
-    setEditing(res.page);
   }
 
   return (
