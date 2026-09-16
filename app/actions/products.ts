@@ -6,6 +6,11 @@ import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
 import { requireAdmin } from '@/lib/auth-guard';
 import type { Product, ProductFaq, ProductInfoBox, ProductSpecs } from '@/types';
 import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
+import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
+import { guidePageUrlPath } from '@/types/guides';
+
+const GUIDE_TABLE = 'guide_pages';
+const GUIDE_TEMPLATES_TABLE = 'guide_page_templates';
 
 const TABLE = 'custom_products';
 const ORDER_KEY = 'vc_prod_order';
@@ -290,9 +295,48 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
+
+  // প্রোডাক্ট ডিলিট করার আগে এর সাথে লিংকড গাইড সাব-পেজগুলো (slug/page_type সহ) বের করে রাখা —
+  // ডিলিটের পর আর এগুলো জানার উপায় থাকবে না, অথচ নিচে রিভ্যালিডেশনের জন্য দরকার
+  const { data: linkedPages } = await supabase
+    .from(GUIDE_TABLE)
+    .select('slug, page_type')
+    .eq('product_id', id);
+
+  // [বাগফিক্স] আগে প্রোডাক্ট ডিলিট করলে শুধু custom_products থেকে রো-টা সরে যেত, কিন্তু
+  // এর সাথে লিংকড guide_pages রো-গুলো (slug-সহ) ডাটাবেজে "এতিম" (orphaned) হয়ে থেকে যেত।
+  // ফলে পরে একই প্রোডাক্ট/সাব পেজ আবার একই slug দিয়ে বানাতে গেলে createGuidePage()-এর
+  // uniqueness constraint "এই স্লাগ আগে থেকেই ব্যবহার হচ্ছে" বলে আটকে দিত — যদিও visible
+  // product list-এ সেই প্রোডাক্টটা অনেক আগেই "ডিলিট" হয়ে গেছে। প্রোডাক্ট ডিলিটের সাথে সাথে
+  // তার সব সাব পেজ url slug-সহ ডাটাবেজ থেকে পুরোপুরি মুছে ফেলাই এখন থেকে আসল আচরণ।
+  if (linkedPages && linkedPages.length > 0) {
+    const { error: guideDeleteError } = await supabase.from(GUIDE_TABLE).delete().eq('product_id', id);
+    if (guideDeleteError) {
+      return { ok: false, message: 'সাব পেজ ডিলিট ব্যর্থ: ' + guideDeleteError.message };
+    }
+  }
+
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) return { ok: false, message: error.message };
+
   revalidatePath('/products');
+
+  // ডিলিট হওয়া সাব পেজগুলোর লাইভ URL রিভ্যালিডেট করা — best-effort, ব্যর্থ হলেও প্রোডাক্ট
+  // ডিলিট আটকাবে না (revalidateGuidePage নিজেই ৫ সেকেন্ড টাইমআউট + সাইলেন্ট ফেইল হ্যান্ডল করে)
+  if (linkedPages && linkedPages.length > 0) {
+    const templateKeys = Array.from(new Set(linkedPages.map((p) => p.page_type as string)));
+    const { data: templates } = await supabase
+      .from(GUIDE_TEMPLATES_TABLE)
+      .select('key, url_prefix')
+      .in('key', templateKeys);
+    const prefixByKey = new Map((templates || []).map((t) => [t.key as string, (t.url_prefix as string) ?? '']));
+    await Promise.all(
+      linkedPages.map((p) =>
+        revalidateGuidePage(guidePageUrlPath(p.slug as string, prefixByKey.get(p.page_type as string) ?? ''))
+      )
+    );
+  }
+
   return { ok: true };
 }
 
