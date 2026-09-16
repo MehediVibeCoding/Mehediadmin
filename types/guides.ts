@@ -11,6 +11,14 @@ export interface LocalizedText {
 interface BaseBlock {
   /** অ্যাডমিনে drag-reorder ও React key-এর জন্য স্টেবল আইডি, যেমন 'hero-1' */
   id: string;
+  /** [NEW] Vangcur-এর app/components/guides/GuideIcons.tsx-এর
+   *  GUIDE_ICON_REGISTRY-তে থাকা key — লাইভ পেজে BlockHeading এই আইকনটা
+   *  একটা ব্র্যান্ড-কালার সার্কেলে দেখায় (raw ইমোজির বদলে, AGENTS.md
+   *  নো-ইমোজি পলিসি)। guide-content-parser.ts পেস্ট করার সময় heading-এর
+   *  টেক্সট দেখে (inferHeadingIcon()) অটোমেটিক বসিয়ে দেয়; অ্যাডমিনের
+   *  ব্লক-এডিটরে চাইলে ম্যানুয়ালিও বদলানো যাবে (GUIDE_ICON_REGISTRY-এর
+   *  যেকোনো key বসানো যায়) — না থাকলে ডিফল্ট 'spark' আইকন দেখায়, ভাঙে না। */
+  headingIcon?: string;
 }
 
 export interface HeroBlock extends BaseBlock {

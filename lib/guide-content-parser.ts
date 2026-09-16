@@ -64,6 +64,67 @@ function stripMd(s: string): string {
     .trim();
 }
 
+// ══════════════════════════════════════════════════════════════
+//  [NEW] হেডিং-আইকন সিস্টেম — AGENTS.md-এর নো-ইমোজি পলিসি মেনে, raw কনটেন্টে
+//  ### হেডিং বা কার্ড-টাইটেলে emoji প্রিফিক্স (🌈💰🎯 ইত্যাদি) থাকলেও লাইভ
+//  পেজে সেটা না দেখিয়ে, তার বদলে টেক্সটের অর্থ বুঝে
+//  app/components/guides/GuideIcons.tsx-এর GUIDE_ICON_REGISTRY থেকে একটা
+//  উপযুক্ত SVG আইকন-key বসানো হয়। এটা সম্পূর্ণ keyword-ভিত্তিক (কোনো AI/API
+//  না) — তাই ভবিষ্যতে অন্য বিষয়ের কনটেন্টেও (এমনকি emoji ছাড়া লেখা হলেও)
+//  কাজ করবে, একটাও ম্যাচ না পেলে নিরাপদ ডিফল্ট 'spark' বসে।
+// ══════════════════════════════════════════════════════════════
+
+const HEADING_EMOJI_PATTERN = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
+
+function cleanHeadingText(h: string): string {
+  return h.replace(HEADING_EMOJI_PATTERN, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+// ক্রম গুরুত্বপূর্ণ — বেশি নির্দিষ্ট/যৌগিক প্যাটার্ন আগে, সাধারণ single-keyword
+// প্যাটার্ন পরে, যাতে "App নাকি Remote" জাতীয় হেডিং ভুলবশত শুধু "App" রুলে
+// (smartphone) না গিয়ে সঠিক "scale" (তুলনা) আইকনে যায়।
+const ICON_RULES: [RegExp, string][] = [
+  [/^(ধাপ|step)\s*[০-৯0-9]/i, 'wrench'], // "ধাপ ১ — ...", "Step 2 — ..." হেডিং
+  [/app\s*(নাকি|vs\.?|or)\s*remote|remote\s*(নাকি|vs\.?|or)\s*app/i, 'scale'],
+  [/পার্থক্য|difference|তুলনা|\bcompare\b|\bvs\b/i, 'scale'],
+  [/connect\s*করবেন|সংযোগ\s*করবেন|কানেক্ট\s*করবেন|pairing|pair\s*করবেন/i, 'linkChain'],
+  [/remote\s*control|রিমোট\s*কন্ট্রোল/i, 'remote'],
+  [/zone|control\s*panel|\bslider\b|\bdimmer\b/i, 'sliders'],
+  [/\bapp\b|অ্যাপ/i, 'smartphone'],
+  [/সংশ্লিষ্ট|আরও\s*পড়ুন|related\s*(guides|links)|see\s*also/i, 'book'],
+  [/সাধারণ\s*প্রশ্ন|প্রশ্নোত্তর|\bfaq\b/i, 'question'],
+  [/outdoor|বৃষ্টি|\brain\b|আবহাওয়া|\bweather\b/i, 'cloud'],
+  [/\bcut(ting)?\b|কাটতে|কাট\s*করা/i, 'scissors'],
+  [/খুলে\s*ফেলতে|খুলবেন|\bremove\b|uninstall|unmount/i, 'unlock'],
+  [/সমস্যা.{0,10}সমাধান|troubleshoot/i, 'wrench'],
+  [/checklist|চেকলিস্ট|যা\s*মনে\s*রাখবেন|ঠিক\s*হয়ে\s*গেলে/i, 'check'],
+  [/কখনো\s*করা\s*উচিত\s*না|করবেন\s*না|\bভুল\b|mistake|\bavoid\b|সতর্ক/i, 'warning'],
+  [/design\s*করার\s*আগে|planning|মাথায়\s*রাখবেন/i, 'compass'],
+  [/ছবি|photo|camera|কেমন\s*দেখাবে/i, 'camera'],
+  [/\broom\b|ঘর|বেডরুম|bedroom|gaming/i, 'bedroom'],
+  [/colour|color|\bরং\b|palette|shade|design\s*idea|ডিজাইন\s*আইডিয়া/i, 'palette'],
+  [/দাম|price|মূল্য|বাজেট|budget|\bcost\b|product\s*page|প্রোডাক্ট\s*পেজ/i, 'wallet'],
+  [/আসল\s*কথা|মানেই\s*কি|আসলে\s*কী|\bmyth\b/i, 'bulb'],
+  [/কোথায়\s*পড়ে|কোথায়\s*ফিট|অবস্থান/i, 'pin'],
+  [/প্রস্তুত\s*রাখ|প্রস্তুতি/i, 'clipboard'],
+  [/যা\s*যা\s*লাগবে|যা\s*লাগবে|\bneed\b|বক্সে\s*কী|what.?s\s*in\s*the\s*box/i, 'box'],
+  [/installation|ইনস্টলেশন|ইনস্টল|power\s*connection|\bwall\b/i, 'wrench'],
+  [/recommendation|সুপারিশ|রিকমেন্ড/i, 'spark'],
+  [/প্রকারভেদ|\bধরন\b|category|\btypes?\b/i, 'layers'],
+  [/কোন\s*কাজে\s*কোনটা|কখন\s*কোনটা|best\s*for|use\s*case/i, 'target'],
+  [/warranty|ওয়ারেন্টি|safety|নিরাপত্তা/i, 'shield'],
+  [/measurement|দৈর্ঘ্য|\blength\b|সাইজ|\bsize\b|dimension/i, 'ruler'],
+  [/glass|কাচ|traditional\s*neon/i, 'glassTube'],
+  [/shop|দোকান|branding|ব্র্যান্ডিং|sign(board)?/i, 'signboard'],
+];
+
+function inferIconKey(text: string): string {
+  for (const [re, icon] of ICON_RULES) {
+    if (re.test(text)) return icon;
+  }
+  return 'spark';
+}
+
 /** blank-line দিয়ে আলাদা প্যারাগ্রাফ-ব্লকে ভাগ করা, প্রতিটার ভেতরের newline স্পেসে বদলানো */
 function toParagraphs(lines: string[]): LocalizedText[] {
   const text = lines.join('\n');
@@ -143,7 +204,14 @@ function extractPageContentSubsections(lines: string[]): Subsection[] {
     // মার্কডাউন horizontal rule (সেকশন সেপারেটর হিসেবে ব্যবহৃত) — কনটেন্ট না, বাদ
     if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(rawLine)) continue;
 
-    const h = rawLine.match(/^###\s+(.*)$/);
+    // [হার্ডেনিং] আগে শুধু ### (৩-হ্যাশ) subsection বাউন্ডারি হিসেবে ধরা হতো।
+    // কখনো কখনো কনটেন্টে একটা বড় সেকশনের ভেতরে ## (২-হ্যাশ) দিয়ে ক্যাটাগরি
+    // sub-group লেখা হয় (যেমন "৫০টা Design Idea"-কে "## A. Bedroom Designs"
+    // ইত্যাদিতে ভাগ করা) — আগে এই ## লাইনগুলো subsection বাউন্ডারি হিসেবে
+    // চেনা যেত না, ফলে পুরো ক্যাটাগরি-সহ সব আইটেম আগের ### সেকশনের ভেতরে একটা
+    // বিশাল paragraph blob হয়ে মিশে যেত। এখন ## ও ### — দুটোই আলাদা subsection
+    // শুরু করে, প্রতিটা ক্যাটাগরি নিজের মতো cardGrid হয়ে সুন্দরভাবে বসে।
+    const h = rawLine.match(/^#{2,3}\s+(.*)$/);
     if (h) {
       if (current) subsections.push(current);
       current = { heading: h[1].trim(), body: [] };
@@ -165,7 +233,12 @@ function isFaqHeading(heading: string): boolean {
 }
 
 function isRelatedLinksHeading(heading: string): boolean {
-  return /আরও পড়ুন|related (guides|links)|see also/i.test(heading);
+  // 🛠️ ফিক্স: আগে শুধু "আরও পড়ুন" ধরত, তাই "সংশ্লিষ্ট গাইড ও পেজসমূহ"-এর
+  // মতো হেডিং এই ব্লক-টাইপ হিসেবে চেনা যেত না — সেটা bullet-list প্যাটার্নে
+  // মিলে গিয়ে ভুলভাবে plain checklist ব্লক হয়ে যেত (ভেতরের লিংকগুলো তখনও
+  // কাজ করত, কিন্তু সুন্দর related-links কার্ড-গ্রিড না দেখিয়ে চেকবক্স-লিস্ট
+  // হিসেবে দেখাত)।
+  return /আরও পড়ুন|related (guides|links)|see also|সংশ্লিষ্ট/i.test(heading);
 }
 
 function parseFaqBody(body: string[]): FaqItem[] {
@@ -195,10 +268,15 @@ function parseFaqBody(body: string[]): FaqItem[] {
 function parseRelatedLinksBody(body: string[]): RelatedLinkItem[] {
   const items: RelatedLinkItem[] = [];
   const text = body.join('\n');
-  const matches = text.matchAll(/\[([^\]\n]+)\]/g);
+  // 🛠️ ফিক্স: আগে শুধু `[title]` ধরত, `(url)` অংশটা কখনো ক্যাপচার হতো না —
+  // ফলে href সবসময় '' থাকত আর প্রতিটা related-link কার্ড লাইভ পেজে অকেজো '#'-এ
+  // ক্লিক হতো। এখন পুরো `[title](url)` প্যাটার্ন থেকেই দুটোই বের করা হয়।
+  const matches = text.matchAll(/\[([^\]\n]+)\]\(([^)\s]+)\)/g);
   for (const m of matches) {
-    const title = m[1].replace(/→\s*$/, '').trim();
-    if (title) items.push({ title: loc(title), href: '' });
+    const rawTitle = m[1].replace(/→\s*$/, '').trim();
+    const title = cleanHeadingText(rawTitle);
+    const href = m[2].trim();
+    if (title) items.push({ title: loc(title), href, icon: inferIconKey(rawTitle) });
   }
   return items;
 }
@@ -220,8 +298,12 @@ function looksLikePriceRange(s: string): boolean {
 }
 
 const BOLD_LINE = /^\*\*(.+?)\*\*\s*$/;
+// [হার্ডেনিং] "**Title** — description" — টাইটেল ও বর্ণনা একই লাইনে, কমপ্যাক্ট
+// স্টাইলে লেখা আইটেমও card হিসেবে চিনতে
+const BOLD_LINE_INLINE = /^\*\*(.+?)\*\*\s*[-–—:]\s*(.+)$/;
 
-/** body-তে ≥২টা "bold-only লাইন + তার পরের প্যারাগ্রাফ" জোড়া পাওয়া গেলে card-গুলো বের করা */
+/** body-তে ≥২টা "bold টাইটেল + বর্ণনা" জোড়া পাওয়া গেলে card-গুলো বের করা —
+ *  বর্ণনা টাইটেলের নিচের লাইনে থাকুক বা একই লাইনে " — "-এর পরে, দুটোই সাপোর্টেড */
 function extractCardPairs(body: string[]): CardItem[] | null {
   const blocks = body.join('\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
   const cards: CardItem[] = [];
@@ -229,23 +311,51 @@ function extractCardPairs(body: string[]): CardItem[] | null {
   for (const block of blocks) {
     const blockLines = block.split('\n').map((l) => l.trim()).filter(Boolean);
     if (blockLines.length < 1) continue;
+
+    const inlineMatch = blockLines[0].match(BOLD_LINE_INLINE);
+    if (inlineMatch) {
+      const rawTitle = inlineMatch[1].trim();
+      const title = cleanHeadingText(rawTitle);
+      const description = [inlineMatch[2].trim(), ...blockLines.slice(1)].join(' ').trim();
+      cards.push({ icon: inferIconKey(rawTitle), title: loc(title), description: loc(description || title) });
+      continue;
+    }
+
     const boldMatch = blockLines[0].match(BOLD_LINE);
     if (!boldMatch) return null; // একটাও non-bold-led ব্লক থাকলে এটা card-প্যাটার্ন না
-    const title = boldMatch[1].trim();
+    const rawTitle = boldMatch[1].trim();
+    const title = cleanHeadingText(rawTitle);
     const description = blockLines.slice(1).join(' ').trim();
-    cards.push({ title: loc(title), description: loc(description || title) });
+    cards.push({
+      icon: inferIconKey(rawTitle),
+      title: loc(title),
+      description: loc(description || title),
+    });
   }
 
   return cards.length >= 2 ? cards : null;
 }
 
+// [হার্ডেনিং] হাইফেন/বুলেট (-, •) ছাড়াও en-dash/em-dash (–, —) দিয়ে শুরু করা
+// লাইনও বুলেট হিসেবে ধরা হয় — কেউ কেউ লিস্ট লিখতে গিয়ে হাইফেনের বদলে ড্যাশ
+// ব্যবহার করে ফেলতে পারে, এতে সেটাও ভুলে fallback RichText-এ না গিয়ে ঠিকঠাক
+// checklist হিসেবে চিনবে।
+const BULLET_PREFIX = /^\s*[-–—•]\s+/;
+
 function extractBulletItems(body: string[]): string[] | null {
-  const bulletLines = body.filter((l) => /^\s*[-•]\s+/.test(l));
+  const bulletLines = body.filter((l) => BULLET_PREFIX.test(l));
   if (bulletLines.length < 2) return null;
   // পুরো সেকশন প্রায় পুরোটাই বুলেট হওয়া উচিত (নাহলে এটা আসলে বুলেটসহ একটা paragraph section)
   const nonBlankLines = body.filter((l) => !isBlank(l));
   if (bulletLines.length < nonBlankLines.length * 0.6) return null;
-  return bulletLines.map((l) => l.replace(/^\s*[-•]\s+/, '').trim());
+  const items = bulletLines.map((l) => l.replace(BULLET_PREFIX, '').trim());
+  // 🛠️ ফিক্স: বুলেট-লিস্টের পরে একটা ব্যাখ্যামূলক বাক্য (বুলেট-ফরম্যাটে না
+  // লেখা) থাকলে সেটা আগে চুপচাপ বাদ পড়ে যেত (শুধু bulletLines রিটার্ন হতো,
+  // বাকি non-bullet লাইন কোথাও ব্যবহার হতো না)। এখন এমন কোনো অতিরিক্ত লাইন
+  // থাকলে সেটাও তালিকার শেষে একটা আইটেম হিসেবে যোগ হয় — কনটেন্ট হারায় না।
+  const leftover = nonBlankLines.filter((l) => !BULLET_PREFIX.test(l)).join(' ').trim();
+  if (leftover) items.push(leftover);
+  return items;
 }
 
 function extractNumberedSteps(body: string[]): StepItem[] | null {
@@ -264,19 +374,31 @@ function extractNumberedSteps(body: string[]): StepItem[] | null {
 // ══════════════════════════════════════════════════════════════
 
 function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: boolean } {
-  const heading = loc(sub.heading);
+  // raw heading-এ emoji থাকলেও (🌈💰🎯...) সেটা লাইভ পেজে দেখানো হয় না —
+  // পরিষ্কার heading টেক্সট + একটা অর্থবহ headingIcon (GuideIcon key) আলাদা
+  // করে বের করা হয়, BlockHeading এই দুটো দিয়েই ব্র্যান্ড-কালার আইকন-সার্কেল
+  // বানায়। ইনফারেন্স raw heading (ইমোজি-সহ) থেকেই করা হয় — কোনো সমস্যা নেই,
+  // কারণ ICON_RULES emoji উপেক্ষা করে শুধু বাংলা/ইংরেজি শব্দ দেখে।
+  const heading = loc(cleanHeadingText(sub.heading));
+  const headingIcon = inferIconKey(sub.heading);
 
   if (isFaqHeading(sub.heading)) {
     return {
       structured: true,
-      block: { id: newId('faq'), type: 'faq', heading, items: parseFaqBody(sub.body) },
+      block: { id: newId('faq'), type: 'faq', heading, headingIcon, items: parseFaqBody(sub.body) },
     };
   }
 
   if (isRelatedLinksHeading(sub.heading)) {
     return {
       structured: true,
-      block: { id: newId('relatedlinks'), type: 'relatedLinks', heading, items: parseRelatedLinksBody(sub.body) },
+      block: {
+        id: newId('relatedlinks'),
+        type: 'relatedLinks',
+        heading,
+        headingIcon,
+        items: parseRelatedLinksBody(sub.body),
+      },
     };
   }
 
@@ -289,7 +411,10 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
         unit: loc(r[1] ?? ''),
         priceRangeBdt: (r[2] ?? '').trim(),
       }));
-      return { structured: true, block: { id: newId('pricetable'), type: 'priceTable', heading, rows } };
+      return {
+        structured: true,
+        block: { id: newId('pricetable'), type: 'priceTable', heading, headingIcon, rows },
+      };
     }
     const columnHeaders = header.slice(1).map(loc);
     const rows: ComparisonRow[] = dataRows.map((r) => ({
@@ -298,7 +423,7 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
     }));
     return {
       structured: true,
-      block: { id: newId('comparisontable'), type: 'comparisonTable', heading, columnHeaders, rows },
+      block: { id: newId('comparisontable'), type: 'comparisonTable', heading, headingIcon, columnHeaders, rows },
     };
   }
 
@@ -307,27 +432,30 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
     const columns = cards.length >= 4 ? 4 : cards.length === 3 ? 3 : 2;
     return {
       structured: true,
-      block: { id: newId('cardgrid'), type: 'cardGrid', heading, columns, cards },
+      block: { id: newId('cardgrid'), type: 'cardGrid', heading, headingIcon, columns, cards },
     };
   }
 
   const steps = extractNumberedSteps(sub.body);
   if (steps) {
-    return { structured: true, block: { id: newId('steps'), type: 'steps', heading, steps } };
+    return {
+      structured: true,
+      block: { id: newId('steps'), type: 'steps', heading, headingIcon, steps },
+    };
   }
 
   const bullets = extractBulletItems(sub.body);
   if (bullets) {
     return {
       structured: true,
-      block: { id: newId('checklist'), type: 'checklist', heading, items: bullets.map(loc) },
+      block: { id: newId('checklist'), type: 'checklist', heading, headingIcon, items: bullets.map(loc) },
     };
   }
 
-  // ফলব্যাক — সাধারণ RichText, তবু heading + সব প্যারাগ্রাফ ঠিকমতো বসানো থাকে
+  // ফলব্যাক — সাধারণ RichText, তবু heading + headingIcon + সব প্যারাগ্রাফ ঠিকমতো বসানো থাকে
   return {
     structured: false,
-    block: { id: newId('richtext'), type: 'richText', heading, paragraphs: toParagraphs(sub.body) },
+    block: { id: newId('richtext'), type: 'richText', heading, headingIcon, paragraphs: toParagraphs(sub.body) },
   };
 }
 
@@ -357,10 +485,15 @@ export function parseGuideContent(raw: string): ParsedGuideContent {
         subtitle: paragraphs[0] ?? loc(''),
       });
       if (paragraphs.length > 1) {
+        // 🛠️ ফিক্স: আগে এখানে heading: loc(sub.heading) (মানে "ভূমিকা"/
+        // "Introduction") বসানো হতো, ফলে হিরো-ইন্ট্রোর বাড়তি প্যারাগ্রাফগুলো
+        // লাইভ পেজে একটা দৃশ্যমান "ভূমিকা" শিরোনাম-সহ আলাদা সেকশন হিসেবে
+        // দেখা যেত — যেটা ভিজিটরের কাছে অপ্রয়োজনীয়/অসম্পূর্ণ লাগে, কারণ এটা
+        // আসলে হিরোর-ই ধারাবাহিক অংশ। ইচ্ছাকৃতভাবে heading বাদ দেওয়া হলো, যাতে
+        // এটা শুধু hero-এর পরের চলমান প্যারাগ্রাফ হিসেবে বসে, আলাদা লেবেল ছাড়া।
         blocks.push({
           id: newId('richtext'),
           type: 'richText',
-          heading: loc(sub.heading),
           paragraphs: paragraphs.slice(1),
         });
       }
