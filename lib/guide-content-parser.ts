@@ -24,6 +24,8 @@ import type {
   StepItem,
   FaqItem,
   RelatedLinkItem,
+  StepsBlock,
+  ChecklistBlock,
 } from '@/types/guides';
 
 export interface ParsedGuideMeta {
@@ -369,11 +371,67 @@ function extractNumberedSteps(body: string[]): StepItem[] | null {
   }));
 }
 
+// 🛠️ ফিক্স: আগে কোনো সেকশনে numbered/bulleted লিস্টের আগে বা পরে ভূমিকা/উপসংহার
+// বাক্য থাকলে (আর তাই লিস্ট-লাইন পুরো সেকশনের নন-ব্লাঙ্ক লাইনের ৬০%-এর কম হলে),
+// extractBulletItems/extractNumberedSteps দুটোই null রিটার্ন করত আর পুরো সেকশনটা
+// RichText ফলব্যাকে চলে যেত। toParagraphs() ব্লাঙ্ক-লাইন-হীন পরপর লিস্ট-লাইনগুলোকে
+// একটাই paragraph-এ জোড়া লাগিয়ে দেয় বলে লাইভ পেজে "- " বা "1." মার্কারগুলো
+// paragraph-এর মাঝখানে literal টেক্সট হিসেবে দেখা যেত (ভাঙা/অগোছালো)।
+// এই ফাংশনটা body-র ভেতরে একটানা (contiguous — মাঝে অন্য প্যারাগ্রাফ না ঢুকে)
+// list-লাইনের রেঞ্জ খুঁজে বের করে, আর সেটাকে ঘিরে থাকা lead/trail প্রোজ অংশ
+// আলাদা করে দেয়, যাতে lead/trail আলাদা RichText প্যারাগ্রাফ হিসেবে আর মাঝেরটা
+// সঠিক checklist/steps ব্লক হিসেবে বসতে পারে।
+function splitContiguousListRun(
+  body: string[],
+  isListLine: (l: string) => boolean
+): { lead: string[]; core: string[]; trail: string[] } | null {
+  const matchIdx: number[] = [];
+  body.forEach((l, i) => {
+    if (isListLine(l)) matchIdx.push(i);
+  });
+  if (matchIdx.length < 2) return null;
+  const first = matchIdx[0];
+  const last = matchIdx[matchIdx.length - 1];
+  // first..last রেঞ্জে blank বা list-লাইন ছাড়া অন্য কোনো লাইন থাকলে এটা আসলে
+  // একটানা লিস্ট-রান না (মাঝে অন্য প্যারাগ্রাফ ঢুকে আছে) — বাদ দেওয়া হলো, পুরনো
+  // ফলব্যাক আচরণই বহাল থাকবে সেক্ষেত্রে
+  for (let i = first; i <= last; i++) {
+    if (!isBlank(body[i]) && !isListLine(body[i])) return null;
+  }
+  return { lead: body.slice(0, first), core: body.slice(first, last + 1), trail: body.slice(last + 1) };
+}
+
+// lead/trail-এ আসলেই কোনো প্যারাগ্রাফ থাকলে সেগুলোকে আলাদা RichText ব্লক বানায়
+// (heading প্রথম ব্লকটাতেই বসে — lead থাকলে lead-এ, নাহলে সরাসরি মূল
+// checklist/steps ব্লকেই), আর মাঝেরটা যেভাবেই হোক ব্লক-লিস্টে থাকে।
+function assembleAroundList(
+  heading: LocalizedText,
+  headingIcon: string,
+  lead: string[],
+  trail: string[],
+  core: StepsBlock | ChecklistBlock
+): GuideBlock[] {
+  const blocks: GuideBlock[] = [];
+  const leadParas = toParagraphs(lead);
+  if (leadParas.length > 0) {
+    blocks.push({ id: newId('richtext'), type: 'richText', heading, headingIcon, paragraphs: leadParas });
+  } else {
+    core.heading = heading;
+    core.headingIcon = headingIcon;
+  }
+  blocks.push(core);
+  const trailParas = toParagraphs(trail);
+  if (trailParas.length > 0) {
+    blocks.push({ id: newId('richtext'), type: 'richText', paragraphs: trailParas });
+  }
+  return blocks;
+}
+
 // ══════════════════════════════════════════════════════════════
 //  ধাপ ৪ — একটা সাবসেকশনকে সবচেয়ে ফিট করা ব্লক-টাইপে রূপান্তর
 // ══════════════════════════════════════════════════════════════
 
-function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: boolean } {
+function subsectionToBlock(sub: Subsection): { blocks: GuideBlock[]; structured: boolean } {
   // raw heading-এ emoji থাকলেও (🌈💰🎯...) সেটা লাইভ পেজে দেখানো হয় না —
   // পরিষ্কার heading টেক্সট + একটা অর্থবহ headingIcon (GuideIcon key) আলাদা
   // করে বের করা হয়, BlockHeading এই দুটো দিয়েই ব্র্যান্ড-কালার আইকন-সার্কেল
@@ -385,20 +443,22 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
   if (isFaqHeading(sub.heading)) {
     return {
       structured: true,
-      block: { id: newId('faq'), type: 'faq', heading, headingIcon, items: parseFaqBody(sub.body) },
+      blocks: [{ id: newId('faq'), type: 'faq', heading, headingIcon, items: parseFaqBody(sub.body) }],
     };
   }
 
   if (isRelatedLinksHeading(sub.heading)) {
     return {
       structured: true,
-      block: {
-        id: newId('relatedlinks'),
-        type: 'relatedLinks',
-        heading,
-        headingIcon,
-        items: parseRelatedLinksBody(sub.body),
-      },
+      blocks: [
+        {
+          id: newId('relatedlinks'),
+          type: 'relatedLinks',
+          heading,
+          headingIcon,
+          items: parseRelatedLinksBody(sub.body),
+        },
+      ],
     };
   }
 
@@ -413,7 +473,7 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
       }));
       return {
         structured: true,
-        block: { id: newId('pricetable'), type: 'priceTable', heading, headingIcon, rows },
+        blocks: [{ id: newId('pricetable'), type: 'priceTable', heading, headingIcon, rows }],
       };
     }
     const columnHeaders = header.slice(1).map(loc);
@@ -423,7 +483,7 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
     }));
     return {
       structured: true,
-      block: { id: newId('comparisontable'), type: 'comparisonTable', heading, headingIcon, columnHeaders, rows },
+      blocks: [{ id: newId('comparisontable'), type: 'comparisonTable', heading, headingIcon, columnHeaders, rows }],
     };
   }
 
@@ -432,15 +492,54 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
     const columns = cards.length >= 4 ? 4 : cards.length === 3 ? 3 : 2;
     return {
       structured: true,
-      block: { id: newId('cardgrid'), type: 'cardGrid', heading, headingIcon, columns, cards },
+      blocks: [{ id: newId('cardgrid'), type: 'cardGrid', heading, headingIcon, columns, cards }],
     };
   }
 
+  // [ফিক্স] numbered/bulleted লিস্টের প্রথম পছন্দ এখন contiguous-run split —
+  // এটা lead/trail প্রোজ থাকলে সঠিকভাবে আলাদা করে দেয়, আর লিস্টটা যদি পুরো
+  // body-ই হয় (lead/trail খালি) তাহলেও ঠিকভাবে কাজ করে। আগে এখানে সরাসরি
+  // extractNumberedSteps(sub.body)/extractBulletItems(sub.body) (পুরো body-র
+  // ৬০%+ লিস্ট কিনা এই ratio-চেক) কল হতো, যেটার দুটো সমস্যা ছিল: (১) লিস্টের
+  // আগে/পরে ১-২টা বাক্য থাকলে ratio ৬০%-এর নিচে নেমে পুরো সেকশন RichText
+  // fallback-এ চলে যেত (dash/number মার্কার paragraph-এর মাঝে literal টেক্সট
+  // হয়ে দেখাত), আর (২) ratio কোনোভাবে ৬০%+ থাকলেও, extractBulletItems()-এর
+  // "leftover" যুক্তি ভূমিকা+উপসংহার বাক্যগুলোকে জোড়া দিয়ে checklist-এর একটা
+  // ভুয়া অতিরিক্ত বুলেট-আইটেম বানিয়ে ফেলত (এই ছয়টা কনটেন্ট ফাইল টেস্ট করেই
+  // দুই ধরনের সমস্যাই একাধিকবার ধরা পড়েছে)।
+  const numberedRun = splitContiguousListRun(sub.body, (l) => /^\s*\d+\.\s+/.test(l));
+  if (numberedRun) {
+    const coreSteps = extractNumberedSteps(numberedRun.core);
+    if (coreSteps) {
+      const core: StepsBlock = { id: newId('steps'), type: 'steps', steps: coreSteps };
+      return {
+        structured: true,
+        blocks: assembleAroundList(heading, headingIcon, numberedRun.lead, numberedRun.trail, core),
+      };
+    }
+  }
+
+  const bulletRun = splitContiguousListRun(sub.body, (l) => BULLET_PREFIX.test(l));
+  if (bulletRun) {
+    const coreBullets = extractBulletItems(bulletRun.core);
+    if (coreBullets) {
+      const core: ChecklistBlock = { id: newId('checklist'), type: 'checklist', items: coreBullets.map(loc) };
+      return {
+        structured: true,
+        blocks: assembleAroundList(heading, headingIcon, bulletRun.lead, bulletRun.trail, core),
+      };
+    }
+  }
+
+  // ফলব্যাক (নিরাপত্তা-জাল): উপরের contiguous-run split ব্যর্থ হলেই কেবল এখানে
+  // আসবে — মানে list-লাইনগুলো একটানা না, মাঝে অন্য প্যারাগ্রাফ ছড়িয়ে-ছিটিয়ে আছে।
+  // সেই বিরল ক্ষেত্রে পুরনো ৬০%-ratio পদ্ধতিই শেষ ভরসা (leftover-সহ, তবু
+  // content হারানোর চেয়ে ভালো)।
   const steps = extractNumberedSteps(sub.body);
   if (steps) {
     return {
       structured: true,
-      block: { id: newId('steps'), type: 'steps', heading, headingIcon, steps },
+      blocks: [{ id: newId('steps'), type: 'steps', heading, headingIcon, steps }],
     };
   }
 
@@ -448,14 +547,14 @@ function subsectionToBlock(sub: Subsection): { block: GuideBlock; structured: bo
   if (bullets) {
     return {
       structured: true,
-      block: { id: newId('checklist'), type: 'checklist', heading, headingIcon, items: bullets.map(loc) },
+      blocks: [{ id: newId('checklist'), type: 'checklist', heading, headingIcon, items: bullets.map(loc) }],
     };
   }
 
   // ফলব্যাক — সাধারণ RichText, তবু heading + headingIcon + সব প্যারাগ্রাফ ঠিকমতো বসানো থাকে
   return {
     structured: false,
-    block: { id: newId('richtext'), type: 'richText', heading, headingIcon, paragraphs: toParagraphs(sub.body) },
+    blocks: [{ id: newId('richtext'), type: 'richText', heading, headingIcon, paragraphs: toParagraphs(sub.body) }],
   };
 }
 
@@ -501,9 +600,9 @@ export function parseGuideContent(raw: string): ParsedGuideContent {
       return;
     }
 
-    const { block, structured } = subsectionToBlock(sub);
+    const { blocks: subBlocks, structured } = subsectionToBlock(sub);
     if (structured) structuredCount++;
-    blocks.push(block);
+    blocks.push(...subBlocks);
   });
 
   return {
