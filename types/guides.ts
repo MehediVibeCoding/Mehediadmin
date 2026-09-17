@@ -95,6 +95,12 @@ export interface ChecklistBlock extends BaseBlock {
   type: 'checklist';
   heading?: LocalizedText;
   items: LocalizedText[];
+  /** [NEW] 'checkbox' — আসল "কেনার আগে Checklist"/"Quick Checklist"-জাতীয়
+   *  সেকশনে ✅ আইকন-সহ দেখায়। 'plain' — "কোন কাজে কোনটা ভালো"-জাতীয় সাধারণ
+   *  তথ্যমূলক বুলেট-লিস্টে (এগুলো আসলে চেক করার তালিকা না) কোনো checkbox আইকন
+   *  ছাড়াই সাধারণ বুলেট হিসেবে দেখায়। guide-content-parser.ts সাবসেকশনের raw
+   *  heading (### ...) দেখে এটা সেট করে দেয় — দেখুন isChecklistHeading()। */
+  style?: 'checkbox' | 'plain';
 }
 
 export interface ImageTextBlock extends BaseBlock {

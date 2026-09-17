@@ -243,6 +243,20 @@ function isRelatedLinksHeading(heading: string): boolean {
   return /আরও পড়ুন|related (guides|links)|see also|সংশ্লিষ্ট/i.test(heading);
 }
 
+// [NEW] bullet-list সেকশন পেলেই সেটা "checklist" (✅ checkbox আইকন) বানানো ঠিক
+// না — "কোন কাজে কোনটা ভালো"-জাতীয় use-case ম্যাপিং লিস্ট, বক্সে যা আছে তার
+// তালিকা, সুবিধার তালিকা ইত্যাদি আসলে চেক-করার তালিকা না, স্রেফ তথ্যমূলক
+// বুলেট-পয়েন্ট (স্ক্রিনশটে রিপোর্ট হওয়া বাগ)। heading-এ স্পষ্টভাবে
+// "চেকলিস্ট/checklist" শব্দ থাকলেই কেবল checkbox-স্টাইল, নাহলে plain bullet —
+// app/components/guides/GuideBlocks.tsx-এর ChecklistBlockView-এর সাথে এই
+// একই নিয়ম মিলিয়ে রাখা আছে (রেন্ডারার পুরনো ডেটায় হেডিং দেখে একই হিউরিস্টিক
+// ফলব্যাক হিসেবে চালায়, ফিল্ড না থাকলেও)।
+const CHECKLIST_HEADING_PATTERN = /চেকলিস্ট|চেক\s*লিস্ট|check\s*-?\s*list/i;
+
+function isChecklistHeading(heading: string): boolean {
+  return CHECKLIST_HEADING_PATTERN.test(heading);
+}
+
 function parseFaqBody(body: string[]): FaqItem[] {
   const items: FaqItem[] = [];
   let question = '';
@@ -365,10 +379,25 @@ function extractNumberedSteps(body: string[]): StepItem[] | null {
   if (numberedLines.length < 2) return null;
   const nonBlankLines = body.filter((l) => !isBlank(l));
   if (numberedLines.length < nonBlankLines.length * 0.6) return null;
-  return numberedLines.map((l) => ({
-    title: loc(l.replace(/^\s*\d+\.\s+/, '').trim()),
-    description: loc(''),
-  }));
+  return numberedLines.map((l) => {
+    const content = l.replace(/^\s*\d+\.\s+/, '').trim();
+    // 🛠️ ফিক্স: আগে পুরো লাইনটাই (bold prefix-সহ) অবিভক্তভাবে title-এ বসত আর
+    // description সবসময় খালি থাকত — "N. **Title:** description" প্যাটার্ন
+    // (যেমন App connect করার ধাপ, বা "Plan → Mark → Mount..." প্রসেস) থাকলেও
+    // title/description আলাদা করা হতো না। লক্ষণীয়: এই কনটেন্টে colon-টা
+    // বোল্ড মার্কারের *ভেতরে* থাকে (যেমন `**Plan:**`, `**Light ON করুন:**`),
+    // বাইরে না — তাই একটামাত্র সাধারণ regex দিয়ে "**...**" অংশটা বের করে,
+    // তারপর সেই ক্যাপচারের শেষের কোলন (থাকলে) আলাদাভাবে ছেঁটে ফেলা হয়। বোল্ড
+    // অংশের পরে আর কিছু না থাকলে (যেমন "**Phone-এর Bluetooth ON করুন**")
+    // description স্বাভাবিকভাবেই খালি থেকে যায়।
+    const boldPrefixMatch = content.match(/^\*\*(.+?)\*\*\s*(.*)$/);
+    if (boldPrefixMatch) {
+      const title = boldPrefixMatch[1].replace(/[:：]\s*$/, '').trim();
+      const description = boldPrefixMatch[2].trim();
+      return { title: loc(title), description: loc(description) };
+    }
+    return { title: loc(content), description: loc('') };
+  });
 }
 
 // 🛠️ ফিক্স: আগে কোনো সেকশনে numbered/bulleted লিস্টের আগে বা পরে ভূমিকা/উপসংহার
@@ -523,7 +552,12 @@ function subsectionToBlock(sub: Subsection): { blocks: GuideBlock[]; structured:
   if (bulletRun) {
     const coreBullets = extractBulletItems(bulletRun.core);
     if (coreBullets) {
-      const core: ChecklistBlock = { id: newId('checklist'), type: 'checklist', items: coreBullets.map(loc) };
+      const core: ChecklistBlock = {
+        id: newId('checklist'),
+        type: 'checklist',
+        items: coreBullets.map(loc),
+        style: isChecklistHeading(sub.heading) ? 'checkbox' : 'plain',
+      };
       return {
         structured: true,
         blocks: assembleAroundList(heading, headingIcon, bulletRun.lead, bulletRun.trail, core),
@@ -547,7 +581,16 @@ function subsectionToBlock(sub: Subsection): { blocks: GuideBlock[]; structured:
   if (bullets) {
     return {
       structured: true,
-      blocks: [{ id: newId('checklist'), type: 'checklist', heading, headingIcon, items: bullets.map(loc) }],
+      blocks: [
+        {
+          id: newId('checklist'),
+          type: 'checklist',
+          heading,
+          headingIcon,
+          items: bullets.map(loc),
+          style: isChecklistHeading(sub.heading) ? 'checkbox' : 'plain',
+        },
+      ],
     };
   }
 
