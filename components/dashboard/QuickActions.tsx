@@ -24,7 +24,7 @@ export default function QuickActions() {
   }
 
   return (
-    <div className="card-hover-glow flex flex-col justify-between overflow-hidden rounded-[24px] border border-white/90 bg-white/80 p-5 shadow-sh1 backdrop-blur-xl sm:p-6">
+    <div className="card-hover-glow flex h-full flex-col overflow-hidden rounded-[24px] border border-white/90 bg-white/80 p-5 shadow-sh1 backdrop-blur-xl sm:p-6">
       {/* হেডার */}
       <div className="mb-4 flex items-center gap-2.5 border-b border-border-base/50 pb-3.5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-bg/50 text-brand-primary">
@@ -38,57 +38,75 @@ export default function QuickActions() {
         </div>
       </div>
 
-      {/* অ্যাকশন বাটন গ্রুপ (ইমেজ ৩, ৪ ও ৫ ইন্সপায়ারেশন) */}
-      <div className="flex flex-col gap-2.5">
-        {/* ১. সিগনেচার শিমার প্রাইমারি বাটন */}
+      {/* অ্যাকশন লিস্ট (রেফারেন্স ডিজাইনের লিস্ট-আইটেম স্টাইল) */}
+      <div className="flex flex-1 flex-col justify-center gap-1.5">
         <Link
           href="/products"
-          className="shimmer-sheen group flex h-[46px] w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-light to-brand-primary font-body text-[13.5px] font-extrabold text-white shadow-sh2 transition-all duration-brand hover:brightness-105 active:scale-[0.97]"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
         >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-brand-light to-brand-primary text-white shadow-sh2">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">নতুন প্রোডাক্ট যোগ করুন</span>
+            <span className="block font-body text-[11px] font-medium text-muted">প্রোডাক্ট পেজে যান</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-primary">
+            <polyline points="9 18 15 12 9 6" />
           </svg>
-          <span>নতুন প্রোডাক্ট যোগ করুন</span>
         </Link>
 
-        {/* ২. ট্যাকটাইল সফট বাটন: CSV Export */}
         <button
           type="button"
           onClick={handleExport}
           disabled={exporting}
-          className="group flex h-[44px] w-full items-center justify-center gap-2 rounded-full border border-border-base/80 bg-white font-body text-[13px] font-bold text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-primary active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 text-left transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {exporting ? (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-spin text-brand-primary">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-surface-muted text-brand-primary">
+            {exporting ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="animate-spin">
                 <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.75" opacity="0.2" />
                 <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" />
               </svg>
-              <span>ডাউনলোড হচ্ছে...</span>
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted transition-colors group-hover:text-brand-primary">
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span>CSV রিপোর্ট ডাউনলোড</span>
-            </>
-          )}
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">
+              {exporting ? 'ডাউনলোড হচ্ছে...' : 'CSV রিপোর্ট ডাউনলোড'}
+            </span>
+            <span className="block font-body text-[11px] font-medium text-muted">সব অর্ডার এক্সপোর্ট করুন</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-primary">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </button>
 
-        {/* ৩. ট্যাকটাইল সফট বাটন: পেন্ডিং অর্ডার */}
         <Link
           href="/orders?status=pending"
-          className="group flex h-[44px] w-full items-center justify-center gap-2 rounded-full border border-border-base/80 bg-white font-body text-[13px] font-bold text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-primary active:scale-[0.97]"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted transition-colors group-hover:text-brand-primary">
-            <circle cx="12" cy="12" r="9" />
-            <polyline points="12 6 12 12 16 14" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-amber-50 text-warn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">পেন্ডিং অর্ডারসমূহ</span>
+            <span className="block font-body text-[11px] font-medium text-muted">রিভিউর অপেক্ষায় থাকা অর্ডার</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-primary">
+            <polyline points="9 18 15 12 9 6" />
           </svg>
-          <span>পেন্ডিং অর্ডারসমূহ</span>
         </Link>
       </div>
     </div>

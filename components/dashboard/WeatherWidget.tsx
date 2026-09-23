@@ -182,71 +182,46 @@ export default function WeatherWidget() {
   }, []);
 
   return (
-    <div className="card-hover-glow relative mb-5 overflow-hidden rounded-[26px] border border-brand-light/35 bg-gradient-to-br from-brand-bg/85 via-[#DCEBFD]/60 to-white/95 p-4 shadow-[0_8px_32px_rgba(68,167,252,0.16)] backdrop-blur-2xl sm:p-5 md:p-6">
-      {/* ব্যাকগ্রাউন্ড স্কাই-ব্লু লাইট অ্যাম্বিয়েন্স */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-brand-light/20 blur-3xl"
-      />
+    <div className="relative mb-5 flex items-center gap-3 overflow-hidden rounded-2xl border border-white/90 bg-gradient-to-r from-brand-bg/60 via-white to-white p-3 shadow-sh1 sm:gap-4 sm:p-3.5">
+      {/* আইকন ব্যাজ */}
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.35)] sm:h-12 sm:w-12">
+        <WeatherIcon code={data.code} className="h-6 w-6" />
+      </div>
 
-      <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* ১. বাম পাশ: লাইভ আইকন, তাপমাত্রা ও লোকেশন পিল */}
-        <div className="flex items-center gap-3.5 sm:gap-4">
-          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[18px] bg-brand-light text-white shadow-[0_6px_20px_rgba(68,167,252,0.35)] sm:h-14 sm:w-14">
-            <WeatherIcon code={data.code} className="h-7 w-7" />
-          </div>
-          <div>
-            <div className="font-body text-[32px] font-black tracking-tight text-ink sm:text-[36px]">
-              {data.temp}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-body text-[13px] font-bold text-ink/90">{data.desc}</span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/75 px-2.5 py-0.5 font-body text-[10.5px] font-bold text-brand-light shadow-xs backdrop-blur-md">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                {data.loc}
-              </span>
-            </div>
-          </div>
+      {/* তাপমাত্রা + বিবরণ + লোকেশন */}
+      <div className="flex min-w-0 shrink-0 items-baseline gap-2">
+        <span className="font-body text-[22px] font-black tracking-tight text-ink sm:text-[24px]">
+          {data.temp}
+        </span>
+        <span className="hidden font-body text-[12.5px] font-bold text-ink/80 sm:inline">{data.desc}</span>
+      </div>
+
+      <span className="hidden h-6 w-px shrink-0 bg-border-base sm:block" />
+
+      <span className="hidden min-w-0 truncate font-body text-[12px] font-semibold text-muted sm:inline">
+        {data.loc}
+      </span>
+
+      {/* ডানপাশে কমপ্যাক্ট স্ট্যাট — মোবাইলে দেখাবে না, শুধু main info থাকবে */}
+      <div className="ml-auto hidden shrink-0 items-center gap-3.5 border-l border-border-base pl-3.5 sm:flex sm:gap-4 sm:pl-4">
+        <div className="flex items-center gap-1.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+            <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+          </svg>
+          <span className="font-body text-[12px] font-bold text-ink">{data.feels}</span>
         </div>
-
-        {/* ২. মাঝের অংশ: ৩টি ফ্রস্টেড আইস-ক্যাপসুল (ইমেজ ২ ও ৩ ইন্সপায়ারেশন) */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-          <div className="flex flex-col items-center justify-center rounded-[16px] border border-white/90 bg-white/80 px-3 py-2 text-center shadow-xs backdrop-blur-md">
-            <span className="mb-0.5 font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted">অনুভূত</span>
-            <span className="font-body text-[13.5px] font-black text-ink">{data.feels}</span>
-          </div>
-
-          <div className="flex flex-col items-center justify-center rounded-[16px] border border-white/90 bg-white/80 px-3 py-2 text-center shadow-xs backdrop-blur-md">
-            <span className="mb-0.5 font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted">আর্দ্রতা</span>
-            <span className="font-body text-[13.5px] font-black text-brand-light">{data.hum}</span>
-          </div>
-
-          <div className="flex flex-col items-center justify-center rounded-[16px] border border-white/90 bg-white/80 px-3 py-2 text-center shadow-xs backdrop-blur-md">
-            <span className="mb-0.5 font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted">বাতাস</span>
-            <span className="font-body text-[13.5px] font-black text-ink">{data.wind}</span>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-light">
+            <path d="M12 2.69s5 5.6 5 9.31a5 5 0 0 1-10 0c0-3.71 5-9.31 5-9.31Z" />
+          </svg>
+          <span className="font-body text-[12px] font-bold text-ink">{data.hum}</span>
         </div>
-
-        {/* ৩. ডান পাশ: ৬-ঘণ্টার ফোরকাস্ট বার গ্রাফ */}
-        {data.forecast.length > 0 && (
-          <div className="flex items-end justify-between gap-2.5 border-t border-brand-light/20 pt-3 sm:gap-3.5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-            {data.forecast.map((item, idx) => (
-              <div key={idx} className="flex min-w-[32px] flex-col items-center gap-1">
-                <span className="font-body text-[10px] font-bold text-ink">{item.temp}°</span>
-                <div className="flex h-9 w-2 items-end overflow-hidden rounded-full bg-white/80 shadow-inner">
-                  <div
-                    className="w-full rounded-full bg-brand-light transition-[height] duration-500"
-                    style={{ height: `${item.pct}%` }}
-                  />
-                </div>
-                <span className="whitespace-nowrap font-body text-[8.5px] font-bold text-muted">{item.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+            <path d="M9.6 4.6a2 2 0 1 1 1.4 3.4H2M14 12.3a2 2 0 1 1 1.4 3.4H2m9.6-4.6H22" />
+          </svg>
+          <span className="font-body text-[12px] font-bold text-ink">{data.wind}</span>
+        </div>
       </div>
     </div>
   );

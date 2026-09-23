@@ -57,8 +57,8 @@ export default function LowStockAlert({ items }: { items: LowStockItem[] }) {
         </Link>
       </div>
 
-      {/* ট্যাকটাইল পিল চিপস গ্রিড (ইমেজ ৩ ইন্সপায়ারেশন) */}
-      <div className="flex flex-wrap gap-2.5">
+      {/* কমপ্যাক্ট লিস্ট (রেফারেন্স ডিজাইনের সাথে মিলিয়ে) */}
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {items.map((p) => {
           const isOut = p.stock <= 0;
           return (
@@ -66,18 +66,14 @@ export default function LowStockAlert({ items }: { items: LowStockItem[] }) {
               key={p.id}
               href="/products"
               title={`${p.name} — স্টক এডিট করতে ক্লিক করুন`}
-              className={`group flex items-center gap-2 rounded-[14px] border p-1.5 pr-3 shadow-xs transition-all duration-brand hover:-translate-y-0.5 hover:shadow-sh1 active:scale-95 ${
-                isOut
-                  ? 'border-red-200/80 bg-red-50/70 hover:border-red-300 hover:bg-red-50'
-                  : 'border-amber-200/80 bg-amber-50/70 hover:border-amber-300 hover:bg-amber-50'
-              }`}
+              className="group flex items-center gap-2.5 rounded-2xl p-2 transition-all duration-brand hover:bg-surface-muted active:scale-[0.98]"
             >
               <Thumb thumb={p.thumb} />
-              <span className="max-w-[140px] truncate font-body text-[12.5px] font-bold text-ink sm:max-w-[170px]">
+              <span className="min-w-0 flex-1 truncate font-body text-[12.5px] font-bold text-ink">
                 {p.name}
               </span>
               <span
-                className={`ml-auto whitespace-nowrap rounded-full px-2 py-0.5 font-body text-[10px] font-extrabold ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 font-body text-[10px] font-extrabold ${
                   isOut ? 'bg-danger text-white' : 'bg-warn/20 text-[#92400E]'
                 }`}
               >

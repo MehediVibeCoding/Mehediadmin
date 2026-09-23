@@ -41,10 +41,10 @@ export default function RecentOrders({ orders }: Props) {
         <table className="w-full min-w-[480px] text-left">
           <thead>
             <tr className="border-b border-border-base/60 bg-brand-bg/30 font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted">
-              <th className="rounded-l-xl py-2.5 pl-3 pr-4">অর্ডার নং</th>
-              <th className="py-2.5 pr-4">গ্রাহকের নাম</th>
-              <th className="py-2.5 pr-4">মোট মূল্য</th>
-              <th className="rounded-r-xl py-2.5 pr-3 text-right sm:text-left">স্ট্যাটাস</th>
+              <th className="rounded-l-xl py-3 pl-3 pr-4">অর্ডার নং</th>
+              <th className="py-3 pr-4">গ্রাহকের নাম</th>
+              <th className="py-3 pr-4">মোট মূল্য</th>
+              <th className="rounded-r-xl py-3 pr-3 text-right sm:text-left">স্ট্যাটাস</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-base/40 font-body text-[13px]">
@@ -67,18 +67,23 @@ export default function RecentOrders({ orders }: Props) {
                   className="transition-colors duration-brand hover:bg-brand-bg/30"
                 >
                   {/* গাঢ় নীল সম্পূর্ণ বর্জন — ১০০% খাঁটি সিগনেচার স্কাই-ব্লু (#44A7FC) */}
-                  <td className="whitespace-nowrap py-2.5 pl-3 pr-4 font-black text-brand-light">
+                  <td className="whitespace-nowrap py-3 pl-3 pr-4 font-black text-brand-light">
                     <Link href={`/orders?search=${encodeURIComponent(o.order_num)}`} className="hover:underline">
                       {o.order_num}
                     </Link>
                   </td>
-                  <td className="py-2.5 pr-4 font-bold text-ink truncate max-w-[180px]">
-                    {o.customer_name || '—'}
+                  <td className="py-3 pr-4">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-bg/60 font-body text-[11px] font-black text-brand-primary">
+                        {(o.customer_name || '?').trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="truncate max-w-[150px] font-bold text-ink">{o.customer_name || '—'}</span>
+                    </div>
                   </td>
-                  <td className="whitespace-nowrap py-2.5 pr-4 font-black text-ink">
+                  <td className="whitespace-nowrap py-3 pr-4 font-black text-ink">
                     ৳{(o.total || 0).toLocaleString('en-US')}
                   </td>
-                  <td className="whitespace-nowrap py-2.5 pr-3 text-right sm:text-left">
+                  <td className="whitespace-nowrap py-3 pr-3 text-right sm:text-left">
                     <StatusPill status={o.status} />
                   </td>
                 </tr>

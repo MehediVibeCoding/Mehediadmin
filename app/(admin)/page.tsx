@@ -4,6 +4,7 @@ import StatGrid from '@/components/dashboard/StatGrid';
 import RecentOrders from '@/components/dashboard/RecentOrders';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RevenueChart from '@/components/dashboard/RevenueChart';
+import OrderStatusDonut from '@/components/dashboard/OrderStatusDonut';
 import LowStockAlert from '@/components/dashboard/LowStockAlert';
 
 export const dynamic = 'force-dynamic';
@@ -54,19 +55,22 @@ export default async function DashboardPage() {
         {/* ১. লাইভ আবহাওয়া উইজেট (ব্র্যান্ড স্কাই-ব্লু গ্লাস) */}
         <WeatherWidget />
 
-        {/* ২. কালারফুল প্যাস্টেল গ্লাস স্ট্যাটাস গ্রিড (ইমেজ ২ স্টাইল) */}
+        {/* ২. কালারফুল প্যাস্টেল গ্লাস স্ট্যাটাস গ্রিড */}
         <StatGrid stats={data.stats} />
 
-        {/* ৩. সর্বশেষ অর্ডারসমূহ (ট্যাকটাইল কার্ডস) ও কুইক অ্যাকশন প্যানেল */}
+        {/* ৩. রেভিনিউ ট্রেন্ড চার্ট ও অর্ডার-অবস্থা ডোনাট পাশাপাশি */}
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.9fr_1.1fr]">
+          <RevenueChart revenueByDate={data.revenueByDate} />
+          <OrderStatusDonut stats={data.stats} />
+        </div>
+
+        {/* ৪. সর্বশেষ অর্ডারসমূহ ও কুইক অ্যাকশন প্যানেল */}
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.9fr_1.1fr]">
           <RecentOrders orders={data.recentOrders} />
           <QuickActions />
         </div>
 
-        {/* ৪. রেভিনিউ ট্রেন্ড চার্ট */}
-        <RevenueChart revenueByDate={data.revenueByDate} />
-
-        {/* ৫. কম স্টক সতর্কতা চিপস */}
+        {/* ৫. কম স্টক সতর্কতা লিস্ট */}
         <LowStockAlert items={data.lowStock} />
       </div>
     );

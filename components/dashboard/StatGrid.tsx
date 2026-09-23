@@ -134,12 +134,12 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map((card) => (
         <Link
           key={card.id}
           href={card.href}
-          className={`group relative flex min-h-[138px] flex-col items-center justify-center rounded-[22px] border p-4 text-center backdrop-blur-xl transition-all duration-brand hover:-translate-y-1 md:min-h-[152px] md:p-5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
+          className={`group relative flex items-center gap-3.5 overflow-hidden rounded-2xl border p-4 backdrop-blur-xl transition-all duration-brand hover:-translate-y-0.5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
         >
           {card.isLive && (
             <span className="absolute right-3.5 top-3.5 flex h-2 w-2">
@@ -149,24 +149,26 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           )}
 
           <div
-            className={`mb-2.5 flex h-10 w-10 items-center justify-center rounded-[14px] shadow-xs transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] shadow-xs transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
           >
             {card.icon}
           </div>
 
-          <div className="mb-0.5 font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted/85">
-            {card.label}
-          </div>
-
-          <div className={`w-full truncate font-body text-[20px] font-black tracking-tight text-ink md:text-[22px] ${card.valueColor ? 'group-hover:' + card.valueColor : ''}`}>
-            {card.value}
-          </div>
-
-          {card.note && (
-            <div className="mt-1 w-full truncate font-body text-[10px] font-semibold text-muted/75">
-              {card.note}
+          <div className="min-w-0">
+            <div className="truncate font-body text-[11px] font-extrabold uppercase tracking-wider text-muted/85">
+              {card.label}
             </div>
-          )}
+
+            <div className={`truncate font-body text-[21px] font-black leading-tight tracking-tight text-ink ${card.valueColor ? 'group-hover:' + card.valueColor : ''}`}>
+              {card.value}
+            </div>
+
+            {card.note && (
+              <div className="truncate font-body text-[10.5px] font-semibold text-muted/75">
+                {card.note}
+              </div>
+            )}
+          </div>
         </Link>
       ))}
     </div>
