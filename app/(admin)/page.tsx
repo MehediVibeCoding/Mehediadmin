@@ -21,41 +21,29 @@ export default async function DashboardPage() {
 
     return (
       <div className="pb-4">
-        {/* প্রিমিয়াম এক্সিকিউটিভ গ্রিটিং হেডার ও ট্যাকটাইল ডেট পিল */}
-        <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="font-body text-[22px] font-black tracking-tight text-ink sm:text-[25px]">
-                স্বাগতম, মেহেদী
-              </h1>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-0.5 font-body text-[10px] font-extrabold text-success shadow-xs">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                লাইভ সিস্টেম
-              </span>
-            </div>
-            <p className="mt-0.5 font-body text-[12px] font-medium text-muted">
-              Vangcur অ্যাডমিন ড্যাশবোর্ড — সার্বিক বিক্রয় ও স্টোর পারফরম্যান্স
-            </p>
-          </div>
+        {/* সেন্টার্ড ওয়েলকাম হেডার + নিচে অ্যাকসেন্ট-কালার ডেট পিল */}
+        <div className="mb-6 flex flex-col items-center gap-2.5 text-center">
+          <h1 className="font-body text-[21px] font-black tracking-tight text-ink sm:text-[26px]">
+            Hi Mehedi, Welcome to Vangcur Dashboard
+          </h1>
 
-          {/* ফ্রস্টেড ক্যালেন্ডার পিল ক্যাপসুল */}
-          <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-white/90 bg-white/80 px-4 py-2 shadow-xs backdrop-blur-md sm:self-auto">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-light">
+          <div className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-brand-light to-brand-primary px-4 py-1.5 shadow-sh2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span className="font-body text-[12px] font-bold text-ink">
+            <span className="font-body text-[12px] font-bold text-white">
               {today}
             </span>
           </div>
         </div>
 
-        {/* ১. লাইভ আবহাওয়া উইজেট (ব্র্যান্ড স্কাই-ব্লু গ্লাস) */}
+        {/* ১. লাইভ আবহাওয়া উইজেট (ব্র্যান্ড স্কাই-ব্লু গ্লাস) */}
         <WeatherWidget />
 
-        {/* ২. কালারফুল প্যাস্টেল গ্লাস স্ট্যাটাস গ্রিড */}
+        {/* ২. কালারফুল প্যাস্টেল গ্লাস স্ট্যাটাস গ্রিড — একটা হিরো কার্ড + কমপ্যাক্ট টাইলস */}
         <StatGrid stats={data.stats} />
 
         {/* ৩. রেভিনিউ ট্রেন্ড চার্ট ও অর্ডার-অবস্থা ডোনাট পাশাপাশি */}

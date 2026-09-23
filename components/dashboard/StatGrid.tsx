@@ -32,7 +32,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       iconColor: 'text-brand-light',
       valueColor: 'text-brand-light',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
           <path d="M3 6h18" />
           <path d="M16 10a4 4 0 0 1-8 0" />
@@ -51,7 +51,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       iconColor: 'text-warn',
       valueColor: 'text-warn',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="9" />
           <polyline points="12 6 12 12 16 14" />
         </svg>
@@ -70,7 +70,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       iconColor: 'text-success',
       valueColor: 'text-success',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="1" x2="12" y2="23" />
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
@@ -87,7 +87,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       iconBg: 'bg-indigo-100',
       iconColor: 'text-indigo-600',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
           <circle cx="9" cy="7" r="4" />
           <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
@@ -107,7 +107,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       iconBg: 'bg-purple-100',
       iconColor: 'text-purple-600',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
           <circle cx="12" cy="12" r="3" />
         </svg>
@@ -125,7 +125,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       iconBg: 'bg-teal-100',
       iconColor: 'text-teal-600',
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
           <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -133,44 +133,85 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
     },
   ];
 
+  const hero = cards.find((c) => c.id === 'profit')!;
+  const tiles = cards.filter((c) => c.id !== 'profit');
+
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {cards.map((card) => (
-        <Link
-          key={card.id}
-          href={card.href}
-          className={`group relative flex items-center gap-3.5 overflow-hidden rounded-2xl border p-4 backdrop-blur-xl transition-all duration-brand hover:-translate-y-0.5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_1.9fr]">
+      {/* হিরো কার্ড — সবচেয়ে গুরুত্বপূর্ণ মেট্রিক (নিট প্রফিট), গ্র্যাডিয়েন্ট সলিড ব্যাকগ্রাউন্ড */}
+      <Link
+        href={hero.href}
+        className="group relative flex min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-brand-light to-brand-primary p-5 shadow-sh2 transition-all duration-brand hover:-translate-y-0.5"
+      >
+        {/* ডেকোরেটিভ ওয়াটারমার্ক আইকন — খালি জায়গা এলিগেন্টভাবে পূরণ করে */}
+        <svg
+          aria-hidden="true"
+          width="120"
+          height="120"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth="1.2"
+          className="pointer-events-none absolute -right-5 -top-5 opacity-[0.14]"
         >
-          {card.isLive && (
-            <span className="absolute right-3.5 top-3.5 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-warn" />
-            </span>
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+
+        <div className="relative z-10 flex items-center gap-2.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-white/20 text-white backdrop-blur-sm">
+            {hero.icon}
+          </div>
+          <span className="font-body text-[12px] font-extrabold uppercase tracking-wider text-white/85">
+            {hero.label}
+          </span>
+        </div>
+
+        <div className="relative z-10">
+          <div className="font-body text-[30px] font-black leading-tight tracking-tight text-white sm:text-[34px]">
+            {hero.value}
+          </div>
+          {hero.note && (
+            <div className="mt-0.5 font-body text-[11.5px] font-semibold text-white/80">{hero.note}</div>
           )}
+        </div>
+      </Link>
 
-          <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] shadow-xs transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
+      {/* বাকি ৫টা মেট্রিক — কমপ্যাক্ট টাইল গ্রিড, কোনো ফাঁকা জায়গা ছাড়াই */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {tiles.map((card) => (
+          <Link
+            key={card.id}
+            href={card.href}
+            className={`group relative flex items-center gap-2.5 overflow-hidden rounded-2xl border p-3.5 backdrop-blur-xl transition-all duration-brand hover:-translate-y-0.5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
           >
-            {card.icon}
-          </div>
-
-          <div className="min-w-0">
-            <div className="truncate font-body text-[11px] font-extrabold uppercase tracking-wider text-muted/85">
-              {card.label}
-            </div>
-
-            <div className={`truncate font-body text-[21px] font-black leading-tight tracking-tight text-ink ${card.valueColor ? 'group-hover:' + card.valueColor : ''}`}>
-              {card.value}
-            </div>
-
-            {card.note && (
-              <div className="truncate font-body text-[10.5px] font-semibold text-muted/75">
-                {card.note}
-              </div>
+            {card.isLive && (
+              <span className="absolute right-3 top-3 flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-warn" />
+              </span>
             )}
-          </div>
-        </Link>
-      ))}
+
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] shadow-xs transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
+            >
+              {card.icon}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-body text-[10px] font-extrabold uppercase tracking-wider text-muted/85">
+                {card.label}
+              </div>
+              <div className={`truncate font-body text-[17px] font-black leading-tight tracking-tight text-ink ${card.valueColor ? 'group-hover:' + card.valueColor : ''}`}>
+                {card.value}
+              </div>
+              {card.note && (
+                <div className="truncate font-body text-[9.5px] font-semibold text-muted/75">{card.note}</div>
+              )}
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

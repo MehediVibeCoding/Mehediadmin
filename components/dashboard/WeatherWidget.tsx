@@ -23,7 +23,7 @@ const DEFAULT_WEATHER: WeatherData = {
   code: 1,
   temp: '28°C',
   desc: 'মোটামুটি পরিষ্কার',
-  loc: 'ঢাকা, বাংলাদেশ',
+  loc: 'চৌদ্দগ্রাম, কুমিল্লা',
   feels: '30°',
   hum: '68%',
   wind: '12 km/h',
@@ -154,12 +154,12 @@ export default function WeatherWidget() {
           forecast: forecast.length > 0 ? forecast : DEFAULT_WEATHER.forecast,
         });
       } catch {
-        // কোনো নেটওয়ার্ক সমস্যা হলে ডিফল্ট ঢাকা প্রদর্শিত থাকবে, ফলে কখনোই ভাঙা অবস্থা আসবে না
+        // কোনো নেটওয়ার্ক সমস্যা হলে ডিফল্ট চৌদ্দগ্রাম প্রদর্শিত থাকবে, ফলে কখনোই ভাঙা অবস্থা আসবে না
       }
     }
 
-    // ১. মাউন্ট হওয়ামাত্রই তাৎক্ষণিক লাইভ ঢাকার আবহাওয়া ফেচ শুরু হবে (জিরো ডিলে)
-    fetchWeather(23.8103, 90.4125, 'ঢাকা, বাংলাদেশ');
+    // ১. মাউন্ট হওয়ামাত্রই তাৎক্ষণিক লাইভ চৌদ্দগ্রাম, কুমিল্লার আবহাওয়া ফেচ শুরু হবে (জিরো ডিলে)
+    fetchWeather(23.2167, 91.3167, 'চৌদ্দগ্রাম, কুমিল্লা');
 
     // ২. ব্রাউজার লোকেশন সাপোর্ট করলে ব্যাকগ্রাউন্ডে ইউজার লোকেশনে স্মুথলি শিফট হবে
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -170,7 +170,7 @@ export default function WeatherWidget() {
           }
         },
         () => {
-          // পারমিশন ডিনাই করলেও কোনো সমস্যা নেই, ঢাকা নিরবচ্ছিন্নভাবে চলবে
+          // পারমিশন ডিনাই করলেও কোনো সমস্যা নেই, চৌদ্দগ্রাম নিরবচ্ছিন্নভাবে চলবে
         },
         { timeout: 4000 }
       );
@@ -182,45 +182,64 @@ export default function WeatherWidget() {
   }, []);
 
   return (
-    <div className="relative mb-5 flex items-center gap-3 overflow-hidden rounded-2xl border border-white/90 bg-gradient-to-r from-brand-bg/60 via-white to-white p-3 shadow-sh1 sm:gap-4 sm:p-3.5">
-      {/* আইকন ব্যাজ */}
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.35)] sm:h-12 sm:w-12">
-        <WeatherIcon code={data.code} className="h-6 w-6" />
-      </div>
+    <div className="relative mb-5 overflow-hidden rounded-2xl border border-white/90 bg-gradient-to-r from-brand-bg/60 via-white to-white p-3.5 shadow-sh1 sm:p-4">
+      {/* ডেকোরেটিভ ওয়াটারমার্ক — ওয়াইড স্ক্রিনে মাঝের ফাঁকা জায়গা এলিগেন্টভাবে পূরণ করে */}
+      <svg
+        aria-hidden="true"
+        width="130"
+        height="130"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        className="pointer-events-none absolute -right-6 -top-8 text-brand-light opacity-[0.10]"
+      >
+        <path d="M17.5 19H9a5 5 0 0 1-1-9.9 5.5 5.5 0 0 1 10.5 2.4A4 4 0 0 1 17.5 19Z" />
+      </svg>
 
-      {/* তাপমাত্রা + বিবরণ + লোকেশন */}
-      <div className="flex min-w-0 shrink-0 items-baseline gap-2">
-        <span className="font-body text-[22px] font-black tracking-tight text-ink sm:text-[24px]">
-          {data.temp}
-        </span>
-        <span className="hidden font-body text-[12.5px] font-bold text-ink/80 sm:inline">{data.desc}</span>
-      </div>
-
-      <span className="hidden h-6 w-px shrink-0 bg-border-base sm:block" />
-
-      <span className="hidden min-w-0 truncate font-body text-[12px] font-semibold text-muted sm:inline">
-        {data.loc}
-      </span>
-
-      {/* ডানপাশে কমপ্যাক্ট স্ট্যাট — মোবাইলে দেখাবে না, শুধু main info থাকবে */}
-      <div className="ml-auto hidden shrink-0 items-center gap-3.5 border-l border-border-base pl-3.5 sm:flex sm:gap-4 sm:pl-4">
-        <div className="flex items-center gap-1.5">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
-            <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
-          </svg>
-          <span className="font-body text-[12px] font-bold text-ink">{data.feels}</span>
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
+        {/* বাম ক্লাস্টার: আইকন + তাপমাত্রা + বিবরণ + লোকেশন (সবই main info, সব স্ক্রিনে দেখাবে) */}
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.35)] sm:h-12 sm:w-12">
+            <WeatherIcon code={data.code} className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="font-body text-[22px] font-black tracking-tight text-ink sm:text-[24px]">
+                {data.temp}
+              </span>
+              <span className="font-body text-[12.5px] font-bold text-ink/80">{data.desc}</span>
+            </div>
+            <span className="mt-0.5 flex items-center gap-1 font-body text-[11.5px] font-semibold text-muted">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span className="truncate">{data.loc}</span>
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-light">
-            <path d="M12 2.69s5 5.6 5 9.31a5 5 0 0 1-10 0c0-3.71 5-9.31 5-9.31Z" />
-          </svg>
-          <span className="font-body text-[12px] font-bold text-ink">{data.hum}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
-            <path d="M9.6 4.6a2 2 0 1 1 1.4 3.4H2M14 12.3a2 2 0 1 1 1.4 3.4H2m9.6-4.6H22" />
-          </svg>
-          <span className="font-body text-[12px] font-bold text-ink">{data.wind}</span>
+
+        {/* ডান ক্লাস্টার: সেকেন্ডারি স্ট্যাট — শুধু মোবাইলে লুকানো থাকবে */}
+        <div className="hidden shrink-0 items-center gap-4 border-l border-border-base pl-4 sm:flex">
+          <div className="flex items-center gap-1.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+              <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+            </svg>
+            <span className="font-body text-[12px] font-bold text-ink">{data.feels}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-light">
+              <path d="M12 2.69s5 5.6 5 9.31a5 5 0 0 1-10 0c0-3.71 5-9.31 5-9.31Z" />
+            </svg>
+            <span className="font-body text-[12px] font-bold text-ink">{data.hum}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
+              <path d="M9.6 4.6a2 2 0 1 1 1.4 3.4H2M14 12.3a2 2 0 1 1 1.4 3.4H2m9.6-4.6H22" />
+            </svg>
+            <span className="font-body text-[12px] font-bold text-ink">{data.wind}</span>
+          </div>
         </div>
       </div>
     </div>

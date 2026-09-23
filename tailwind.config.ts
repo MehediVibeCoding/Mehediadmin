@@ -43,8 +43,8 @@ const config: Config = {
         warn: '#F59E0B',
       },
       fontFamily: {
-        display: ['var(--font-display)', '"Playfair Display"', 'serif'],
-        body: ['var(--font-dm-sans)', '"DM Sans"', "'Noto Sans Bengali'", 'var(--font-bengali)', '"Hind Siliguri"', 'sans-serif'],
+        display: ['var(--font-display)', 'serif'],
+        body: ['var(--font-dm-sans)', "'Noto Sans Bengali'", 'var(--font-bengali)', 'sans-serif'],
       },
       boxShadow: {
         sh1: '0 1px 4px rgba(0,0,0,.07)',
