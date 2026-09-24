@@ -46,6 +46,12 @@ export interface OrderActionResult {
   message?: string;
 }
 
+// 🛡️ ফিক্স (audit P1-10): আগে শুধু 'rejected'-এ স্টক ফেরত যেত, 'cancelled'-এ
+// যেত না — অথচ ড্রপডাউনে দুটোই সমান বৈধ "অর্ডার হয়নি" স্ট্যাটাস। ফলে কোনো
+// pending/confirmed অর্ডার 'cancelled' করলে তার স্টক চিরতরে আটকে থাকত।
+// দুটো স্ট্যাটাসকেই এখন একই নিয়মে (idempotent) স্টক-রিস্টোর ট্রিগার করে।
+const STOCK_RESTORED_STATUSES: OrderStatus[] = ['rejected', 'cancelled'];
+
 // ⚠️ ক্রিটিকাল ফিক্স — স্টক রিস্টোর অন রিজেক্ট ────────────────────────
 // bKash manual-verify ফ্লোতে অর্ডার বসানোর সাথে সাথেই প্রোডাক্টের স্টক
 // কমে যায় (admin approve করার আগেই)। আগে admin panel-এ "reject" বলে
@@ -116,10 +122,10 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
   await requireAdmin();
   const supabase = createServiceRoleClient();
 
-  // 'rejected'-এ change হওয়ার সময় স্টক রিস্টোর করতে হবে — কিন্তু আগে
-  // বর্তমান status/items জেনে নিতে হবে (already-rejected হলে আবার
-  // restore না করার জন্য — double-credit ঠেকাতে)
-  if (status === 'rejected') {
+  // 'rejected' বা 'cancelled'-এ change হওয়ার সময় স্টক রিস্টোর করতে হবে —
+  // কিন্তু আগে বর্তমান status/items জেনে নিতে হবে (আগে থেকেই এই দুই
+  // স্ট্যাটাসের একটায় থাকলে আবার restore না করার জন্য — double-credit ঠেকাতে)
+  if (STOCK_RESTORED_STATUSES.includes(status)) {
     const { data: current, error: fetchErr } = await supabase
       .from('orders')
       .select('status, items')
@@ -127,7 +133,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
       .single();
     if (fetchErr) return { status: 'error', message: 'অর্ডার খুঁজে পাওয়া যায়নি: ' + fetchErr.message };
 
-    if (current.status !== 'rejected') {
+    if (!STOCK_RESTORED_STATUSES.includes(current.status)) {
       const restore = await restoreStockForItems(supabase, current.items as OrderItem[]);
       if (!restore.ok) return { status: 'error', message: restore.message };
     }
@@ -170,11 +176,11 @@ export async function bulkUpdateOrderStatus(
 
   let targetIds = ids;
 
-  // বাল্ক-এ reject করার সময়ও একই স্টক-রিস্টোর নিয়ম — প্রতিটা অর্ডারের
-  // জন্য আলাদা করে (যেগুলো আগে থেকেই 'rejected' না, শুধু সেগুলোর জন্য)।
+  // বাল্ক-এ reject/cancel করার সময়ও একই স্টক-রিস্টোর নিয়ম — প্রতিটা অর্ডারের
+  // জন্য আলাদা করে (যেগুলো আগে থেকেই rejected/cancelled না, শুধু সেগুলোর জন্য)।
   // কোনো একটার restore ব্যর্থ হলে সেটাকে বাদ দিয়ে বাকিগুলো আপডেট হয়,
   // যাতে একটা fail হওয়ার কারণে পুরো বাল্ক অ্যাকশন আটকে না যায়।
-  if (status === 'rejected') {
+  if (STOCK_RESTORED_STATUSES.includes(status)) {
     const { data: rows, error: fetchErr } = await supabase
       .from('orders')
       .select('id, status, items')
@@ -183,7 +189,7 @@ export async function bulkUpdateOrderStatus(
 
     const failedIds: string[] = [];
     for (const row of rows || []) {
-      if (row.status === 'rejected') continue; // idempotent — আগেই rejected
+      if (STOCK_RESTORED_STATUSES.includes(row.status)) continue; // idempotent — আগেই rejected/cancelled
       const restore = await restoreStockForItems(supabase, row.items as OrderItem[]);
       if (!restore.ok) failedIds.push(row.id);
     }
@@ -200,7 +206,7 @@ export async function bulkUpdateOrderStatus(
     .in('id', targetIds);
   if (error) return { status: 'error', changed: 0, message: error.message };
 
-  if (status === 'rejected' && targetIds.length < ids.length) {
+  if (STOCK_RESTORED_STATUSES.includes(status) && targetIds.length < ids.length) {
     revalidatePath('/orders');
     revalidatePath('/');
     return {
