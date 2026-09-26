@@ -142,6 +142,7 @@ export interface Review {
   id: number;
   image_url: string;
   created_at: string;
+  is_active: boolean; // 🆕 (audit A7) — ড্রাফট/স্টেজিং টগল, false হলে পাবলিকলি দেখাবে না
 }
 
 // ✅ VERIFIED (Module ১৩ — Offers Popup): কোনো আলাদা "offers" টেবিল নেই —

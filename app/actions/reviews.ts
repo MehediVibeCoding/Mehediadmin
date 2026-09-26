@@ -14,7 +14,7 @@ export async function listReviews(): Promise<Review[]> {
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select('id, image_url, created_at')
+    .select('id, image_url, created_at, is_active')
     .order('created_at', { ascending: false });
   if (error) return [];
   return (data || []) as Review[];
@@ -59,6 +59,18 @@ export async function deleteReview(id: number): Promise<ReviewActionResult> {
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) return { ok: false, message: '❌ মুছতে সমস্যা: ' + error.message };
+
+  revalidatePath('/review-gallery');
+  return { ok: true };
+}
+
+// 🆕 (audit A7) — ড্রাফট/স্টেজিং টগল: is_active=false করলে RLS-এর কারণে
+// স্টোরফ্রন্টে সাথে সাথে লুকিয়ে যাবে, মোছার দরকার নেই
+export async function toggleReviewActive(id: number, isActive: boolean): Promise<ReviewActionResult> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from(TABLE).update({ is_active: isActive }).eq('id', id);
+  if (error) return { ok: false, message: '❌ সমস্যা হয়েছে: ' + error.message };
 
   revalidatePath('/review-gallery');
   return { ok: true };

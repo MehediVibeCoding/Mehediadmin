@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Review } from '@/types';
-import { addReview, updateReview, deleteReview, uploadReviewImage } from '@/app/actions/reviews';
+import { addReview, updateReview, deleteReview, uploadReviewImage, toggleReviewActive } from '@/app/actions/reviews';
 import { useToast } from '@/components/admin/Toast';
 
 interface Props {
@@ -76,6 +76,16 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
     router.refresh();
   }
 
+  async function handleToggleActive(r: Review) {
+    const res = await toggleReviewActive(r.id, !r.is_active);
+    if (!res.ok) {
+      showToast(res.message || 'ব্যর্থ হয়েছে');
+      return;
+    }
+    showToast(r.is_active ? '👁️‍🗨️ লুকানো হয়েছে (ড্রাফট)' : '✅ পাবলিশ করা হয়েছে');
+    router.refresh();
+  }
+
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -106,12 +116,19 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
             {reviews.map((r) => (
               <div
                 key={r.id}
-                className="overflow-hidden rounded-xl border border-border-base bg-white shadow-sh1 transition-brand hover:shadow-sh2"
+                className={`overflow-hidden rounded-xl border border-border-base bg-white shadow-sh1 transition-brand hover:shadow-sh2 ${
+                  r.is_active ? '' : 'opacity-50'
+                }`}
               >
                 <div
                   className="relative aspect-[4/3] cursor-zoom-in bg-surface-muted"
                   onClick={() => r.image_url && setPreviewUrl(r.image_url)}
                 >
+                  {!r.is_active && (
+                    <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      🙈 ড্রাফট (লুকানো)
+                    </span>
+                  )}
                   {r.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -133,6 +150,18 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
                     {r.created_at ? new Date(r.created_at).toLocaleDateString('bn-BD') : ''}
                   </div>
                   <div className="mt-2 flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(r)}
+                      title={r.is_active ? 'লুকিয়ে দিন (ড্রাফট করুন)' : 'পাবলিশ করুন'}
+                      className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition-brand ${
+                        r.is_active
+                          ? 'border-border-base text-ink hover:border-brand-primary'
+                          : 'border-[#BBF7D0] bg-[#DCFCE7] text-[#166534] hover:bg-[#BBF7D0]'
+                      }`}
+                    >
+                      {r.is_active ? '🙈' : '✅'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEdit(r)}
