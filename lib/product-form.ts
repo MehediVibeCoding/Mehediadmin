@@ -82,7 +82,7 @@ export function productToFormState(p: Product): ProductFormInput {
     discountColor: (specs._discount_color as '' | 'green') || '',
     warranty: p.warranty || '',
     rating: p.rating || 4.5,
-    profit: (specs._profit as number) ?? 200,
+    profit: p.unit_profit ?? 200, // 🔒 আগে specs._profit থেকে আসত — এখন product_costs থেকে জয়েন করা p.unit_profit
     h1: p.seo_h1 || '',
     metaTitle: p.meta_title || '',
     metaDescription: p.meta_description || '',

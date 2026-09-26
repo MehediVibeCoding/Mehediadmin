@@ -12,7 +12,8 @@ export function getUnitProfitByName(name: string, products: Product[]): number {
   const key = (name || '').toLowerCase().trim();
   if (!key) return DEFAULT_UNIT_PROFIT;
   const p = products.find((x) => (x.name || '').toLowerCase().trim() === key);
-  const profit = p?.specs?._profit;
+  // 🔒 আগে p?.specs?._profit থেকে আসত (RLS-এ পাবলিক-রিডেবল ছিল) — এখন product_costs-জয়েনড p.unit_profit
+  const profit = p?.unit_profit;
   if (profit != null && !Number.isNaN(Number(profit))) return Number(profit);
   return DEFAULT_UNIT_PROFIT;
 }

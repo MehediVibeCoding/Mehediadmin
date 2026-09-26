@@ -69,13 +69,36 @@ function applyOrder(products: Product[], order: number[]): Product[] {
 export async function listProducts(): Promise<Product[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
-  const [{ data, error }, order] = await Promise.all([
+  const [{ data, error }, order, { data: costsData }] = await Promise.all([
     supabase.from(TABLE).select('*'),
     readOrder(),
+    // 🔒 প্রফিট-লিক ফিক্স: profit এখন এখান থেকে জয়েন হয়, specs._profit থেকে না
+    supabase.from('product_costs').select('product_id, unit_profit'),
   ]);
   if (error) throw new Error('প্রোডাক্ট লোড ব্যর্থ: ' + error.message);
-  const products = (data || []) as Product[];
+  const profitByProductId = new Map<number, number>(
+    (costsData || []).map((c) => [c.product_id as number, Number(c.unit_profit)])
+  );
+  const products = (data || []).map((p) => ({
+    ...p,
+    unit_profit: profitByProductId.get(p.id),
+  })) as Product[];
   return applyOrder(products, order);
+}
+
+// 🔒 প্রফিট-লিক ফিক্স (P0-01): `product_costs`-এই এখন একমাত্র সোর্স-অফ-ট্রুথ —
+// আগে buildSpecs() এটা specs._profit হিসেবে custom_products-এ লিখত, যেটা
+// RLS দিয়ে anon key-তেও পাবলিকলি readable ছিল। এখন createProduct/updateProduct
+// সেভের পর এই ফাংশন দিয়ে আলাদা admin-only টেবিলে upsert করে।
+async function upsertProductCost(productId: number, unitProfit: number): Promise<void> {
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase
+    .from('product_costs')
+    .upsert({ product_id: productId, unit_profit: unitProfit }, { onConflict: 'product_id' });
+  if (error) {
+    // best-effort: প্রোডাক্ট সেভ আটকাবে না, কিন্তু লগে থাকুক যাতে ধরা পড়ে
+    console.error('[products] product_costs upsert ব্যর্থ:', error.message);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -163,7 +186,8 @@ function buildSpecs(input: ProductFormInput): ProductSpecs {
   });
 
   if (input.discountColor) specs._discount_color = input.discountColor;
-  specs._profit = Number.isFinite(input.profit) ? input.profit : 200;
+  // 🔒 প্রফিট আর এখানে (specs) লেখা হয় না — product_costs টেবিলে যায়
+  // (দ্রষ্টব্য: upsertProductCost, createProduct/updateProduct-এর নিচে)
 
   return specs;
 }
@@ -230,6 +254,9 @@ export async function createProduct(
   const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
   if (error) return { status: 'error', message: error.message };
 
+  const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
+  await upsertProductCost(data.id, unitProfit);
+
   // নতুন id-কে order-এর শেষে যোগ করো
   const order = await readOrder();
   if (!order.includes(data.id)) {
@@ -238,7 +265,7 @@ export async function createProduct(
   }
 
   revalidatePath('/products');
-  return { status: 'ok', product: data as Product };
+  return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
 export async function updateProduct(id: number, input: ProductFormInput): Promise<SaveResult> {
@@ -288,8 +315,11 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
   if (error) return { status: 'error', message: error.message };
 
+  const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
+  await upsertProductCost(id, unitProfit);
+
   revalidatePath('/products');
-  return { status: 'ok', product: data as Product };
+  return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {

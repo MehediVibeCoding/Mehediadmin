@@ -120,6 +120,10 @@ export interface Product {
   quick_specs_text: string | null; // 🆕 "স্পেসিফিকেশন এক নজরে" — ফ্রি-ফ্লো টেক্সট, "•" দিয়ে আলাদা পিল হিসেবে দেখাবে (পুরনো প্রোডাক্টে এটা খালি থাকলে সাইট আগের _quick_keys সিস্টেমে ফলব্যাক করে)
   packaging_content: string | null; // 🆕 Packaging Content — Power Info বক্সের ঠিক পরে (Power Info না থাকলে Technical Specification-এর পরে) আলাদা বক্সে দেখায়
   created_at?: string;
+  // 🔒 (প্রফিট-লিক ফিক্স, ২০২৬-০৯): এটা `custom_products`-এর কলাম না — আলাদা
+  // অ্যাডমিন-অনলি `product_costs` টেবিল থেকে জয়েন করে বসানো হয় `listProducts()`-এ
+  // (আগে `specs._profit`-এ থাকত, যেটা RLS দিয়ে সবার জন্য পাবলিক-রিডেবল ছিল)।
+  unit_profit?: number;
 }
 
 // নতুন প্রোডাক্ট তৈরির সময় id/created_at বাদে বাকি সব ফিল্ড লাগবে
