@@ -37,8 +37,17 @@ export const ORDER_ADVANCE = ORDER_ADVANCE_FALLBACK;
 
 /** legacy অর্ডারে advance_paid না থাকলে নিরাপদ ফলব্যাক (৳২০০) — কখনো `total - 200` হার্ডকোড করা যাবে না */
 export function getOrderAdvance(order: Pick<Order, 'advance_paid'>): number {
-  const v = Number(order.advance_paid);
-  return Number.isFinite(v) && v > 0 ? v : ORDER_ADVANCE_FALLBACK;
+  return normalizeAdvance(order.advance_paid);
+}
+
+/**
+ * advance_paid নর্মালাইজ: null/undefined/খালি/অসংখ্যা/ঋণাত্মক হলে legacy fallback (২০০);
+ * ০ সহ যেকোনো অঋণাত্মক সংখ্যা যেমন আছে তেমনই থাকে (Legendary Zero-Advance অর্ডারে ০ সঠিক মান)।
+ */
+function normalizeAdvance(raw: unknown): number {
+  if (raw === null || raw === undefined || raw === '') return ORDER_ADVANCE_FALLBACK;
+  const v = Number(raw);
+  return Number.isFinite(v) && v >= 0 ? v : ORDER_ADVANCE_FALLBACK;
 }
 
 /** ডেলিভারিতে বাকি (COD) — total - advance_paid, কখনো ঋণাত্মক না */
@@ -88,7 +97,9 @@ export function mapOrderRow(o: any): Order {
     total: o.total || 0,
     // legacy অর্ডারে column null/undefined থাকলে ফলব্যাক ৳২০০ — কখনো hardcode `200` লেখা যাবে না,
     // এই একটামাত্র জায়গাতেই ফলব্যাকটা বসে, বাকি সব জায়গায় order.advance_paid সরাসরি পড়া হয়
-    advance_paid: Number.isFinite(Number(o.advance_paid)) && Number(o.advance_paid) > 0 ? Number(o.advance_paid) : ORDER_ADVANCE_FALLBACK,
+    // 0 একটি বৈধ মান (Legendary "Zero Advance" ভাউচারের অর্ডার) — শুধু null/undefined/খালি/অবৈধ
+    // হলেই legacy fallback (২০০)। আগে `> 0` চেক ০-কেও ২০০ বানিয়ে ফেলত।
+    advance_paid: normalizeAdvance(o.advance_paid),
     payment_txn: o.payment_txn || '',
     payment_last4: o.payment_last4 || '',
     fingerprint_id: o.fingerprint_id || null,

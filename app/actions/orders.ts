@@ -172,6 +172,13 @@ export async function bulkUpdateOrderStatus(
 ): Promise<BulkOrderActionResult> {
   await requireAdmin();
   if (!ids.length) return { status: 'error', changed: 0, message: 'অন্তত একটি অর্ডার সিলেক্ট করুন' };
+  // 🔒 ফিক্স (audit P1-20): আগে ids-এর আকারে কোনো সীমা ছিল না — UI থেকে সবসময়
+  // যুক্তিসঙ্গত সংখ্যা আসে, কিন্তু server action সরাসরি কল করা গেলে (বা ভবিষ্যতে
+  // UI বদলালে) অনেক বড় অ্যারে দিয়ে DB-তে চাপ ফেলা যেত। ২০০-এ ক্যাপ করলাম।
+  const MAX_BULK_IDS = 200;
+  if (ids.length > MAX_BULK_IDS) {
+    return { status: 'error', changed: 0, message: `একসাথে সর্বোচ্চ ${MAX_BULK_IDS}টি অর্ডার আপডেট করা যাবে` };
+  }
   const supabase = createServiceRoleClient();
 
   let targetIds = ids;
