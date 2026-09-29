@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { sanitizeCouponCode, estimateTotalDiscountGiven } from '@/lib/coupons';
-import type { Coupon, CouponDiscountType, CouponStats } from '@/types';
+import type { Coupon, CouponDiscountType, CouponRequiredTier, CouponStats } from '@/types';
 
 const TABLE = 'coupons';
 const PATH = '/coupons';
@@ -56,6 +56,7 @@ export interface CouponFormInput {
   max_uses_per_user: number;
   expires_at: string | null; // ISO string, নাল মানে মেয়াদহীন
   is_active: boolean;
+  required_tier: CouponRequiredTier | null; // নাল মানে সবার জন্য
 }
 
 // Postgres unique_violation — DB-র `coupons_code_key` constraint ভাঙলে এই
@@ -73,6 +74,7 @@ function validate(input: CouponFormInput): string | null {
   if (input.min_order_amount < 0) return 'সর্বনিম্ন অর্ডার মূল্য ঋণাত্মক হতে পারবে না';
   if (input.max_uses_total != null && input.max_uses_total <= 0) return 'মোট ব্যবহারসীমা ০-এর বেশি হতে হবে';
   if (!input.max_uses_per_user || input.max_uses_per_user <= 0) return 'প্রতি গ্রাহক ব্যবহারসীমা ০-এর বেশি হতে হবে';
+  if (input.required_tier != null && !['silver', 'gold', 'diamond', 'legendary'].includes(input.required_tier)) return 'ভুল মেম্বারশিপ লেভেল';
   return null;
 }
 
@@ -90,6 +92,7 @@ function toRow(input: CouponFormInput) {
     max_uses_per_user: input.max_uses_per_user || 1,
     expires_at: input.expires_at || null,
     is_active: input.is_active,
+    required_tier: input.required_tier || null,
   };
 }
 

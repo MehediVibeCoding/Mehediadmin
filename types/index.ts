@@ -54,6 +54,11 @@ export interface Order {
   // গ্রাহকের ডিভাইস ফিঙ্গারপ্রিন্ট আইডি (bKash manual verify ফ্লো থেকে) — না থাকলে null
   fingerprint_id: string | null;
   ip: string;
+  // অর্ডারদাতার লগইন-আইডি (গেস্ট অর্ডারে null)
+  user_id?: string | null;
+  // কাস্টমার সাইটের মেম্বারশিপ লেভেল অনুযায়ী বিশেষ সুবিধা পাওয়ার যোগ্য কি না —
+  // শুধু listOrders() হিসাব করে বসায় (ডেলিভার্ড অর্ডার গুনে), DB কলাম নয়।
+  member_tier?: 'diamond' | null;
 }
 
 // ✅ VERIFIED (Module ৩ — Products): Supabase টেবিল `custom_products`।
@@ -257,6 +262,10 @@ export interface ProductQuestionWithAnswers extends ProductQuestion {
 // লুকিয়ে রেখে ১ (placeholder) সেট করে দেওয়া হয়, UI-তে এটা কোথাও দেখানো হয় না।
 export type CouponDiscountType = 'fixed' | 'percent' | 'free_shipping';
 
+// কাস্টমার সাইটের মেম্বারশিপ লেভেল (ডেলিভার্ড অর্ডার: সিলভার ১+, গোল্ড ৩+, ডায়মন্ড ৫+, লিজেন্ডারি ১০+)।
+// null মানে কুপনটা সব কাস্টমারের জন্য।
+export type CouponRequiredTier = 'silver' | 'gold' | 'diamond' | 'legendary';
+
 export interface Coupon {
   id: string;
   code: string;
@@ -269,6 +278,7 @@ export interface Coupon {
   max_uses_per_user: number;
   expires_at: string | null;
   is_active: boolean;
+  required_tier: CouponRequiredTier | null;
   created_at: string;
 }
 

@@ -1,4 +1,4 @@
-import type { Coupon, CouponStatus } from '@/types';
+import type { Coupon, CouponStatus, CouponRequiredTier } from '@/types';
 
 // legacy admin.html-এ কুপন মডিউল ছিল না — এটা সম্পূর্ণ নতুন ফিচার, তাই কোনো
 // "legacy" রেফারেন্স কমেন্ট নেই। status তিনটা ভাগে ভাগ করা হয়েছে:
@@ -72,3 +72,17 @@ export function estimateTotalDiscountGiven(coupons: Coupon[]): number {
     return sum; // free_shipping — এই স্কিমায় শিপিং খরচ ট্র্যাক হয় না
   }, 0);
 }
+
+export const TIER_LABEL: Record<CouponRequiredTier, string> = {
+  silver: 'সিলভার',
+  gold: 'গোল্ড',
+  diamond: 'ডায়মন্ড',
+  legendary: 'লিজেন্ডারি',
+};
+
+export const TIER_MIN_ORDERS: Record<CouponRequiredTier, number> = {
+  silver: 1,
+  gold: 3,
+  diamond: 5,
+  legendary: 10,
+};

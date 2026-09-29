@@ -3,7 +3,7 @@
 import type { Order } from '@/types';
 import StatusPill from '@/components/admin/StatusPill';
 import { useToast } from '@/components/admin/Toast';
-import { getOrderAdvance, getOrderDueCOD, isAdvanceTier2 } from '@/lib/orders';
+import { getOrderAdvance, getOrderDueCOD, isAdvanceTier2, needsDiamondAction } from '@/lib/orders';
 
 interface Props {
   orders: Order[];
@@ -92,6 +92,7 @@ export default function OrdersTable({
                 const due = getOrderDueCOD(o);
                 const tier2 = isAdvanceTier2(o);
                 const hasCoupon = !!o.coupon_code || (o.discount_amount || 0) > 0;
+                const diamondAction = needsDiamondAction(o);
                 const isSelected = selectedIds.has(o.id);
 
                 return (
@@ -122,6 +123,19 @@ export default function OrdersTable({
                         >
                           {o.order_num}
                         </button>
+
+                        {diamondAction && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-brand-light/40 bg-gradient-to-r from-brand-bg to-white px-2 py-0.5 font-body text-[10px] font-extrabold text-brand-light shadow-xs"
+                            title="ডায়মন্ড মেম্বার: ১ দিনে কুরিয়ারে হ্যান্ডওভার দিন + সারপ্রাইজ গ্যাজেট গিফট ঢোকান"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M6 3h12l4 6-10 12L2 9z" />
+                              <path d="M2 9h20M12 21 8 9l4-6 4 6z" />
+                            </svg>
+                            <span>ডায়মন্ড: আগে পাঠান + গিফট</span>
+                          </span>
+                        )}
 
                         {hasCoupon && (
                           <span

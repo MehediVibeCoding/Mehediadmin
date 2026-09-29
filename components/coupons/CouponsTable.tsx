@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Coupon, CouponStatus } from '@/types';
 import { toggleCouponActive, deleteCoupon } from '@/app/actions/coupons';
-import { getCouponStatus, STATUS_LABEL, STATUS_BADGE_CLASS, formatDiscount, formatExpiryCountdown } from '@/lib/coupons';
+import { getCouponStatus, STATUS_LABEL, STATUS_BADGE_CLASS, formatDiscount, formatExpiryCountdown, TIER_LABEL } from '@/lib/coupons';
 import { useToast } from '@/components/admin/Toast';
 import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
@@ -197,6 +197,11 @@ export default function CouponsTable({ coupons, onEdit, onAdd }: Props) {
                           )}
                         </button>
                       </div>
+                      {c.required_tier && (
+                        <span className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                          🔒 {TIER_LABEL[c.required_tier]}+ মেম্বার
+                        </span>
+                      )}
                     </td>
                     <td className="text-xs font-semibold text-ink">{formatDiscount(c)}</td>
                     <td className="text-xs text-muted">

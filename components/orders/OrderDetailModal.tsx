@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Order, OrderStatus } from '@/types';
-import { ORDER_STATUS_META, ORDER_STATUS_ORDER, getOrderAdvance, getOrderDueCOD, isAdvanceTier2 } from '@/lib/orders';
+import { ORDER_STATUS_META, ORDER_STATUS_ORDER, getOrderAdvance, getOrderDueCOD, isAdvanceTier2, needsDiamondAction } from '@/lib/orders';
 import { useToast } from '@/components/admin/Toast';
 
 interface Props {
@@ -98,6 +98,33 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
             {stMeta.label}
           </span>
         </div>
+
+        {/* ডায়মন্ড মেম্বারের বিশেষ সুবিধা — শিপ হওয়ার আগ পর্যন্ত মনে করিয়ে দেয় */}
+        {order.member_tier === 'diamond' && (
+          <div
+            className={`mb-4 rounded-2xl border px-4 py-3 ${
+              needsDiamondAction(order)
+                ? 'border-brand-light/40 bg-gradient-to-r from-brand-bg/70 via-white to-brand-bg/40'
+                : 'border-border-base bg-surface-muted'
+            }`}
+          >
+            <div className="flex items-center gap-2 text-[13px] font-extrabold text-ink">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-brand-light">
+                <path d="M6 3h12l4 6-10 12L2 9z" />
+                <path d="M2 9h20M12 21 8 9l4-6 4 6z" />
+              </svg>
+              ডায়মন্ড মেম্বার
+            </div>
+            {needsDiamondAction(order) ? (
+              <ul className="mt-1.5 space-y-0.5 text-[12px] font-semibold text-ink/80">
+                <li>• সবার আগে ১ দিনের মধ্যে কুরিয়ারে হ্যান্ডওভার দিন</li>
+                <li>• পার্সেলে একটা সারপ্রাইজ গ্যাজেট গিফট ঢোকান</li>
+              </ul>
+            ) : (
+              <p className="mt-1 text-[11.5px] text-muted">এই অর্ডারের ডায়মন্ড সুবিধা দেওয়ার সময় পার হয়ে গেছে।</p>
+            )}
+          </div>
+        )}
 
         {/* গ্রাহকের তথ্য */}
         <SectionTitle icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></>}>

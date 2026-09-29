@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { mapOrderRow } from '@/lib/orders';
+import { mapOrderRow, isDiamondByDeliveredCount } from '@/lib/orders';
 import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import type { Order, OrderItem, OrderStatus } from '@/types';
 
@@ -22,7 +22,22 @@ export async function listOrders(): Promise<Order[]> {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw new Error('অর্ডার লোড ব্যর্থ: ' + error.message);
-  return (data || []).map(mapOrderRow);
+
+  // প্রতিটা লগইন-ইউজারের ডেলিভার্ড অর্ডার গুনে ডায়মন্ড মেম্বার চিহ্নিত করা
+  // (একই fetch থেকেই — আলাদা কোনো DB কল লাগে না)
+  const rows = data || [];
+  const deliveredByUser = new Map<string, number>();
+  for (const r of rows) {
+    if (r.user_id && r.status === 'delivered') {
+      deliveredByUser.set(r.user_id, (deliveredByUser.get(r.user_id) || 0) + 1);
+    }
+  }
+  return rows.map((r) => {
+    const order = mapOrderRow(r);
+    const delivered = order.user_id ? deliveredByUser.get(order.user_id) || 0 : 0;
+    if (isDiamondByDeliveredCount(delivered)) order.member_tier = 'diamond';
+    return order;
+  });
 }
 
 // সাইডবারের পেন্ডিং ব্যাজের জন্য — পুরো লিস্ট না টেনে শুধু count

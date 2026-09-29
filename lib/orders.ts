@@ -104,6 +104,7 @@ export function mapOrderRow(o: any): Order {
     payment_last4: o.payment_last4 || '',
     fingerprint_id: o.fingerprint_id || null,
     ip: o.ip || '',
+    user_id: o.user_id || null,
   };
 }
 
@@ -119,4 +120,18 @@ export function orderMatchesQuery(o: Order, rawQuery: string): boolean {
     o.customer_name?.toLowerCase().includes(q) ||
     (digitsQ.length > 0 && (o.customer_phone || '').replace(/\D/g, '').includes(digitsQ))
   );
+}
+
+// কাস্টমার সাইটের মেম্বারশিপের ডায়মন্ড লেভেল = ৫–৯টি ডেলিভার্ড অর্ডার
+// (সিলভার ১–২, গোল্ড ৩–৪, লিজেন্ডারি ১০+ — lib/membershipData.ts-এর সাথে মিল রেখে)।
+export const DIAMOND_MIN_DELIVERED = 5;
+export const DIAMOND_MAX_DELIVERED = 9;
+
+export function isDiamondByDeliveredCount(deliveredCount: number): boolean {
+  return deliveredCount >= DIAMOND_MIN_DELIVERED && deliveredCount <= DIAMOND_MAX_DELIVERED;
+}
+
+/** ডায়মন্ড সুবিধা (আগে পাঠানো + সারপ্রাইজ গিফট) এখনো দেওয়ার বাকি — শিপ হয়ে গেলে আর অ্যাকশন লাগে না */
+export function needsDiamondAction(order: Pick<Order, 'member_tier' | 'status'>): boolean {
+  return order.member_tier === 'diamond' && (order.status === 'pending' || order.status === 'confirmed');
 }

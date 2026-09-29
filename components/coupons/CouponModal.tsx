@@ -4,7 +4,8 @@ import { useState } from 'react';
 import type { Coupon } from '@/types';
 import type { CouponFormInput } from '@/app/actions/coupons';
 import { createCoupon, updateCoupon } from '@/app/actions/coupons';
-import { sanitizeCouponCode } from '@/lib/coupons';
+import { sanitizeCouponCode, TIER_LABEL, TIER_MIN_ORDERS } from '@/lib/coupons';
+import type { CouponRequiredTier } from '@/types';
 import { useToast } from '@/components/admin/Toast';
 
 interface Props {
@@ -23,6 +24,7 @@ const EMPTY_FORM: CouponFormInput = {
   max_uses_per_user: 1,
   expires_at: null,
   is_active: true,
+  required_tier: null,
 };
 
 // Supabase-এ `timestamptz` কলাম, কিন্তু `<input type="datetime-local">`
@@ -52,6 +54,7 @@ function couponToForm(c: Coupon): CouponFormInput {
     max_uses_per_user: c.max_uses_per_user,
     expires_at: c.expires_at,
     is_active: c.is_active,
+    required_tier: c.required_tier ?? null,
   };
 }
 
@@ -212,6 +215,24 @@ export default function CouponModal({ editingCoupon, onClose, onSaved }: Props) 
               value={isoToLocalInput(form.expires_at)}
               onChange={(e) => set('expires_at', localInputToIso(e.target.value))}
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-ink">
+              কোন মেম্বারশিপ লেভেল থেকে ব্যবহার করা যাবে <span className="text-[11px] font-normal text-muted">(সার্ভার নিজে ডেলিভার্ড অর্ডার গুনে যাচাই করে)</span>
+            </label>
+            <select
+              className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+              value={form.required_tier ?? ''}
+              onChange={(e) => set('required_tier', (e.target.value || null) as CouponRequiredTier | null)}
+            >
+              <option value="">সবার জন্য (কোনো লেভেল লাগবে না)</option>
+              {(Object.keys(TIER_LABEL) as CouponRequiredTier[]).map((key) => (
+                <option key={key} value={key}>
+                  {TIER_LABEL[key]} ও তার উপরে ({TIER_MIN_ORDERS[key]}+ ডেলিভার্ড অর্ডার)
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center justify-between rounded-lg bg-surface-muted px-3.5 py-3">
