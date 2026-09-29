@@ -55,6 +55,7 @@ export default function ProductsPageClient({ initialProducts, categories }: Prop
         <ProductModal
           categories={categories}
           editingProduct={modal.product}
+          allProducts={products}
           initialState={
             modal.product
               ? productToFormState(modal.product)

@@ -29,6 +29,8 @@ export function emptyFormState(defaultCat: string): ProductFormInput {
     packagingContent: '',
     infoBoxesRaw: '',
     faqsRaw: '',
+    colorName: '',
+    colorSwatch: '',
   };
 }
 
@@ -96,6 +98,8 @@ export function productToFormState(p: Product): ProductFormInput {
     packagingContent: p.packaging_content || legacyPackaging,
     infoBoxesRaw: stringifyInfoBoxes(p.info_boxes || []),
     faqsRaw: (p.faqs || []).map((f) => `Q: ${f.q}\nA: ${f.a}`).join('\n\n'),
+    colorName: p.color_name || '',
+    colorSwatch: p.color_swatch || '',
   };
 }
 
@@ -132,5 +136,7 @@ export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []
     infoBoxesRaw: parsed.info_boxes,
     faqsRaw: parsed.faqs,
     closing: parsed.closing,
+    colorName: '',
+    colorSwatch: '',
   };
 }

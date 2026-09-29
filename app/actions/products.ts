@@ -1,5 +1,6 @@
 'use server';
 
+import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
@@ -133,6 +134,8 @@ export interface ProductFormInput {
   infoBoxesRaw: string; // "### Title\nBody" ফরম্যাট, একাধিক ব্লক blank line দিয়ে আলাদা
   faqsRaw: string; // "Q: ...\nA: ...\n\nQ: ...\nA: ..." ফরম্যাট
   closing?: string; // শুধু AI Parse ফ্লো থেকে আসে — ম্যানুয়াল ফর্মে কোনো ফিল্ড নেই (legacy-তেও নেই)
+  colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
+  colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
 }
 
 function parseTechSpecs(raw: string): Record<string, string> {
@@ -249,6 +252,8 @@ export async function createProduct(
     og_description: input.ogDescription ? sanitizeInput(input.ogDescription) : null,
     quick_specs_text: input.quickSpecsText ? sanitizeInput(input.quickSpecsText) : null,
     packaging_content: input.packagingContent ? sanitizeInput(input.packagingContent) : null,
+    color_name: input.colorName ? sanitizeInput(input.colorName) : null,
+    color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
   };
 
   const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
@@ -310,6 +315,8 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     og_description: input.ogDescription ? sanitizeInput(input.ogDescription) : null,
     quick_specs_text: input.quickSpecsText ? sanitizeInput(input.quickSpecsText) : null,
     packaging_content: input.packagingContent ? sanitizeInput(input.packagingContent) : null,
+    color_name: input.colorName ? sanitizeInput(input.colorName) : null,
+    color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
   };
 
   const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
@@ -322,11 +329,65 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
+// ══════════════════════════════════════════════════════════════
+//  কালার ভ্যারিয়েন্ট লিংক/আনলিংক — সেভ ফর্মের অংশ না, ProductModal-এর
+//  "কালার ভ্যারিয়েন্ট" বক্স থেকে ক্লিক করা মাত্রই আলাদাভাবে চলে (updateStock/
+//  updateBadge-এর প্যাটার্নের মতোই)। লিংক করলে দুইটা প্রোডাক্টের কেউ যদি
+//  আগে থেকেই অন্য কোনো গ্রুপে থাকে, সেই পুরনো গ্রুপের বাকি সদস্যরাও নতুন
+//  একই group_id-তে মার্জ হয়ে যায়, যাতে কখনো দুইটা আলাদা গ্রুপ একসাথে জোড়া
+//  লাগানো হলে কেউ বাদ পড়ে না যায়।
+// ══════════════════════════════════════════════════════════════
+
+export async function linkColorVariant(
+  productId: number,
+  otherProductId: number
+): Promise<{ ok: boolean; message?: string; groupId?: string }> {
+  await requireAdmin();
+  if (productId === otherProductId) {
+    return { ok: false, message: 'একই প্রোডাক্ট নিজের সাথে লিংক করা যাবে না' };
+  }
+  const supabase = createServiceRoleClient();
+  const { data: rows, error } = await supabase
+    .from(TABLE)
+    .select('id, color_group_id')
+    .in('id', [productId, otherProductId]);
+  if (error || !rows || rows.length !== 2) {
+    return { ok: false, message: 'প্রোডাক্ট দুটো খুঁজে পাওয়া যায়নি' };
+  }
+  const a = rows.find((r) => r.id === productId);
+  const b = rows.find((r) => r.id === otherProductId);
+  const oldGroupIds = [a?.color_group_id, b?.color_group_id].filter(Boolean) as string[];
+  const groupId = oldGroupIds[0] || randomUUID();
+
+  const { error: updateErr } = await supabase
+    .from(TABLE)
+    .update({ color_group_id: groupId })
+    .in('id', [productId, otherProductId]);
+  if (updateErr) return { ok: false, message: updateErr.message };
+
+  if (oldGroupIds.length) {
+    const { error: mergeErr } = await supabase
+      .from(TABLE)
+      .update({ color_group_id: groupId })
+      .in('color_group_id', oldGroupIds);
+    if (mergeErr) return { ok: false, message: mergeErr.message };
+  }
+
+  revalidatePath('/products');
+  return { ok: true, groupId };
+}
+
+export async function unlinkColorVariant(productId: number): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.from(TABLE).update({ color_group_id: null }).eq('id', productId);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath('/products');
+  return { ok: true };
+}
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
-
-  // প্রোডাক্ট ডিলিট করার আগে এর সাথে লিংকড গাইড সাব-পেজগুলো (slug/page_type সহ) বের করে রাখা —
   // ডিলিটের পর আর এগুলো জানার উপায় থাকবে না, অথচ নিচে রিভ্যালিডেশনের জন্য দরকার
   const { data: linkedPages } = await supabase
     .from(GUIDE_TABLE)

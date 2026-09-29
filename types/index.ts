@@ -54,11 +54,6 @@ export interface Order {
   // গ্রাহকের ডিভাইস ফিঙ্গারপ্রিন্ট আইডি (bKash manual verify ফ্লো থেকে) — না থাকলে null
   fingerprint_id: string | null;
   ip: string;
-  // অর্ডারদাতার লগইন-আইডি (গেস্ট অর্ডারে null)
-  user_id?: string | null;
-  // কাস্টমার সাইটের মেম্বারশিপ লেভেল অনুযায়ী বিশেষ সুবিধা পাওয়ার যোগ্য কি না —
-  // শুধু listOrders() হিসাব করে বসায় (ডেলিভার্ড অর্ডার গুনে), DB কলাম নয়।
-  member_tier?: 'diamond' | null;
 }
 
 // ✅ VERIFIED (Module ৩ — Products): Supabase টেবিল `custom_products`।
@@ -124,6 +119,14 @@ export interface Product {
   og_description: string | null; // খালি হলে meta_description (বা তার auto fallback) ব্যবহার হবে
   quick_specs_text: string | null; // 🆕 "স্পেসিফিকেশন এক নজরে" — ফ্রি-ফ্লো টেক্সট, "•" দিয়ে আলাদা পিল হিসেবে দেখাবে (পুরনো প্রোডাক্টে এটা খালি থাকলে সাইট আগের _quick_keys সিস্টেমে ফলব্যাক করে)
   packaging_content: string | null; // 🆕 Packaging Content — Power Info বক্সের ঠিক পরে (Power Info না থাকলে Technical Specification-এর পরে) আলাদা বক্সে দেখায়
+  // 🆕 কালার ভ্যারিয়েশন সিস্টেম (২০২৬-০৯): color_group_id একই আইটেমের ভিন্ন
+  // কালার প্রোডাক্টগুলোকে একসাথে গ্রুপ করে (null = কোনো কালার ভ্যারিয়েন্ট নেই)।
+  // color_name/color_swatch শুধু এই নির্দিষ্ট রো-টার কালার লেবেল/সোয়াচ ডট —
+  // group-এর বাকি রো-গুলোর নিজস্ব মান থাকে। লিংক/আনলিংক app/actions/products.ts-এর
+  // linkColorVariant/unlinkColorVariant দিয়ে হয়, নিয়মিত Save ফর্ম থেকে না।
+  color_group_id: string | null;
+  color_name: string | null;
+  color_swatch: string | null;
   created_at?: string;
   // 🔒 (প্রফিট-লিক ফিক্স, ২০২৬-০৯): এটা `custom_products`-এর কলাম না — আলাদা
   // অ্যাডমিন-অনলি `product_costs` টেবিল থেকে জয়েন করে বসানো হয় `listProducts()`-এ
@@ -262,10 +265,6 @@ export interface ProductQuestionWithAnswers extends ProductQuestion {
 // লুকিয়ে রেখে ১ (placeholder) সেট করে দেওয়া হয়, UI-তে এটা কোথাও দেখানো হয় না।
 export type CouponDiscountType = 'fixed' | 'percent' | 'free_shipping';
 
-// কাস্টমার সাইটের মেম্বারশিপ লেভেল (ডেলিভার্ড অর্ডার: সিলভার ১+, গোল্ড ৩+, ডায়মন্ড ৫+, লিজেন্ডারি ১০+)।
-// null মানে কুপনটা সব কাস্টমারের জন্য।
-export type CouponRequiredTier = 'silver' | 'gold' | 'diamond' | 'legendary';
-
 export interface Coupon {
   id: string;
   code: string;
@@ -278,7 +277,6 @@ export interface Coupon {
   max_uses_per_user: number;
   expires_at: string | null;
   is_active: boolean;
-  required_tier: CouponRequiredTier | null;
   created_at: string;
 }
 

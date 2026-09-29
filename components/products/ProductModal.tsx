@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Product } from '@/types';
 import type { CategoryOption } from '@/lib/constants/categories';
 import type { ProductFormInput } from '@/app/actions/products';
-import { createProduct, updateProduct } from '@/app/actions/products';
+import { createProduct, updateProduct, linkColorVariant, unlinkColorVariant } from '@/app/actions/products';
 import CategoryPicker from './CategoryPicker';
 import ImageManager from './ImageManager';
 
@@ -15,15 +15,67 @@ interface Props {
   editingProduct?: Product;
   initialState: ProductFormInput;
   titleOverride?: string; // যেমন AI Parser থেকে খোলা হলে '🤖 AI Parse — প্রোডাক্ট যোগ করুন'
+  allProducts?: Product[]; // 🆕 কালার ভ্যারিয়েন্ট লিংক-পিকারে সার্চ করার জন্য — বাকি সব প্রোডাক্টের তালিকা
   onClose: () => void;
   onSaved: (product: Product) => void;
 }
 
-export default function ProductModal({ categories, editingProduct, initialState, titleOverride, onClose, onSaved }: Props) {
+export default function ProductModal({ categories, editingProduct, initialState, titleOverride, allProducts = [], onClose, onSaved }: Props) {
   const [tab, setTab] = useState<Tab>('basic');
   const [form, setForm] = useState<ProductFormInput>(initialState);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // 🆕 কালার ভ্যারিয়েন্ট — group id নিয়মিত ফর্ম সেভের অংশ না (link/unlink
+  // সাথে সাথে সার্ভারে সেভ হয়ে যায়), তাই এটা আলাদা লোকাল স্টেটে রাখা
+  const [colorGroupId, setColorGroupId] = useState<string | null>(editingProduct?.color_group_id || null);
+  const [linkQuery, setLinkQuery] = useState('');
+  const [linking, setLinking] = useState(false);
+
+  const groupMembers = editingProduct && colorGroupId
+    ? allProducts.filter((p) => p.color_group_id === colorGroupId && p.id !== editingProduct.id)
+    : [];
+  const linkCandidates = editingProduct && linkQuery.trim()
+    ? allProducts
+        .filter((p) => (
+          p.id !== editingProduct.id &&
+          !(colorGroupId && p.color_group_id === colorGroupId) &&
+          p.name.toLowerCase().includes(linkQuery.trim().toLowerCase())
+        ))
+        .slice(0, 8)
+    : [];
+
+  async function handleLink(otherId: number) {
+    if (!editingProduct) return;
+    setLinking(true);
+    setError('');
+    try {
+      const result = await linkColorVariant(editingProduct.id, otherId);
+      if (result.ok) {
+        setColorGroupId(result.groupId || null);
+        setLinkQuery('');
+      } else {
+        setError(result.message || 'লিংক ব্যর্থ হয়েছে');
+      }
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  async function handleUnlink(idToUnlink: number) {
+    setLinking(true);
+    setError('');
+    try {
+      const result = await unlinkColorVariant(idToUnlink);
+      if (result.ok) {
+        if (editingProduct && idToUnlink === editingProduct.id) setColorGroupId(null);
+      } else {
+        setError(result.message || 'আনলিংক ব্যর্থ হয়েছে');
+      }
+    } finally {
+      setLinking(false);
+    }
+  }
 
   function set<K extends keyof ProductFormInput>(key: K, val: ProductFormInput[K]) {
     setForm((f) => ({ ...f, [key]: val }));
@@ -214,6 +266,109 @@ export default function ProductModal({ categories, editingProduct, initialState,
                   onChange={(e) => set('rating', Number(e.target.value))}
                 />
               </div>
+            </div>
+
+            <div className="mt-3.5 rounded-lg bg-[#FDF4FF] p-3.5">
+              <div className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-[#86198F]">
+                🎨 কালার ভ্যারিয়েন্ট{' '}
+                <span className="text-[11px] font-normal normal-case text-muted">
+                  (ঐচ্ছিক — একই আইটেমের ভিন্ন কালার প্রোডাক্টগুলো একে অপরের সাথে লিংক করুন)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-ink">কালারের নাম</label>
+                  <input
+                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                    placeholder="যেমন: Baby Pink"
+                    value={form.colorName}
+                    onChange={(e) => set('colorName', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-ink">সোয়াচ কালার</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      className="h-9 w-12 shrink-0 cursor-pointer rounded-lg border border-border-base"
+                      value={/^#[0-9a-fA-F]{6}$/.test(form.colorSwatch) ? form.colorSwatch : '#44A7FC'}
+                      onChange={(e) => set('colorSwatch', e.target.value)}
+                    />
+                    <input
+                      className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                      placeholder="#F9C5D1"
+                      value={form.colorSwatch}
+                      onChange={(e) => set('colorSwatch', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {!editingProduct ? (
+                <div className="mt-3 text-[11.5px] text-muted">
+                  প্রথমে প্রোডাক্টটা সেভ করুন, তারপর এডিট করে অন্য কালারের প্রোডাক্টের সাথে লিংক করা যাবে।
+                </div>
+              ) : (
+                <div className="mt-3">
+                  {groupMembers.length > 0 && (
+                    <div className="mb-2.5 flex flex-wrap gap-2">
+                      {groupMembers.map((m) => (
+                        <span
+                          key={m.id}
+                          className="flex items-center gap-1.5 rounded-full border border-border-base bg-white px-2.5 py-1 text-[12px] text-ink"
+                        >
+                          <span
+                            className="h-3 w-3 rounded-full border border-black/10"
+                            style={{ backgroundColor: m.color_swatch || '#ccc' }}
+                          />
+                          {m.color_name || m.name}
+                          <button
+                            type="button"
+                            disabled={linking}
+                            onClick={() => handleUnlink(m.id)}
+                            className="ml-0.5 text-muted transition-brand hover:text-danger disabled:opacity-50"
+                            title="আনলিংক করুন"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative">
+                    <input
+                      className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
+                      placeholder="🔍 অন্য কালারের প্রোডাক্টের নাম লিখে লিংক করুন"
+                      value={linkQuery}
+                      onChange={(e) => setLinkQuery(e.target.value)}
+                      disabled={linking}
+                    />
+                    {linkQuery.trim() && (
+                      <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border-base bg-white shadow-sh2">
+                        {linkCandidates.length === 0 ? (
+                          <div className="px-3 py-2 text-[12.5px] text-muted">কোনো প্রোডাক্ট পাওয়া যায়নি</div>
+                        ) : (
+                          linkCandidates.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => handleLink(c.id)}
+                              className="block w-full px-3 py-2 text-left text-[12.5px] text-ink hover:bg-brand-bg/20"
+                            >
+                              {c.name}{c.color_name ? ` (${c.color_name})` : ''}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {colorGroupId && groupMembers.length === 0 && (
+                    <div className="mt-1.5 text-[11px] text-muted">
+                      এই গ্রুপে আর কোনো প্রোডাক্ট নেই — লিংক করলে এখানে দেখাবে।
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
