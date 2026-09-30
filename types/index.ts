@@ -54,6 +54,15 @@ export interface Order {
   // গ্রাহকের ডিভাইস ফিঙ্গারপ্রিন্ট আইডি (bKash manual verify ফ্লো থেকে) — না থাকলে null
   fingerprint_id: string | null;
   ip: string;
+  // 🛡️ ফিক্স: DB কলাম আছে (auth.users-এর রেফারেন্স, লগইন ছাড়া অর্ডারে null),
+  // কিন্তু আগে এখানে ঘোষণা করা ছিল না — অথচ lib/orders.ts (mapOrderRow) ও
+  // app/actions/orders.ts (ডেলিভার্ড-কাউন্ট হিসাব) দুটোতেই ব্যবহার হচ্ছিল,
+  // ফলে `next build` টাইপ-এরর দিয়ে আটকে যেত।
+  user_id: string | null;
+  // ডাটাবেজ কলাম না — listOrders()-এ fetch করার পরে ডেলিভার্ড-অর্ডার গুনে
+  // রানটাইমে বসানো হয় (৫-৯টা ডেলিভার্ড অর্ডার হলে 'diamond')। তাই ঐচ্ছিক —
+  // সব জায়গায় (যেমন createOrder-এর রিটার্নে) এটা বসে না।
+  member_tier?: 'diamond';
 }
 
 // ✅ VERIFIED (Module ৩ — Products): Supabase টেবিল `custom_products`।
@@ -265,6 +274,15 @@ export interface ProductQuestionWithAnswers extends ProductQuestion {
 // লুকিয়ে রেখে ১ (placeholder) সেট করে দেওয়া হয়, UI-তে এটা কোথাও দেখানো হয় না।
 export type CouponDiscountType = 'fixed' | 'percent' | 'free_shipping';
 
+// 🛡️ কুপন সিকিউরিটি রিডিজাইন (২০২৬-০৯-৩০): DB-তে `coupons` টেবিলে
+// `coupon_kind`/`required_tier`/`owner_user_id` কলাম ও একটা CHECK constraint
+// (coupons_kind_rules) যোগ হয়েছে — global কুপনের required_tier/owner_user_id
+// NULL থাকতেই হবে আর কোড 'VC-' দিয়ে শুরু হতে পারবে না; membership কুপনের
+// required_tier থাকতেই হবে আর কোড অবশ্যই 'VC-' দিয়ে শুরু হতে হবে। এই টাইপ
+// দুটো আগে এখানে ছিল না যদিও lib/coupons.ts ও কম্পোনেন্টগুলোতে ব্যবহার হচ্ছিল।
+export type CouponRequiredTier = 'silver' | 'gold' | 'diamond' | 'legendary';
+export type CouponKind = 'global' | 'membership';
+
 export interface Coupon {
   id: string;
   code: string;
@@ -278,6 +296,9 @@ export interface Coupon {
   expires_at: string | null;
   is_active: boolean;
   created_at: string;
+  coupon_kind: CouponKind;
+  required_tier: CouponRequiredTier | null;
+  owner_user_id: string | null; // null মানে শেয়ার্ড/গ্লোবাল, নাহলে শুধু এই ইউজারের জেতা কুপন
 }
 
 // UI-only ডেরাইভড স্ট্যাটাস — কোনো DB কলাম না। `is_active` আর `expires_at`

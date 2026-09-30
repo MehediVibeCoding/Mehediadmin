@@ -114,6 +114,15 @@ export default function CouponModal({ editingCoupon, onClose, onSaved }: Props) 
               onChange={(e) => set('code', sanitizeCouponCode(e.target.value))}
             />
             <p className="mt-1 text-[11px] text-muted">শুধু বড় হাতের অক্ষর, সংখ্যা, - ও _ — নিজে থেকেই বড় হাতে বদলে যাবে</p>
+            {form.required_tier ? (
+              <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                ⚠️ মেম্বারশিপ-ভিত্তিক কুপন বেছে নেওয়া হয়েছে — কোডটা অবশ্যই &quot;VC-&quot; দিয়ে শুরু করতে হবে (যেমন VC-{form.required_tier.toUpperCase()}-150)
+              </p>
+            ) : form.code.startsWith('VC-') ? (
+              <p className="mt-1 text-[11px] font-semibold text-danger">
+                ⚠️ &quot;VC-&quot; প্রিফিক্স শুধু মেম্বারশিপ-ভিত্তিক কুপনের জন্য — নিচে একটা লেভেল বেছে নিন, নাহলে কোড পাল্টান
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
