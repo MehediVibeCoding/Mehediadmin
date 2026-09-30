@@ -75,15 +75,38 @@ function validate(input: CouponFormInput): string | null {
   if (input.max_uses_total != null && input.max_uses_total <= 0) return 'মোট ব্যবহারসীমা ০-এর বেশি হতে হবে';
   if (!input.max_uses_per_user || input.max_uses_per_user <= 0) return 'প্রতি গ্রাহক ব্যবহারসীমা ০-এর বেশি হতে হবে';
   if (input.required_tier != null && !['silver', 'gold', 'diamond', 'legendary'].includes(input.required_tier)) return 'ভুল মেম্বারশিপ লেভেল';
+
+  // 🛡️ ডাটাবেজের `coupons_kind_rules` CHECK constraint-এর সাথে হুবহু মিলিয়ে
+  // — এখানে আগে থেকে আটকে দিলে ইউজার DB এরর না দেখে স্পষ্ট বাংলা বার্তা পাবে।
+  // যাচাই না করলে required_tier দেওয়া কুপন সেভ করতে গেলে সরাসরি ডাটাবেজ
+  // error দিয়ে রিজেক্ট হয়ে যেত (নিচে toRow()-এর কমেন্টে বিস্তারিত)।
+  const code = sanitizeCouponCode(input.code);
+  const isVcCode = code.startsWith('VC-');
+  if (input.required_tier != null && !isVcCode) {
+    return 'মেম্বারশিপ-ভিত্তিক কুপনের কোড অবশ্যই "VC-" দিয়ে শুরু করতে হবে (যেমন VC-DIAMOND-150)';
+  }
+  if (input.required_tier == null && isVcCode) {
+    return '"VC-" প্রিফিক্সটা শুধু মেম্বারশিপ-ভিত্তিক কুপনের জন্য সংরক্ষিত — এই কুপনটা সবার জন্য খোলা রাখতে চাইলে অন্য কোড ব্যবহার করুন, নাহলে উপরে মেম্বারশিপ লেভেল বেছে নিন';
+  }
   return null;
 }
 
 // DB row shape — free_shipping-এর জন্য discount_value-এর কোনো বাস্তব অর্থ
 // নেই কিন্তু `discount_value > 0` CHECK constraint সবসময় মানতে হয়, তাই
 // এখানে নীরবে ১ বসানো হয় (types/index.ts-এ এই সিদ্ধান্তের ব্যাখ্যা আছে)
+//
+// 🛡️ ফিক্স (কুপন সিকিউরিটি রিডিজাইন): আগে এখানে `coupon_kind`/`owner_user_id`
+// একদম সেট করা হতো না, তাই DB-এর ডিফল্ট 'global' বসে যেত। required_tier
+// দেওয়া থাকলেও coupon_kind='global' থাকায় নতুন CHECK constraint
+// (coupons_kind_rules) ভেঙে INSERT/UPDATE সরাসরি এরর দিত — অ্যাডমিন থেকে
+// কোনো মেম্বারশিপ-ভিত্তিক কুপন তৈরি/এডিট করাই সম্ভব ছিল না। এখন
+// required_tier-এর উপস্থিতি থেকেই coupon_kind ডেরাইভ করা হচ্ছে।
+// owner_user_id সবসময় null থাকে — অ্যাডমিন-তৈরি কুপন সবসময় শেয়ার্ড
+// (নির্দিষ্ট ইউজারের নামে বাঁধা কুপন শুধু স্পিন-হুইল সিস্টেম নিজে বানায়)।
 function toRow(input: CouponFormInput) {
+  const code = sanitizeCouponCode(input.code);
   return {
-    code: sanitizeCouponCode(input.code),
+    code,
     discount_type: input.discount_type,
     discount_value: input.discount_type === 'free_shipping' ? 1 : input.discount_value,
     max_discount_amount: input.discount_type === 'percent' ? input.max_discount_amount : null,
@@ -93,6 +116,8 @@ function toRow(input: CouponFormInput) {
     expires_at: input.expires_at || null,
     is_active: input.is_active,
     required_tier: input.required_tier || null,
+    coupon_kind: input.required_tier ? ('membership' as const) : ('global' as const),
+    owner_user_id: null,
   };
 }
 
