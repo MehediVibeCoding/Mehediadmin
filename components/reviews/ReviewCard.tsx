@@ -19,24 +19,36 @@ export default function ReviewCard({ review: r, busy, onApprove, onReject, onDel
   return (
     <div className="rounded-xl border border-border-base bg-white p-3.5 shadow-sh1 transition-brand hover:shadow-sh2 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row">
-        {r.image_url && (
-          <button
-            type="button"
-            onClick={() => onZoomImage(r.image_url!)}
-            className="h-24 w-full shrink-0 cursor-zoom-in overflow-hidden rounded-lg border border-border-base bg-surface-muted sm:h-24 sm:w-24"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={r.image_url}
-              alt="রিভিউ ছবি"
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                const el = e.target as HTMLImageElement;
-                el.style.display = 'none';
-              }}
-            />
-          </button>
-        )}
+        {r.image_url && (() => {
+          // কাস্টমার একাধিক ছবি দিলে image_url-এ কমা দিয়ে জোড়া থাকে — আলাদা করে প্রতিটা দেখাই
+          const urls = r.image_url.split(',').map((u) => u.trim()).filter(Boolean);
+          const multi = urls.length > 1;
+          return (
+            <div className="flex shrink-0 gap-1.5 sm:flex-col">
+              {urls.map((url, i) => (
+                <button
+                  key={`${url}-${i}`}
+                  type="button"
+                  onClick={() => onZoomImage(url)}
+                  className={`cursor-zoom-in overflow-hidden rounded-lg border border-border-base bg-surface-muted ${
+                    multi ? 'h-16 w-16 sm:h-[72px] sm:w-24' : 'h-24 w-full sm:h-24 sm:w-24'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`রিভিউ ছবি ${i + 1}`}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const el = e.target as HTMLImageElement;
+                      el.style.display = 'none';
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
