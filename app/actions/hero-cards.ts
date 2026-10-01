@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { DEFAULT_HERO_CARDS, HERO_CARDS_MAX, type HeroCard } from '@/lib/constants/heroCards';
@@ -48,6 +49,7 @@ async function persistHeroCards(cards: HeroCard[]): Promise<void> {
     await supabase.from('store_settings').insert({ setting_key: SETTING_KEY, setting_value: JSON.stringify(cards) });
   }
   revalidatePath('/design/hero-cards');
+  await revalidateVangcurCatalog();
 }
 
 export interface HeroCardActionResult {

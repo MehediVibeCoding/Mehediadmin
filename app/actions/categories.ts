@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { DEFAULT_CATEGORIES, type CategoryOption } from '@/lib/constants/categories';
@@ -49,6 +50,7 @@ async function persistCategories(cats: CategoryOption[]): Promise<void> {
   }
   revalidatePath('/design/categories');
   revalidatePath('/products'); // Products-এর ক্যাটাগরি dropdown/ফিল্টার এর উপর নির্ভরশীল
+  await revalidateVangcurCatalog();
 }
 
 export interface CategoryActionResult {

@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
 import { requireAdmin } from '@/lib/auth-guard';
@@ -270,6 +271,7 @@ export async function createProduct(
   }
 
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
@@ -326,6 +328,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   await upsertProductCost(id, unitProfit);
 
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
@@ -374,6 +377,7 @@ export async function linkColorVariant(
   }
 
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { ok: true, groupId };
 }
 
@@ -383,6 +387,7 @@ export async function unlinkColorVariant(productId: number): Promise<{ ok: boole
   const { error } = await supabase.from(TABLE).update({ color_group_id: null }).eq('id', productId);
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { ok: true };
 }
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {
@@ -411,6 +416,7 @@ export async function deleteProduct(id: number): Promise<{ ok: boolean; message?
   if (error) return { ok: false, message: error.message };
 
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
 
   // ডিলিট হওয়া সাব পেজগুলোর লাইভ URL রিভ্যালিডেট করা — best-effort, ব্যর্থ হলেও প্রোডাক্ট
   // ডিলিট আটকাবে না (revalidateGuidePage নিজেই ৫ সেকেন্ড টাইমআউট + সাইলেন্ট ফেইল হ্যান্ডল করে)
@@ -442,6 +448,7 @@ export async function updateStock(id: number, stock: number): Promise<{ ok: bool
   const { error } = await supabase.from(TABLE).update({ stock }).eq('id', id);
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { ok: true };
 }
 
@@ -454,6 +461,7 @@ export async function updateBadge(id: number, badge: string): Promise<{ ok: bool
     .eq('id', id);
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { ok: true };
 }
 
@@ -473,6 +481,7 @@ export async function updateProductOrder(visibleOrderedIds: number[]): Promise<{
   const merged = fullOld.map((id) => (visibleSet.has(id) ? visibleOrderedIds[vi++] : id));
   await writeOrder(merged);
   revalidatePath('/products');
+  await revalidateVangcurCatalog();
   return { ok: true };
 }
 

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput } from '@/lib/security';
 import { requireAdmin } from '@/lib/auth-guard';
@@ -56,6 +57,7 @@ async function persistOfferConfig(cfg: OfferConfig): Promise<void> {
     await supabase.from('store_settings').insert({ setting_key: SETTING_KEY, setting_value: JSON.stringify(cfg) });
   }
   revalidatePath('/offers-mgmt');
+  await revalidateVangcurCatalog();
 }
 
 export interface OfferActionResult {
