@@ -112,8 +112,8 @@ export function productToFormState(p: Product): ProductFormInput {
 export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []): ProductFormInput {
   return {
     name: parsed.name,
-    nameBn: '',
-    cats: [],
+    nameBn: parsed.name_bn,
+    cats: parsed.cats,
     price: parsed.price,
     old: parsed.old,
     stock: parsed.stock,
@@ -121,7 +121,7 @@ export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []
     discountColor: '',
     warranty: parsed.warranty,
     rating: parsed.rating,
-    profit: 200,
+    profit: parsed.profit ?? 200,
     h1: parsed.seo_h1,
     metaTitle: parsed.meta_title,
     metaDescription: parsed.meta_description,

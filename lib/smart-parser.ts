@@ -22,8 +22,13 @@
 //  পরের "───" দিয়ে ভাগ করা ব্লকগুলো থেকে Extra Info Box বের করা হয়।
 // ══════════════════════════════════════════════════════════════
 
+import type { CategoryOption } from '@/lib/constants/categories';
+
 export interface ParsedProductData {
   name: string;
+  name_bn: string; // 🆕 কনটেন্টের "প্রোডাক্টের বাংলা নাম" লাইন থেকে — না থাকলে খালি
+  cats: string[]; // 🆕 কনটেন্টের "ক্যাটাগরি" লাইন থেকে, এডমিনের আসল ক্যাটাগরি তালিকার সাথে মিলিয়ে — না মিললে খালি
+  profit: number | null; // 🆕 কনটেন্টের "প্রফিট" লাইন থেকে — না থাকলে null (ফর্মের ডিফল্ট থাকবে)
   cat: string;
   price: number;
   old: number;
@@ -375,6 +380,149 @@ function parseFaqRegion(lines: string[]): string {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  🆕 মেটা লাইন — প্রোডাক্টের বাংলা নাম / প্রফিট / ক্যাটাগরি
+//  কনটেন্টের যেকোনো জায়গায় লাইনের শুরুতে এই লেবেলগুলো থাকলে চেনে, যেমন:
+//    প্রোডাক্টের বাংলা নাম: নিয়ন লাইট
+//    এই প্রোডাক্টের প্রফিট 700 টাকা
+//    এই প্রোডাক্টের ক্যাটাগরি Crystal Ball
+//  মান লেবেলের একই লাইনে অথবা ঠিক পরের লাইনে থাকতে পারে। এই লাইনগুলো
+//  সেকশন-পার্সিংয়ের আগেই ডকুমেন্ট থেকে সরিয়ে ফেলা হয়, যাতে FAQ/বিবরণ/
+//  স্পেসিফিকেশনের লেখার ভেতরে ঢুকে না যায় (প্রফিট গোপন তথ্য)।
+// ══════════════════════════════════════════════════════════════
+
+type MetaKey = 'nameBn' | 'profit' | 'category';
+
+const META_PREFIX = '^[\\s\\-•*·▪►✓✔📌]*(?:এই\\s*)?(?:(?:প্রোডাক্টের|প্রোডাক্ট|পণ্যের|product(?:\'s)?)\\s*)?';
+// লেবেলের পর অবশ্যই বিভাজক চিহ্ন অথবা অন্তত একটা স্পেস লাগবে (যাতে "লাভজনক" এর মতো শব্দ ভুল না ধরে)
+const META_SEP = '(?:\\s*[:：=ঃ]\\s*|\\s+)';
+
+const META_TESTS: { key: MetaKey; re: RegExp }[] = [
+  { key: 'nameBn', re: new RegExp(META_PREFIX + '(?:(?:বাংলা|বাঙলা|bangla|bengali)\\s*(?:নাম|name))' + META_SEP, 'i') },
+  { key: 'profit', re: new RegExp(META_PREFIX + '(?:প্রফিট(?:\\s*মার্জিন)?|লাভ|profit(?:\\s*margin)?)' + META_SEP, 'i') },
+  { key: 'category', re: new RegExp(META_PREFIX + '(?:ক্যাটাগরি|ক্যাটেগরি|category|categories)' + META_SEP, 'i') },
+];
+
+interface ExtractedMeta {
+  nameBn: string;
+  profitRaw: string;
+  categoryRaw: string;
+  lines: string[]; // মেটা লাইন বাদ দেওয়া ডকুমেন্ট
+}
+
+function cleanMetaValue(v: string): string {
+  return v.replace(/^(?:হলো|হল|হচ্ছে|হয়|:|：|=|ঃ)\s*/, '').trim();
+}
+
+function extractMetaLines(lines: string[]): ExtractedMeta {
+  const out: ExtractedMeta = { nameBn: '', profitRaw: '', categoryRaw: '', lines: [] };
+  const remove = new Set<number>();
+  const taken = new Set<MetaKey>();
+
+  function isStructuralLine(l: string): boolean {
+    return !!matchAnchor(l) || META_TESTS.some((t) => t.re.test(l.trim()));
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    for (const { key, re } of META_TESTS) {
+      if (taken.has(key)) continue;
+      const m = line.match(re);
+      if (!m) continue;
+      let value = cleanMetaValue(line.slice(m[0].length));
+      const removeIdx = [i];
+      if (!value) {
+        // মান পরের (আর বড়জোর এক লাইন ফাঁকের) লাইনে
+        for (let j = i + 1; j <= Math.min(i + 2, lines.length - 1); j++) {
+          if (!lines[j].trim()) continue;
+          if (!isStructuralLine(lines[j])) {
+            value = lines[j].trim();
+            removeIdx.push(j);
+          }
+          break;
+        }
+      }
+      if (!value) continue; // মানহীন লেবেল — কিছু সরাব না
+      taken.add(key);
+      removeIdx.forEach((x) => remove.add(x));
+      if (key === 'nameBn') out.nameBn = value;
+      else if (key === 'profit') out.profitRaw = value;
+      else out.categoryRaw = value;
+      break;
+    }
+  }
+  out.lines = lines.filter((_, idx) => !remove.has(idx));
+  return out;
+}
+
+function normalizeCatToken(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]/g, '');
+}
+
+// ক্যাটাগরির নাম এডমিনের আসল তালিকার (id অথবা name) সাথে হুবহু (স্পেস/চিহ্ন/বড়-ছোট হাতের
+// অক্ষর উপেক্ষা করে) মিললে তবেই বসে। না মিললে খালি — ভুল ক্যাটাগরি কখনো বসায় না।
+function resolveCategories(raw: string, categories: CategoryOption[]): string[] {
+  if (!raw || !categories.length) return [];
+  const result: string[] = [];
+  const tokens = raw.split(/[,،;/|&+]|\s+ও\s+/).map((t) => t.trim()).filter(Boolean);
+  for (const token of tokens) {
+    const norm = normalizeCatToken(token);
+    if (!norm) continue;
+    const hit = categories.find(
+      (c) => c.id !== 'all' && (normalizeCatToken(c.id) === norm || normalizeCatToken(c.name) === norm)
+    );
+    if (hit && !result.includes(hit.id)) result.push(hit.id);
+  }
+  return result;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  🆕 ওয়ারেন্টি — শুধু ৮টা নির্ধারিত ফরম্যাট চেনে (বাংলা ৪ + ইংরেজি ৪)।
+//  কনটেন্টের যেকোনো জায়গায় এগুলোর একটা থাকলে সেটা ধরে (একাধিক থাকলে ডকুমেন্টে
+//  যেটা আগে আসে)। ওয়ারেন্টি তথ্য না থাকলে, অথবা এই ৮টার বাইরে অন্য কোনো
+//  ভাবে লেখা থাকলে খালি ফেরত দেয় — তখন প্রোডাক্টে কোনো ওয়ারেন্টি সেট হয় না।
+//  বাংলা/ইংরেজি সংখ্যা (৬ বা 6), এক বা বহুবচন (Month/Months) দুটোই চলে।
+// ══════════════════════════════════════════════════════════════
+
+const WARRANTY_TIERS: { re: RegExp; bn: string; en: string }[] = [
+  {
+    re: /(?<![0-9.])7\s*(?:days?|দিনের|দিন)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
+    bn: '৭ দিনের রিপ্লেসমেন্ট ওয়ারেন্টি',
+    en: '7 Days Replacement Warranty',
+  },
+  {
+    re: /(?<![0-9.])6\s*(?:months?|মাসের|মাস)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
+    bn: '৬ মাসের রিপ্লেসমেন্ট ওয়ারেন্টি',
+    en: '6 Months Replacement Warranty',
+  },
+  {
+    re: /(?<![0-9.])1\s*(?:years?|বছরের|বছর)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
+    bn: '১ বছরের রিপ্লেসমেন্ট ওয়ারেন্টি',
+    en: '1 Year Replacement Warranty',
+  },
+  {
+    re: /(?<![0-9.])2\s*(?:years?|বছরের|বছর)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
+    bn: '২ বছরের রিপ্লেসমেন্ট ওয়ারেন্টি',
+    en: '2 Year Replacement Warranty',
+  },
+];
+
+export function detectWarranty(text: string): string {
+  if (!text) return '';
+  const s = bnToEn(text);
+  let best: { index: number; value: string } | null = null;
+  for (const tier of WARRANTY_TIERS) {
+    const m = tier.re.exec(s);
+    if (!m) continue;
+    if (best && best.index <= m.index) continue;
+    // মিলে যাওয়া অংশে বাংলা অক্ষর থাকলে বাংলা ফরম্যাট, নাহলে ইংরেজি ফরম্যাট
+    const isBangla = /[\u0980-\u09FF]/.test(m[0]);
+    best = { index: m.index, value: isBangla ? tier.bn : tier.en };
+  }
+  return best ? best.value : '';
+}
+
+// ══════════════════════════════════════════════════════════════
 //  Price/Old/Rating/Warranty/Badge/Stock — ইচ্ছাকৃতভাবে সহজ
 //  keyword-খোঁজা পদ্ধতিতেই রাখা হলো, কারণ এগুলো SEO content-এর অংশ
 //  না — সবসময় এডমিনে Basic Info ট্যাবে ম্যানুয়ালি বসানো হয়/এডিট
@@ -396,8 +544,11 @@ function findVal(lines: string[], keys: string[]): string {
   return '';
 }
 
-export function smartParse(raw: string): ParsedProductData {
-  const lines = raw.replace(/\r\n/g, '\n').split('\n');
+export function smartParse(raw: string, categories: CategoryOption[] = []): ParsedProductData {
+  const allLines = raw.replace(/\r\n/g, '\n').split('\n');
+  // 🆕 বাংলা নাম / প্রফিট / ক্যাটাগরি লাইন আগে আলাদা করে ডকুমেন্ট থেকে সরানো হয়
+  const meta = extractMetaLines(allLines);
+  const lines = meta.lines;
   const anchors = findAnchors(lines);
   const byId = new Map<AnchorId, AnchorMatch>();
   anchors.forEach((a) => byId.set(a.id, a));
@@ -471,7 +622,8 @@ export function smartParse(raw: string): ParsedProductData {
   if (rating > 5) rating = 5;
   if (rating < 1) rating = 4.5;
 
-  const warranty = findVal(lines, ['ওয়ারেন্টি', 'Warranty', 'গ্যারান্টি', 'Guarantee']);
+  // 🆕 ওয়ারেন্টি: শুধু ৮টা নির্ধারিত ফরম্যাটের একটা পেলে বসে, নাহলে খালি
+  const warranty = detectWarranty(lines.join('\n'));
 
   const badgeRaw = findVal(lines, ['Badge', 'ব্যাজ', 'Tag']);
   let badge = '';
@@ -504,8 +656,13 @@ export function smartParse(raw: string): ParsedProductData {
     }
   }
 
+  const profitNum = parsePrice(meta.profitRaw);
+
   return {
     name,
+    name_bn: meta.nameBn,
+    cats: resolveCategories(meta.categoryRaw, categories),
+    profit: meta.profitRaw && profitNum > 0 ? profitNum : null,
     cat,
     price,
     old,
@@ -551,7 +708,11 @@ export function stringifyInfoBoxes(boxes: { title: string; body: string }[]): st
 // ── উদাহরণ টেক্সট — এখন থেকে এটাই "ইউনিভার্সাল টেমপ্লেট", প্রতিটা ভবিষ্যৎ
 // প্রোডাক্টের SEO কনটেন্ট এই একই heading-ক্রম মেনে লেখা উচিত। GearUP NRGB50
 // রেফারেন্স কেসের সাথে মিলিয়ে বানানো (২০২৬-০৮)। ──
-export const SMART_PARSER_EXAMPLE = `SEO Product Name:
+export const SMART_PARSER_EXAMPLE = `প্রোডাক্টের বাংলা নাম: গিয়ারআপ NRGB50 ৫ মিটার RGB নিয়ন লাইট
+এই প্রোডাক্টের প্রফিট: 700 টাকা
+এই প্রোডাক্টের ক্যাটাগরি: RGB Light
+
+SEO Product Name:
 GearUP NRGB50 5 Meter RGB Neon Light with App & Remote Control
 
 H1:

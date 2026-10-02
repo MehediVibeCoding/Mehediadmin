@@ -42,7 +42,7 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     try {
-      const parsed = smartParse(raw);
+      const parsed = smartParse(raw, categories);
       const formState = parsedToFormState(parsed, images.filter(Boolean));
       setModalState(formState);
       setLoading(false);

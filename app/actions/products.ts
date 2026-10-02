@@ -235,7 +235,7 @@ export async function createProduct(
     cat: input.cats[0] || 'rgb',
     cats: input.cats,
     stock: Number.isFinite(input.stock) ? input.stock : 0,
-    warranty: sanitizeInput(input.warranty) || '১ সপ্তাহ রিপ্লেসমেন্ট ওয়ারেন্টি',
+    warranty: sanitizeInput(input.warranty), // খালি থাকলে খালিই সেভ হয় — মেইন সাইটে ওয়ারেন্টি অংশ দেখাবে না
     imgs: imgs.length ? imgs : ['📦'],
     specs: buildSpecs(input),
     desc_text: desc,
