@@ -110,79 +110,132 @@ export default function GuidePagesListModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[105] flex items-start justify-center overflow-y-auto bg-black/40 p-3 sm:items-center sm:p-6">
-        <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-        <div className="relative my-4 w-full max-w-lg rounded-brand bg-brand-surface p-5 shadow-sh3">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-bold text-ink">গাইড পেজ — {entityLabel}</div>
-              <div className="text-[11px] text-muted">{scope === 'product' ? 'এই প্রোডাক্টের' : 'এই ক্যাটাগরির'} SEO পেজগুলো</div>
+      <div
+        className="animate-soft-fade-in fixed inset-0 z-[105] flex items-end justify-center bg-ink/45 backdrop-blur-[3px] sm:items-center sm:p-5"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div className="animate-sheet-up flex max-h-[92dvh] w-full max-w-[540px] flex-col overflow-hidden rounded-t-[30px] bg-white shadow-[0_-12px_50px_rgba(26,26,26,0.22)] sm:rounded-[28px] sm:shadow-[0_24px_70px_rgba(26,26,26,0.28)]">
+          {/* হেডার */}
+          <div className="shrink-0 border-b border-brand-light/20 bg-gradient-to-b from-brand-light/[0.12] to-white px-5 pb-4 pt-2.5 sm:pt-5">
+            <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-brand-light/30 sm:hidden" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-body text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-light">গাইড পেজ</div>
+                <h3 className="mt-1 line-clamp-2 font-body text-[20px] font-black leading-snug tracking-tight text-ink">{entityLabel}</h3>
+                <p className="mt-1 font-body text-[12px] font-semibold text-muted">
+                  {scope === 'product' ? 'এই প্রোডাক্টের' : 'এই ক্যাটাগরির'} SEO পেজগুলো
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="বন্ধ করুন"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-ink shadow-sh1 transition-all duration-brand hover:bg-border-base active:scale-90"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button onClick={onClose} className="rounded-md border border-border-base bg-white px-2.5 py-1.5 text-xs">বন্ধ করুন</button>
           </div>
 
-          {pages === null && <div className="py-6 text-center text-sm text-muted">লোড হচ্ছে...</div>}
+          {/* বডি */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+            {pages === null && (
+              <div className="py-8 text-center font-body text-[13px] font-semibold text-muted">লোড হচ্ছে...</div>
+            )}
 
-          {pages && pages.length === 0 && !creating && (
-            <div className="rounded-lg border border-dashed border-border-base p-5 text-center text-[12.5px] text-muted">এখনো কোনো গাইড পেজ তৈরি হয়নি</div>
-          )}
+            {pages && pages.length === 0 && (
+              <div className="rounded-2xl border-2 border-dashed border-brand-light/40 bg-brand-light/[0.06] px-5 py-8 text-center font-body text-[13px] font-semibold text-muted">
+                এখনো কোনো গাইড পেজ তৈরি হয়নি
+              </div>
+            )}
 
-          {pages && pages.length > 0 && (
-            <div className="mb-3 space-y-1.5">
-              {pages.map((p) => {
-                const t = templateFor(p.page_type);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setEditing(p)}
-                    className="flex w-full items-center justify-between rounded-lg border border-border-base bg-white p-2.5 text-left transition-brand hover:border-brand-primary"
-                  >
-                    <div>
-                      <div className="text-[12.5px] font-semibold text-ink">{p.h1_bn}</div>
-                      <div className="text-[10.5px] text-muted">
-                        {t?.name_bn ?? p.page_type} · {t ? guidePageUrlPath(p.slug, t.url_prefix) : `/${p.slug}`}
+            {pages && pages.length > 0 && (
+              <div className="space-y-2.5">
+                {pages.map((p) => {
+                  const t = templateFor(p.page_type);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setEditing(p)}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border-base/80 border-l-[3.5px] border-l-brand-light bg-surface-muted/50 px-4 py-3 text-left transition-all duration-brand hover:bg-brand-light/10 active:scale-[0.99]"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-body text-[14px] font-extrabold text-ink">{p.h1_bn}</div>
+                        <div className="mt-0.5 truncate font-body text-[11px] font-semibold text-muted">
+                          {t?.name_bn ?? p.page_type} · {t ? guidePageUrlPath(p.slug, t.url_prefix) : `/${p.slug}`}
+                        </div>
                       </div>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${p.is_published ? 'bg-green-50 text-[#065F46]' : 'bg-amber-50 text-amber-700'}`}>
-                      {p.is_published ? 'লাইভ' : 'ড্রাফট'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 font-body text-[11px] font-extrabold leading-none ${
+                          p.is_published ? 'bg-emerald-50 text-[#065F46]' : 'bg-amber-50 text-[#92400E]'
+                        }`}
+                      >
+                        {p.is_published ? 'লাইভ' : 'ড্রাফট'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-          {!creating ? (
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              disabled={availableTemplates.length === 0}
-              className="flex w-full items-center justify-center gap-1.5 rounded-brand bg-ink py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            >
-              + টেমপ্লেট থেকে নতুন গাইড পেজ
-            </button>
-          ) : (
-            <div className="rounded-lg border border-border-base bg-white p-3">
-              <div className="mb-2.5">
-                <label className="mb-1 block text-[11px] font-semibold text-ink">টেমপ্লেট বেছে নিন</label>
-                <select value={newTypeKey} onChange={(e) => setNewTypeKey(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]">
+          {/* ফুটার: নতুন পেজ তৈরি */}
+          <div
+            className="shrink-0 border-t border-border-base/70 bg-white px-5 pt-3.5"
+            style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            {!creating ? (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                disabled={availableTemplates.length === 0}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-3.5 w-3.5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                টেমপ্লেট থেকে নতুন গাইড পেজ
+              </button>
+            ) : (
+              <div>
+                <label className="mb-1.5 block font-body text-[12.5px] font-extrabold text-ink">টেমপ্লেট বেছে নিন</label>
+                <select
+                  value={newTypeKey}
+                  onChange={(e) => setNewTypeKey(e.target.value)}
+                  className="select-chevron h-12 w-full appearance-none rounded-2xl border border-border-base/90 bg-white px-4 font-body text-[14px] font-semibold text-ink"
+                >
                   {availableTemplates.map((t) => (
-                    <option key={t.key} value={t.key}>{t.name_bn}</option>
+                    <option key={t.key} value={t.key}>
+                      {t.name_bn}
+                    </option>
                   ))}
                 </select>
+                <p className="mb-3 mt-2.5 font-body text-[11.5px] font-medium leading-snug text-muted">
+                  পরের ধাপে সরাসরি এডিটরের &quot;পেস্ট করে বসান&quot; ট্যাব খুলবে — সেখানে কনটেন্ট পেস্ট করলেই URL Slug, টাইটেল, মেটা — সবকিছু নিজে থেকে বসে যাবে।
+                </p>
+                <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setCreating(false)}
+                    className="h-12 rounded-full bg-surface-muted font-body text-[13.5px] font-extrabold text-ink transition-all duration-brand hover:bg-border-base active:scale-[0.98]"
+                  >
+                    বাতিল
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={handleCreate}
+                    className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {saving ? 'তৈরি হচ্ছে...' : 'তৈরি করুন'}
+                  </button>
+                </div>
               </div>
-              <p className="mb-2.5 text-[11px] text-muted">
-                পরের ধাপে সরাসরি এডিটরের &quot;পেস্ট করে বসান&quot; ট্যাব খুলবে — সেখানে কনটেন্ট পেস্ট করলেই
-                URL Slug, টাইটেল, মেটা — সবকিছু নিজে থেকে বসে যাবে।
-              </p>
-              <div className="flex gap-2">
-                <button disabled={saving} onClick={handleCreate} className="flex-1 rounded-brand bg-ink py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">
-                  {saving ? 'তৈরি হচ্ছে...' : 'তৈরি করুন'}
-                </button>
-                <button onClick={() => setCreating(false)} className="rounded-brand border border-border-base px-4 py-2 text-sm">বাতিল</button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

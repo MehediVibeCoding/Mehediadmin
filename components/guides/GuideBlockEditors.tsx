@@ -466,15 +466,15 @@ export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[
         {blocks.map((b, i) => {
           const open = openBlockId === b.id;
           return (
-            <div key={b.id} className="rounded-lg border border-border-base bg-white">
+            <div key={b.id} className="rounded-2xl border border-border-base/80 bg-white">
               <div className="flex items-center justify-between gap-2 p-2.5">
                 <button type="button" onClick={() => setOpenBlockId(open ? null : b.id)} className="flex-1 text-left text-[12.5px] font-semibold text-ink">
                   {i + 1}. {BLOCK_TYPE_LABELS[b.type]}
                 </button>
                 <div className="flex shrink-0 gap-1">
-                  <button type="button" disabled={i === 0} onClick={() => moveBlock(i, -1)} className="rounded border border-border-base px-1.5 py-0.5 text-[10px] disabled:opacity-30">↑</button>
-                  <button type="button" disabled={i === blocks.length - 1} onClick={() => moveBlock(i, 1)} className="rounded border border-border-base px-1.5 py-0.5 text-[10px] disabled:opacity-30">↓</button>
-                  <button type="button" onClick={() => removeBlock(b.id)} className="rounded border border-[#FECACA] bg-[#FEE2E2] px-1.5 py-0.5 text-[10px] text-[#991B1B]">মুছুন</button>
+                  <button type="button" disabled={i === 0} onClick={() => moveBlock(i, -1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border-base/80 bg-white text-[11px] font-bold disabled:opacity-30">↑</button>
+                  <button type="button" disabled={i === blocks.length - 1} onClick={() => moveBlock(i, 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border-base/80 bg-white text-[11px] font-bold disabled:opacity-30">↓</button>
+                  <button type="button" onClick={() => removeBlock(b.id)} className="rounded-full border border-red-200/80 bg-red-50 px-2.5 py-1 text-[10.5px] font-extrabold text-danger">মুছুন</button>
                 </div>
               </div>
               {open && (
@@ -485,16 +485,16 @@ export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[
             </div>
           );
         })}
-        {blocks.length === 0 && <div className="rounded-lg border border-dashed border-border-base p-4 text-center text-[11.5px] text-muted">এখনো কোনো ব্লক যোগ করা হয়নি</div>}
+        {blocks.length === 0 && <div className="rounded-2xl border-2 border-dashed border-brand-light/40 bg-brand-light/[0.06] p-5 text-center text-[12px] font-semibold text-muted">এখনো কোনো ব্লক যোগ করা হয়নি</div>}
       </div>
 
-      <div className="flex items-center gap-2 rounded-lg border border-border-base bg-white p-2.5">
-        <select value={addType} onChange={(e) => setAddType(e.target.value as GuideBlock['type'])} className="flex-1 rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]">
+      <div className="flex items-center gap-2 rounded-2xl border border-border-base/80 bg-white p-2.5">
+        <select value={addType} onChange={(e) => setAddType(e.target.value as GuideBlock['type'])} className="select-chevron appearance-none flex-1 rounded-xl border border-border-base/90 bg-white px-3 py-2.5 text-[13px] font-medium">
           {allTypes.map((t) => (
             <option key={t} value={t}>{BLOCK_TYPE_LABELS[t]}</option>
           ))}
         </select>
-        <button type="button" onClick={addBlock} className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90">
+        <button type="button" onClick={addBlock} className="rounded-full bg-brand-light px-4 py-2 text-[12.5px] font-extrabold text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)] transition-all duration-brand hover:bg-brand-light-hover active:scale-95">
           + ব্লক যোগ করুন
         </button>
       </div>

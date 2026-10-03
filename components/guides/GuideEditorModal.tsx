@@ -15,6 +15,8 @@ import { updateGuidePage, setGuidePagePublished, deleteGuidePage, listAllGuidePa
 import { useToast } from '@/components/admin/Toast';
 import { GuideBlockListEditor } from './GuideBlockEditors';
 import { LinkablePagesProvider } from './GuideFieldPrimitives';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { Field, FIELD_CLS, TEXTAREA_CLS } from '@/components/common/FormField';
 import { parseGuideContent, GUIDE_PARSER_EXAMPLE, type ParsedGuideContent } from '@/lib/guide-content-parser';
 
 type Tab = 'paste' | 'blocks' | 'meta';
@@ -35,6 +37,8 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
   const [blocks, setBlocks] = useState<GuideBlock[]>(page.blocks);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [delAsk, setDelAsk] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [pasteText, setPasteText] = useState('');
   const [lastParse, setLastParse] = useState<ParsedGuideContent | null>(null);
@@ -122,145 +126,206 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
   }
 
   async function handleDelete() {
-    if (!confirm('এই পুরো পেজটা মুছে দেবেন? এই কাজ ফিরিয়ে আনা যাবে না।')) return;
-    const res = await deleteGuidePage(page.id);
-    if (!res.ok) {
-      showToast('❌ ' + (res.message || 'ডিলিট ব্যর্থ'));
-      return;
+    setDeleting(true);
+    try {
+      const res = await deleteGuidePage(page.id);
+      if (!res.ok) {
+        showToast('❌ ' + (res.message || 'ডিলিট ব্যর্থ'));
+        setDelAsk(false);
+        return;
+      }
+      showToast('🗑 মুছে ফেলা হয়েছে');
+      onSaved();
+    } finally {
+      setDeleting(false);
     }
-    showToast('🗑 মুছে ফেলা হয়েছে');
-    onSaved();
   }
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'paste', label: '📋 পেস্ট করে বসান' },
-    { key: 'blocks', label: `🧱 ব্লক এডিট করুন (${blocks.length})` },
-    { key: 'meta', label: '🔍 SEO মেটা' },
+    { key: 'paste', label: 'পেস্ট করে বসান' },
+    { key: 'blocks', label: `ব্লক এডিট (${blocks.length})` },
+    { key: 'meta', label: 'SEO মেটা' },
   ];
 
   return (
     <LinkablePagesProvider value={linkablePages}>
-      <div className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto bg-black/40 p-3 sm:p-6">
-        <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-        <div className="relative my-2 w-full max-w-3xl rounded-brand bg-brand-surface p-5 shadow-sh3">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-bold text-ink">{page.page_type} এডিটর</div>
-              <div className="text-[11px] text-muted">
-                {page.h1_bn} · স্ট্যাটাস: {page.is_published ? <span className="font-bold text-[#065F46]">লাইভ</span> : <span className="font-bold text-amber-700">ড্রাফট</span>}
+      <div
+        className="animate-soft-fade-in fixed inset-0 z-[110] flex items-end justify-center bg-ink/45 backdrop-blur-[3px] md:items-center md:p-5"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div className="animate-sheet-up flex max-h-[96dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[30px] bg-white shadow-[0_-12px_50px_rgba(26,26,26,0.22)] md:max-h-[92dvh] md:rounded-[28px] md:shadow-[0_24px_70px_rgba(26,26,26,0.28)]">
+          {/* ══ হেডার + ট্যাব (আটকে থাকে) ══ */}
+          <div className="shrink-0 border-b border-brand-light/20 bg-gradient-to-b from-brand-light/[0.12] to-white px-5 pb-3.5 pt-2.5 md:pt-5">
+            <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-brand-light/30 md:hidden" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-body text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-light">{page.page_type} এডিটর</div>
+                <h3 className="mt-1 line-clamp-2 font-body text-[20px] font-black leading-snug tracking-tight text-ink">{page.h1_bn || 'গাইড পেজ'}</h3>
+                <span
+                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 font-body text-[11px] font-extrabold leading-none ${
+                    page.is_published ? 'bg-emerald-50 text-[#065F46]' : 'bg-amber-50 text-[#92400E]'
+                  }`}
+                >
+                  {page.is_published ? 'লাইভ' : 'ড্রাফট'}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="বন্ধ করুন"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-ink shadow-sh1 transition-all duration-brand hover:bg-border-base active:scale-90"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button onClick={onClose} className="rounded-md border border-border-base bg-white px-2.5 py-1.5 text-xs">
-              বন্ধ করুন
-            </button>
+
+            <div className="mt-3.5 flex rounded-full bg-surface-muted p-1">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setTab(t.key)}
+                  className={`h-10 flex-1 rounded-full px-1 font-body text-[12.5px] font-extrabold transition-all duration-brand ${
+                    tab === t.key ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.4)]' : 'text-muted hover:text-ink'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="mb-4 flex gap-1.5 rounded-lg bg-black/5 p-1">
-            {TABS.map((t) => (
+          {/* ══ বডি (স্ক্রল হয়) ══ */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+            {tab === 'paste' && (
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="font-body text-[12.5px] font-extrabold text-ink">SEO কনটেন্ট পেস্ট করুন</div>
+                  <button
+                    type="button"
+                    onClick={() => setPasteText(GUIDE_PARSER_EXAMPLE)}
+                    className="rounded-full border border-brand-light/40 bg-brand-light/10 px-3 py-1.5 font-body text-[11.5px] font-extrabold text-ink transition-all duration-brand active:scale-95"
+                  >
+                    উদাহরণ দেখুন
+                  </button>
+                </div>
+                <textarea
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  rows={12}
+                  placeholder="তোমার SEO কনটেন্ট .md ফাইলের পুরো টেক্সট এখানে পেস্ট করো..."
+                  className={`${TEXTAREA_CLS} font-mono !text-[12px]`}
+                />
+                {blocks.length > 0 && (
+                  <div className="mt-2.5 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-2.5 font-body text-[12px] font-bold text-[#92400E]">
+                    পার্স করলে এখনকার {blocks.length}টা ব্লক সম্পূর্ণ replace হয়ে যাবে।
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleParse}
+                  className="mt-3.5 h-12 w-full rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98]"
+                >
+                  পার্স করুন
+                </button>
+                {lastParse && (
+                  <div className="mt-3.5 rounded-2xl border border-border-base/80 bg-surface-muted/60 px-4 py-3 font-body text-[12px] font-medium leading-relaxed text-muted">
+                    {lastParse.stats.totalSections}টা সেকশনের মধ্যে {lastParse.stats.structuredSections}টা নির্দিষ্ট ব্লক-টাইপে (টেবিল/কার্ড/স্টেপ/চেকলিস্ট/FAQ) বসেছে,
+                    বাকি {lastParse.stats.fallbackSections}টা সাধারণ টেক্সট ব্লক হিসেবে বসেছে — ওগুলো চাইলে &quot;ব্লক এডিট&quot; ট্যাবে গিয়ে অন্য কোনো ব্লক-টাইপে বদলে নিতে পারো।
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tab === 'blocks' && <GuideBlockListEditor blocks={blocks} onChange={setBlocks} />}
+
+            {tab === 'meta' && (
+              <div className="space-y-3.5">
+                <Field label="URL Slug">
+                  <input value={slug} onChange={(e) => setSlug(e.target.value)} className={FIELD_CLS} />
+                </Field>
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  <Field label="H1 (বাংলা)">
+                    <input value={h1Bn} onChange={(e) => setH1Bn(e.target.value)} className={FIELD_CLS} />
+                  </Field>
+                  <Field label="H1 (English)">
+                    <input value={h1En} onChange={(e) => setH1En(e.target.value)} className={FIELD_CLS} />
+                  </Field>
+                  <Field label="Meta Title (বাংলা)">
+                    <input value={metaTitleBn} onChange={(e) => setMetaTitleBn(e.target.value)} className={FIELD_CLS} />
+                  </Field>
+                  <Field label="Meta Title (English)">
+                    <input value={metaTitleEn} onChange={(e) => setMetaTitleEn(e.target.value)} className={FIELD_CLS} />
+                  </Field>
+                  <Field label="Meta Description (বাংলা)">
+                    <textarea value={metaDescBn} onChange={(e) => setMetaDescBn(e.target.value)} rows={3} className={TEXTAREA_CLS} />
+                  </Field>
+                  <Field label="Meta Description (English)">
+                    <textarea value={metaDescEn} onChange={(e) => setMetaDescEn(e.target.value)} rows={3} className={TEXTAREA_CLS} />
+                  </Field>
+                </div>
+                <Field label="টার্গেট কিওয়ার্ড" hint="(কমা দিয়ে আলাদা)">
+                  <input value={keywords} onChange={(e) => setKeywords(e.target.value)} className={FIELD_CLS} />
+                </Field>
+              </div>
+            )}
+
+            <p className="mt-6 rounded-2xl bg-brand-light/[0.08] px-4 py-3 font-body text-[11.5px] font-medium leading-relaxed text-muted">
+              সেভ বা পাবলিশ না করে বন্ধ করলে পরিবর্তন হারিয়ে যাবে। “পাবলিশ করুন” চাপলে বর্তমান সব পরিবর্তন নিজে থেকেই আগে সেভ হয়ে যায়।
+            </p>
+          </div>
+
+          {/* ══ ফুটার (আটকে থাকে): সেভ · পাবলিশ · ডিলিট ══ */}
+          <div
+            className="shrink-0 border-t border-border-base/70 bg-white px-5 pt-3.5"
+            style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            <div className="grid grid-cols-2 gap-2.5">
               <button
-                key={t.key}
                 type="button"
-                onClick={() => setTab(t.key)}
-                className={`flex-1 rounded-md py-2 text-[12.5px] font-semibold transition-brand ${
-                  tab === t.key ? 'bg-white text-ink shadow-xs' : 'text-muted hover:text-ink'
+                disabled={saving}
+                onClick={handleSave}
+                className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+              >
+                {saving ? 'সেভ হচ্ছে...' : 'ড্রাফট সেভ করুন'}
+              </button>
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={handlePublishToggle}
+                className={`h-12 rounded-full font-body text-[13.5px] font-black text-white transition-all duration-brand active:scale-[0.98] disabled:opacity-50 ${
+                  page.is_published
+                    ? 'bg-amber-500 shadow-[0_6px_18px_rgba(245,158,11,0.4)]'
+                    : 'bg-success shadow-[0_6px_18px_rgba(16,185,129,0.4)]'
                 }`}
               >
-                {t.label}
+                {publishing ? '...' : page.is_published ? 'আনপাবলিশ করুন' : 'পাবলিশ করুন'}
               </button>
-            ))}
-          </div>
-
-          {tab === 'paste' && (
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-[11px] font-bold text-ink">SEO কনটেন্ট পেস্ট করুন</div>
-                <button type="button" onClick={() => setPasteText(GUIDE_PARSER_EXAMPLE)} className="text-[11px] font-semibold text-brand-light underline">
-                  উদাহরণ দেখুন
-                </button>
-              </div>
-              <textarea
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                rows={12}
-                placeholder="তোমার SEO কনটেন্ট .md ফাইলের পুরো টেক্সট এখানে পেস্ট করো..."
-                className="w-full rounded-lg border border-border-base bg-white px-3 py-2 font-mono text-[12px]"
-              />
-              {blocks.length > 0 && (
-                <div className="mt-2 rounded-md bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
-                  ⚠️ পার্স করলে এখনকার {blocks.length}টা ব্লক সম্পূর্ণ replace হয়ে যাবে।
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handleParse}
-                className="mt-3 w-full rounded-brand bg-ink py-2.5 text-sm font-semibold text-white hover:opacity-90"
-              >
-                পার্স করুন
-              </button>
-              {lastParse && (
-                <div className="mt-3 rounded-lg border border-border-base bg-white p-3 text-[11.5px] text-muted">
-                  {lastParse.stats.totalSections}টা সেকশনের মধ্যে {lastParse.stats.structuredSections}টা নির্দিষ্ট ব্লক-টাইপে (টেবিল/কার্ড/স্টেপ/চেকলিস্ট/FAQ) বসেছে,
-                  বাকি {lastParse.stats.fallbackSections}টা সাধারণ টেক্সট ব্লক হিসেবে বসেছে — ওগুলো চাইলে &quot;ব্লক এডিট করুন&quot; ট্যাবে গিয়ে অন্য কোনো ব্লক-টাইপে বদলে নিতে পারো।
-                </div>
-              )}
             </div>
-          )}
-
-          {tab === 'blocks' && <GuideBlockListEditor blocks={blocks} onChange={setBlocks} />}
-
-          {tab === 'meta' && (
-            <div className="rounded-lg border border-border-base bg-white p-3">
-              <div className="mb-2.5">
-                <label className="mb-1 block text-[11px] font-semibold text-ink">URL Slug</label>
-                <input value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-              </div>
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">H1 (বাংলা)</label>
-                  <input value={h1Bn} onChange={(e) => setH1Bn(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">H1 (English)</label>
-                  <input value={h1En} onChange={(e) => setH1En(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">Meta Title (বাংলা)</label>
-                  <input value={metaTitleBn} onChange={(e) => setMetaTitleBn(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">Meta Title (English)</label>
-                  <input value={metaTitleEn} onChange={(e) => setMetaTitleEn(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">Meta Description (বাংলা)</label>
-                  <textarea value={metaDescBn} onChange={(e) => setMetaDescBn(e.target.value)} rows={2} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold text-ink">Meta Description (English)</label>
-                  <textarea value={metaDescEn} onChange={(e) => setMetaDescEn(e.target.value)} rows={2} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-                </div>
-              </div>
-              <div className="mt-2.5">
-                <label className="mb-1 block text-[11px] font-semibold text-ink">টার্গেট কিওয়ার্ড (কমা দিয়ে আলাদা)</label>
-                <input value={keywords} onChange={(e) => setKeywords(e.target.value)} className="w-full rounded-lg border border-border-base px-2.5 py-1.5 text-[12.5px]" />
-              </div>
-            </div>
-          )}
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button disabled={saving} onClick={handleSave} className="flex-1 rounded-brand bg-ink py-2.5 text-sm font-semibold text-white transition-brand hover:opacity-90 disabled:opacity-50">
-              {saving ? 'সেভ হচ্ছে...' : '💾 ড্রাফট সেভ করুন'}
-            </button>
-            <button disabled={publishing} onClick={handlePublishToggle} className={`flex-1 rounded-brand py-2.5 text-sm font-semibold text-white transition-brand hover:opacity-90 disabled:opacity-50 ${page.is_published ? 'bg-amber-600' : 'bg-[#065F46]'}`}>
-              {publishing ? '...' : page.is_published ? 'আনপাবলিশ করুন' : '🚀 পাবলিশ করুন'}
-            </button>
-            <button onClick={handleDelete} className="rounded-brand border border-[#FECACA] bg-[#FEE2E2] px-4 py-2.5 text-sm font-semibold text-[#991B1B] hover:bg-[#FECACA]">
+            <button
+              type="button"
+              onClick={() => setDelAsk(true)}
+              className="mt-2.5 h-10 w-full rounded-full border border-red-200/80 bg-red-50 font-body text-[12.5px] font-extrabold text-danger transition-all duration-brand hover:bg-red-100 active:scale-[0.98]"
+            >
               পেজ ডিলিট
             </button>
           </div>
-          <div className="mt-2 text-[10.5px] text-muted">সেভ বা পাবলিশ না করে বন্ধ করলে পরিবর্তন হারিয়ে যাবে। “পাবলিশ করুন” চাপলে বর্তমান সব পরিবর্তন নিজে থেকেই আগে সেভ হয়ে যায়।</div>
         </div>
       </div>
+
+      {delAsk && (
+        <ConfirmDialog
+          title="পুরো পেজ মুছে দেবেন?"
+          message="এই কাজ ফিরিয়ে আনা যাবে না।"
+          confirmLabel="হ্যাঁ, ডিলিট করুন"
+          busyLabel="ডিলিট হচ্ছে..."
+          busy={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setDelAsk(false)}
+        />
+      )}
     </LinkablePagesProvider>
   );
 }

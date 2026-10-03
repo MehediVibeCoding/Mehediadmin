@@ -34,7 +34,7 @@ export default function CustomersTable({ customers }: Props) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2.5 rounded-[24px] border border-white/90 bg-white px-6 py-16 text-center shadow-sh1 lg:rounded-none lg:border-0 lg:shadow-none">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-light/12 text-brand-light">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-light/[0.12] text-brand-light">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />

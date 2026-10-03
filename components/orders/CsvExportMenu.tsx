@@ -64,7 +64,7 @@ export default function CsvExportMenu({ onExportAll, onExportRange, className = 
               }}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-body text-[12.5px] font-bold text-ink transition-brand hover:bg-brand-bg/40 hover:text-brand-light"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/12 text-brand-light">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/[0.12] text-brand-light">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
                   <path d="M14 2v6h6" />
@@ -85,7 +85,7 @@ export default function CsvExportMenu({ onExportAll, onExportRange, className = 
               menuItemLabel="কাস্টম রেঞ্জ এক্সপোর্ট"
               menuItemSubLabel="নির্দিষ্ট দিন বা তারিখ বেছে নিন"
               menuItemIcon={
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/12 text-brand-light">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/[0.12] text-brand-light">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
                     <rect x="3" y="4.5" width="18" height="16.5" rx="3" />
                     <path d="M3 9.5h18" />

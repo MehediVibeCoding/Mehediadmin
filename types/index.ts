@@ -46,7 +46,7 @@ export interface Order {
   // প্রয়োগ করা কুপন কোড (যেমন 'SAVE100'), কুপন ছাড়া অর্ডারে null
   coupon_code: string | null;
   total: number;
-  // ডায়নামিক অ্যাডভান্স — storefront-এ total অনুযায়ী গণনা করা (৳২০০ ফিক্সড না, ৳৮,০০০+ অর্ডারে 5% + 1.5% bKash ফি)।
+  // ডায়নামিক অ্যাডভান্স — storefront-এ total অনুযায়ী গণনা করা (৳২০০ ফিক্সড না, ৳৪,০০০+ অর্ডারে 5% + 1.5% bKash ফি)।
   // legacy অর্ডারে কলাম না থাকলে (null/undefined) mapOrderRow ফলব্যাক হিসেবে ২০০ বসায়।
   advance_paid: number;
   payment_txn: string;

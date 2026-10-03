@@ -32,8 +32,8 @@ export const ORDER_STATUS_META: Record<
   rejected: { label: 'Rejected', dot: '#B91C1C', bg: '#FECACA', text: '#7F1D1D' },
 };
 
-// ⚠️ আপডেট: storefront-এ এখন ডায়নামিক অ্যাডভান্স (৳৮,০০০-এর নিচে ৳২০০ ফিক্সড,
-// ৳৮,০০০–২০,০০০ রেঞ্জে 5% + তার উপর 1.5% bKash ট্রানজেকশন ফি)। তাই এই ধ্রুবক
+// ⚠️ আপডেট: storefront-এ এখন ডায়নামিক অ্যাডভান্স (৳৪,০০০-এর নিচে ৳২০০ ফিক্সড,
+// ৳৪,০০০–২০,০০০ রেঞ্জে 5% + তার উপর 1.5% bKash ট্রানজেকশন ফি)। তাই এই ধ্রুবক
 // আর সরাসরি ব্যবহার করা হয় না — শুধু legacy/পুরনো অর্ডারের জন্য ফলব্যাক ডিফল্ট
 // হিসেবে রাখা হয়েছে, যেখানে DB-তে advance_paid null/undefined। আসল মান সবসময়
 // order.advance_paid থেকে পড়তে হবে: `order.advance_paid ?? ORDER_ADVANCE_FALLBACK`

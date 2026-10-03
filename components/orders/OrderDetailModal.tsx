@@ -12,6 +12,7 @@ import {
 } from '@/lib/orders';
 import { useToast } from '@/components/admin/Toast';
 import StatusPill from '@/components/admin/StatusPill';
+import SectionHeading from '@/components/common/SectionHeading';
 
 interface Props {
   order: Order;
@@ -25,26 +26,13 @@ function ItemThumb({ emoji }: { emoji?: string }) {
   const val = emoji || '📦';
   const isImg = val.startsWith('http') || val.startsWith('/');
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-light/12">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-light/[0.12]">
       {isImg ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={val} alt="" className="h-full w-full object-cover" />
       ) : (
         <span className="text-[22px] leading-none">{val}</span>
       )}
-    </div>
-  );
-}
-
-function SectionTitle({ children, icon }: { children: React.ReactNode; icon: React.ReactNode }) {
-  return (
-    <div className="mb-2.5 flex items-center gap-2 font-body text-[11px] font-extrabold uppercase tracking-wider text-muted">
-      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-brand-light/12 text-brand-light">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-[13px] w-[13px]">
-          {icon}
-        </svg>
-      </span>
-      {children}
     </div>
   );
 }
@@ -64,6 +52,7 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  const orderDate = new Date(order.created_at || Date.now());
   const payTxt = order.payment_txn
     ? 'TXN: ' + order.payment_txn
     : order.payment_last4
@@ -119,23 +108,21 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
       aria-label={`অর্ডার ${order.order_num}`}
     >
       <div className="animate-sheet-up flex max-h-[94dvh] w-full max-w-[720px] flex-col overflow-hidden rounded-t-[30px] bg-white shadow-[0_-12px_50px_rgba(26,26,26,0.22)] md:max-h-[90dvh] md:rounded-[28px] md:shadow-[0_24px_70px_rgba(26,26,26,0.28)]">
-        {/* ══ হেডার (আটকে থাকে): হ্যান্ডেল · অর্ডার নং · স্ট্যাটাস · ক্লোজ ══ */}
-        <div className="shrink-0 border-b border-border-base/70 px-5 pb-4 pt-2.5 md:pt-5">
-          <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-border-base md:hidden" />
+        {/* ══ হেডার (আটকে থাকে): লেবেল · অর্ডার নং · তারিখ-সময় পিল · স্ট্যাটাস · ক্লোজ ══ */}
+        <div className="shrink-0 border-b border-brand-light/20 bg-gradient-to-b from-brand-light/[0.12] to-white px-5 pb-4 pt-2.5 md:pt-5">
+          <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-brand-light/30 md:hidden" />
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-body text-[22px] font-black leading-tight tracking-tight text-ink">{order.order_num}</div>
-              <div className="mt-1.5 flex items-center gap-1.5 font-body text-[12px] font-semibold text-muted">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                  <rect x="3" y="4.5" width="18" height="16.5" rx="3" />
-                  <path d="M3 9.5h18" />
-                  <path d="M8 2.5v4M16 2.5v4" />
-                </svg>
-                {new Date(order.created_at || Date.now()).toLocaleDateString('bn-BD', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+              <div className="font-body text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-light">অর্ডার ডিটেইলস</div>
+              <div className="mt-1 font-body text-[26px] font-black leading-none tracking-tight text-ink">{order.order_num}</div>
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand-light/25 bg-white px-3.5 py-1.5 font-body text-[12.5px] font-bold text-ink shadow-sh1">
+                <span>
+                  {orderDate.toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+                <span className="h-1 w-1 rounded-full bg-brand-light" />
+                <span className="text-muted">
+                  {orderDate.toLocaleTimeString('bn-BD', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </span>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -144,7 +131,7 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
                 type="button"
                 onClick={onClose}
                 aria-label="বন্ধ করুন"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-ink transition-all duration-brand hover:bg-border-base active:scale-90"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sh1 transition-all duration-brand hover:bg-border-base active:scale-90"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
                   <path d="M18 6 6 18M6 6l12 12" />
@@ -167,10 +154,6 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
               }`}
             >
               <div className="flex items-center gap-2 font-body text-[13.5px] font-black text-ink">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px] text-brand-light">
-                  <path d="M6 3h12l4 6-10 12L2 9z" />
-                  <path d="M2 9h20M12 21 8 9l4-6 4 6z" />
-                </svg>
                 ডায়মন্ড মেম্বার
               </div>
               {diamondPending ? (
@@ -186,47 +169,19 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
 
           {/* ── গ্রাহকের তথ্য ── */}
           <section>
-            <SectionTitle icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></>}>
-              গ্রাহকের তথ্য
-            </SectionTitle>
+            <SectionHeading>গ্রাহকের তথ্য</SectionHeading>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <InfoTile
-                label="গ্রাহক"
-                value={order.customer_name || '—'}
-                onCopy={() => copyTxt(order.customer_name || '')}
-                icon={<><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="7" r="4" /></>}
-              />
-              <InfoTile
-                label="ফোন"
-                value={order.customer_phone || '—'}
-                onCopy={() => copyTxt(order.customer_phone || '')}
-                icon={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z" />}
-              />
-              <InfoTile
-                label="জেলা"
-                value={order.customer_district || '—'}
-                icon={<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></>}
-              />
-              <InfoTile
-                label="পেমেন্ট তথ্য"
-                value={payTxt}
-                icon={<><rect x="2" y="5" width="20" height="14" rx="2.5" /><path d="M2 10h20" /></>}
-              />
-              <InfoTile
-                label="ঠিকানা"
-                value={order.customer_address || '—'}
-                onCopy={() => copyTxt(order.customer_address || '')}
-                icon={<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />}
-                full
-              />
+              <InfoTile label="নাম" value={order.customer_name || '—'} onCopy={() => copyTxt(order.customer_name || '')} />
+              <InfoTile label="ফোন" value={order.customer_phone || '—'} onCopy={() => copyTxt(order.customer_phone || '')} />
+              <InfoTile label="জেলা" value={order.customer_district || '—'} />
+              <InfoTile label="পেমেন্ট তথ্য" value={payTxt} />
+              <InfoTile label="ঠিকানা" value={order.customer_address || '—'} onCopy={() => copyTxt(order.customer_address || '')} full />
             </div>
           </section>
 
           {/* ── প্রোডাক্ট তালিকা ── */}
           <section>
-            <SectionTitle icon={<><path d="M21 8 12 3 3 8l9 5 9-5Z" /><path d="M3 8v8l9 5 9-5V8" /></>}>
-              প্রোডাক্ট তালিকা
-            </SectionTitle>
+            <SectionHeading>প্রোডাক্ট তালিকা</SectionHeading>
             <div className="divide-y divide-border-base/70 overflow-hidden rounded-2xl border border-border-base/80">
               {(order.items || []).length === 0 && (
                 <div className="px-4 py-5 text-center font-body text-[12.5px] font-medium text-muted">কোনো প্রোডাক্ট নেই</div>
@@ -269,9 +224,7 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
 
           {/* ── পেমেন্ট ভেরিফিকেশন ── */}
           <section>
-            <SectionTitle icon={<><path d="M9 12l2 2 4-4" /><path d="M12 3c-2.5 2-5.5 3-9 3v6c0 5 3.5 8.5 9 10 5.5-1.5 9-5 9-10V6c-3.5 0-6.5-1-9-3Z" /></>}>
-              পেমেন্ট ভেরিফিকেশন
-            </SectionTitle>
+            <SectionHeading>পেমেন্ট ভেরিফিকেশন</SectionHeading>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
               <VerifyBox label="bKash TXN ID" value={order.payment_txn} onCopy={copyTxt} />
               <VerifyBox label="সেন্ডারের শেষ ৪ ডিজিট" value={order.payment_last4} onCopy={copyTxt} />
@@ -280,10 +233,8 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
           </section>
 
           {/* ── স্ট্যাটাস পরিবর্তন ── */}
-          <section className="border-t border-border-base/70 pt-5">
-            <div className="mb-3 text-center font-body text-[11px] font-extrabold uppercase tracking-wider text-muted">
-              স্ট্যাটাস পরিবর্তন করুন
-            </div>
+          <section>
+            <SectionHeading>স্ট্যাটাস পরিবর্তন করুন</SectionHeading>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {ORDER_STATUS_ORDER.map((s) => {
                 const m = ORDER_STATUS_META[s];
@@ -331,30 +282,23 @@ function InfoTile({
   label,
   value,
   onCopy,
-  icon,
   full,
 }: {
   label: string;
   value: string;
   onCopy?: () => void;
-  icon: React.ReactNode;
   full?: boolean;
 }) {
   const body = (
     <>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/12 text-brand-light">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[17px] w-[17px]">
-          {icon}
-        </svg>
-      </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-body text-[10.5px] font-bold uppercase tracking-wide text-muted">{label}</span>
-        <span className="mt-0.5 block break-words font-body text-[14px] font-extrabold leading-snug text-ink">{value}</span>
+        <span className="block font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted">{label}</span>
+        <span className="mt-1 block break-words font-body text-[15px] font-extrabold leading-snug text-ink">{value}</span>
       </span>
       {onCopy && <CopyGlyph />}
     </>
   );
-  const cls = `flex items-center gap-3 rounded-2xl border border-border-base/80 bg-surface-muted/60 p-3 text-left ${
+  const cls = `flex items-center gap-3 rounded-2xl border border-border-base/80 border-l-[3.5px] border-l-brand-light bg-surface-muted/60 px-4 py-3 text-left ${
     full ? 'sm:col-span-2' : ''
   }`;
   return onCopy ? (

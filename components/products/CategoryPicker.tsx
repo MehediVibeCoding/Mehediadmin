@@ -1,6 +1,7 @@
 'use client';
 
 import { getCleanIcon, type CategoryOption } from '@/lib/constants/categories';
+import { SelectBox } from '@/components/common/FormField';
 
 interface Props {
   categories: CategoryOption[];
@@ -29,41 +30,43 @@ export default function CategoryPicker({ categories, value, onChange }: Props) {
 
   return (
     <div>
-      <label className="mb-1 flex items-center gap-2 text-xs font-semibold text-ink">
-        ক্যাটাগরি *
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="font-body text-[12.5px] font-extrabold text-ink">
+          ক্যাটাগরি <span className="text-danger">*</span>
+        </span>
         <button
           type="button"
           onClick={addRow}
-          className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700"
+          className="flex h-8 items-center gap-1 rounded-full border border-brand-light/40 bg-brand-light/10 px-3 font-body text-[11.5px] font-extrabold text-ink transition-all duration-brand active:scale-95"
         >
-          + আরেকটি ক্যাটাগরি
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-3 w-3 text-brand-light">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          আরেকটি ক্যাটাগরি
         </button>
-      </label>
-      <div className="flex flex-col gap-1.5">
+      </div>
+      <div className="flex flex-col gap-2">
         {rows.map((val, idx) => (
-          <div key={idx} className="flex items-center gap-1.5">
-            <select
-              className="flex-1 rounded-lg border border-border-base px-3 py-2 text-sm"
-              value={val}
-              onChange={(e) => updateRow(idx, e.target.value)}
-            >
+          <div key={idx} className="flex items-center gap-2">
+            <SelectBox className="min-w-0 flex-1" value={val} onChange={(v) => updateRow(idx, v)}>
               {options.map((c) => (
                 <option key={c.id} value={c.id}>
                   {getCleanIcon(c)} {c.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
             {idx > 0 ? (
               <button
                 type="button"
                 onClick={() => removeRow(idx)}
-                className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-sm text-danger"
+                aria-label="ক্যাটাগরি সরান"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-200/80 bg-red-50 text-danger transition-all duration-brand active:scale-90"
               >
-                ✕
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" className="h-4 w-4">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
-            ) : (
-              <div className="w-9 shrink-0" />
-            )}
+            ) : null}
           </div>
         ))}
       </div>
