@@ -2,12 +2,37 @@
 // কার্ড/gradient তৈরি করা হয়নি। store_settings key 'vc_cath_cards'-এ owner
 // সেভ করা কাস্টম লিস্ট না থাকলে এটাই ব্যবহার হয় (getHeroCards() দ্রষ্টব্য)।
 // মূল সাইটে ঠিক ১৩টা কার্ডের স্লট আছে — HERO_CARDS_MAX তাই থেকেই আসা।
+// ক্লিকে কোথায় যাবে:
+//  category → ক্যাটাগরি ফিল্টার (ডিফল্ট; পুরনো কার্ড সব এটাই)
+//  grid     → হোমের প্রোডাক্ট গ্রিডে ওই প্রোডাক্টে স্ক্রল + হাইলাইট
+//  product  → সরাসরি প্রোডাক্ট ডিটেলস পেজ
+export type HeroLinkType = 'category' | 'grid' | 'product';
+
 export interface HeroCard {
   label: string;
   img: string;
   emoji: string;
   catId: string;
   bg: string;
+  linkType?: HeroLinkType;
+  productId?: number;
+  productName?: string;
+}
+
+export interface HeroProductOption {
+  id: number;
+  name: string;
+  cat: string;
+  img: string;
+}
+
+export interface HeroCardInput {
+  label: string;
+  catId: string;
+  img: string;
+  linkType: HeroLinkType;
+  productId?: number;
+  productName?: string;
 }
 
 export const HERO_CARDS_MAX = 13;

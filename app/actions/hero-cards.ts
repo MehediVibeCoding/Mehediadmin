@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { DEFAULT_HERO_CARDS, HERO_CARDS_MAX, type HeroCard } from '@/lib/constants/heroCards';
+import {
+  DEFAULT_HERO_CARDS, HERO_CARDS_MAX, type HeroCard, type HeroCardInput, type HeroProductOption,
+} from '@/lib/constants/heroCards';
 
 const SETTING_KEY = 'vc_cath_cards';
 const STORAGE_BUCKET = 'product-images'; // products module-এ ব্যবহৃত bucket-ই পুনর্ব্যবহার করা হচ্ছে, নতুন bucket তৈরি করা হয়নি
@@ -57,13 +59,39 @@ export interface HeroCardActionResult {
   message?: string;
 }
 
+function validateLink(input: HeroCardInput): string | null {
+  if ((input.linkType === 'grid' || input.linkType === 'product') && !input.productId) {
+    return '⚠️ লিংকের জন্য একটি প্রোডাক্ট বেছে নিন';
+  }
+  return null;
+}
+
+// category টাইপে শুধু catId থাকে (পুরনো ফরম্যাটের সাথে হুবহু মিল), বাকি দুই টাইপে প্রোডাক্টের তথ্যও সেভ হয়
+function linkFields(input: HeroCardInput): Pick<HeroCard, 'linkType' | 'productId' | 'productName'> {
+  if (input.linkType === 'grid' || input.linkType === 'product') {
+    return { linkType: input.linkType, productId: input.productId, productName: input.productName };
+  }
+  return {};
+}
+
+// অ্যাডমিন ড্রপডাউনের জন্য হালকা প্রোডাক্ট লিস্ট (শুধু দরকারি কলাম)
+export async function getHeroProductOptions(): Promise<HeroProductOption[]> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+  const { data } = await supabase.from('custom_products').select('id, name, cat, imgs').order('id', { ascending: false });
+  return (data || []).map((p) => {
+    const first = Array.isArray(p.imgs) ? String(p.imgs[0] || '') : '';
+    return { id: p.id as number, name: String(p.name || ''), cat: String(p.cat || ''), img: first.startsWith('http') ? first : '' };
+  });
+}
+
 // legacy saveCathCardNew()-এর "নতুন" শাখা
-export async function addHeroCard(
-  input: Pick<HeroCard, 'label' | 'catId' | 'img'>
-): Promise<HeroCardActionResult> {
+export async function addHeroCard(input: HeroCardInput): Promise<HeroCardActionResult> {
   await requireAdmin();
   const label = input.label.trim();
   if (!label) return { ok: false, message: '⚠️ বাটন টেক্সট দিন' };
+  const linkErr = validateLink(input);
+  if (linkErr) return { ok: false, message: linkErr };
 
   const cards = await getHeroCards();
   if (cards.length >= HERO_CARDS_MAX) {
@@ -78,6 +106,7 @@ export async function addHeroCard(
     img: input.img || '',
     emoji: emojis[cards.length % emojis.length],
     bg: 'linear-gradient(155deg,#1a1a2e,#0f3460)',
+    ...linkFields(input),
   };
 
   await persistHeroCards([...cards, card]);
@@ -85,22 +114,24 @@ export async function addHeroCard(
 }
 
 // legacy saveCathCardNew()-এর "এডিট" শাখা — index দিয়ে রেফার করা হয় (legacy-ও তাই করত, কোনো stable id নেই)
-export async function updateHeroCard(
-  index: number,
-  input: Pick<HeroCard, 'label' | 'catId' | 'img'>
-): Promise<HeroCardActionResult> {
+export async function updateHeroCard(index: number, input: HeroCardInput): Promise<HeroCardActionResult> {
   await requireAdmin();
   const label = input.label.trim();
   if (!label) return { ok: false, message: '⚠️ বাটন টেক্সট দিন' };
+  const linkErr = validateLink(input);
+  if (linkErr) return { ok: false, message: linkErr };
 
   const cards = await getHeroCards();
   if (index < 0 || index >= cards.length) return { ok: false, message: 'কার্ড খুঁজে পাওয়া যায়নি' };
 
+  const { linkType: _lt, productId: _pid, productName: _pn, ...base } = cards[index];
+  void _lt; void _pid; void _pn;
   cards[index] = {
-    ...cards[index],
+    ...base,
     label,
     catId: input.catId || '',
     img: input.img || cards[index].img || '',
+    ...linkFields(input),
   };
   await persistHeroCards(cards);
   return { ok: true };
