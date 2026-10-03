@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Coupon, CouponStats } from '@/types';
@@ -18,43 +18,46 @@ export default function CouponsPageClient({ initialCoupons, initialStats }: Prop
   const [coupons, setCoupons] = useState(initialCoupons);
   const [stats, setStats] = useState(initialStats);
   const [modal, setModal] = useState<{ coupon?: Coupon } | null>(null);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setCoupons(initialCoupons);
     setStats(initialStats);
   }, [initialCoupons, initialStats]);
 
-  // realtime — অন্য অ্যাডমিন ট্যাব/ডিভাইস থেকে is_active টগল, নতুন কুপন
-  // তৈরি, বা ডিলিট হলে এই পেজও সাথে সাথে server থেকে ফ্রেশ ডেটা টেনে আনে।
-  // NOTE: এটা anon-key ব্রাউজার ক্লায়েন্ট ব্যবহার করে, তাই Supabase-এ
-  // `coupons` টেবিলে RLS SELECT পলিসি (authenticated role-এর জন্য) আর
-  // Realtime enable করা থাকতে হবে — supabase/coupons.sql দ্রষ্টব্য।
+  // Realtime — অন্য ডিভাইস বা ট্যাব থেকে কুপন আপডেট/টগল/ডিলিট হলে
+  // ডেবাউন্সড রিফ্রেশ দিয়ে লাইভ ডাটা আনা হয় (অপ্রয়োজনীয় ল্যাগ রোধে ৪০০ms debounce)
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
       .channel('admin-coupons-watch')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons' }, () => {
-        router.refresh();
+        if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = setTimeout(() => {
+          router.refresh();
+        }, 400);
       })
       .subscribe();
 
     return () => {
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
       supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router]);
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="font-bold text-xl text-ink">কুপন ম্যানেজমেন্ট</h1>
-        <p className="mt-0.5 text-sm text-muted">ডিসকাউন্ট কুপন তৈরি, এডিট, ও ট্র্যাক করুন</p>
-      </div>
-
+      {/* ১. স্ট্যাটাস সামারি কার্ডস */}
       <CouponStatCards stats={stats} />
 
-      <CouponsTable coupons={coupons} onEdit={(c) => setModal({ coupon: c })} onAdd={() => setModal({})} />
+      {/* ২. কুপন টেবিল ও মোবাইল কার্ড তালিকা */}
+      <CouponsTable
+        coupons={coupons}
+        onEdit={(c) => setModal({ coupon: c })}
+        onAdd={() => setModal({})}
+      />
 
+      {/* ৩. কুপন যোগ/এডিট মডাল */}
       {modal && (
         <CouponModal
           editingCoupon={modal.coupon}
