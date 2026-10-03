@@ -1,4 +1,0 @@
-GitHub-এর Mehediadmin রিপো থেকে এই ফাইলটা ডিলিট করো (কেউ ব্যবহার করে না):
-  lib/app/actions/products.ts
-
-এই txt ফাইলটা রিপোতে আপলোড করার দরকার নেই।
