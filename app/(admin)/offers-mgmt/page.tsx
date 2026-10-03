@@ -8,7 +8,7 @@ export default async function OffersMgmtPage() {
   const [config, products] = await Promise.all([getOfferConfig(), listProducts()]);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto w-full max-w-5xl">
       <OffersPageClient config={config} products={products} />
     </div>
   );
