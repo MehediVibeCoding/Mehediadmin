@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { OfferConfig, OfferActiveModel, Product } from '@/types';
 import {
@@ -11,6 +11,8 @@ import {
   deleteOfferModel,
 } from '@/app/actions/offers';
 import { useToast } from '@/components/admin/Toast';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { Field, FIELD_CLS, TEXTAREA_CLS, SelectBox } from '@/components/common/FormField';
 
 interface Props {
   config: OfferConfig;
@@ -31,16 +33,43 @@ interface EditorState {
   badge_text: string;
 }
 
-const MODEL_TITLES: Record<ModelKey, string> = {
-  model1: 'মডেল ১: টেক্সট নোটিশ অফার',
-  model2: 'মডেল ২: অফার ব্যানার ইমেজ',
-  model3: 'মডেল ৩: হট প্রোডাক্ট প্রোমোশন',
-};
-
-const MODEL_PILLS: { key: ModelKey; emoji: string; label: string; sub: string }[] = [
-  { key: 'model1', emoji: '📝', label: 'মডেল ১: টেক্সট নোটিশ অফার', sub: 'Title + Description + Button' },
-  { key: 'model2', emoji: '🖼️', label: 'মডেল ২: অফার ব্যানার ইমেজ', sub: 'Image + Link' },
-  { key: 'model3', emoji: '🔥', label: 'মডেল ৩: হট প্রোডাক্ট প্রোমোশন', sub: 'Product Card' },
+const MODEL_META: { key: ModelKey; title: string; subtitle: string; icon: React.ReactNode }[] = [
+  {
+    key: 'model1',
+    title: 'মডেল ১: টেক্সট নোটিশ অফার',
+    subtitle: 'টাইটেল + বিস্তারিত বিবরণ + অ্যাকশন বাটন',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+  },
+  {
+    key: 'model2',
+    title: 'মডেল ২: অফার ব্যানার ইমেজ',
+    subtitle: 'ব্যানার ছবি + ক্লিকেবল টার্গেট লিংক',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+      </svg>
+    ),
+  },
+  {
+    key: 'model3',
+    title: 'মডেল ৩: হট প্রোডাক্ট প্রোমোশন',
+    subtitle: 'প্রোডাক্ট কার্ড + স্পেশাল অফার ব্যাজ',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function OffersPageClient({ config, products }: Props) {
@@ -50,6 +79,25 @@ export default function OffersPageClient({ config, products }: Props) {
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [saving, setSaving] = useState(false);
   const [togglingModel, setTogglingModel] = useState<ModelKey | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ModelKey | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // ব্যাকগ্রাউন্ড স্ক্রল লক যখন এডিটর খোলা থাকে
+  useEffect(() => {
+    if (!editor) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !saving) setEditor(null);
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [editor, saving]);
 
   function openEditor(model: ModelKey) {
     const d = cfg[model];
@@ -66,21 +114,16 @@ export default function OffersPageClient({ config, products }: Props) {
     });
   }
 
-  function closeEditor() {
-    setEditor(null);
-  }
-
-  // legacy handleOfferToggle() — একটা চালু করলে বাকি দুইটা স্বয়ংক্রিয়ভাবে বন্ধ
   async function handleToggle(model: ModelKey, checked: boolean) {
     setTogglingModel(model);
     const res = await toggleActiveModel(model, checked);
     setTogglingModel(null);
     if (!res.ok) {
-      showToast(res.message || 'ব্যর্থ হয়েছে');
+      showToast(res.message || '❌ টগল ব্যর্থ হয়েছে');
       return;
     }
     setCfg((prev) => ({ ...prev, active_model: checked ? model : 'none' }));
-    showToast(checked ? `✅ ${model} লাইভ!` : '⛔ অফার বন্ধ করা হয়েছে');
+    showToast(checked ? `✅ ${model.toUpperCase()} এখন লাইভ!` : '⛔ অফার পপআপ বন্ধ করা হয়েছে');
     router.refresh();
   }
 
@@ -101,283 +144,345 @@ export default function OffersPageClient({ config, products }: Props) {
       res = await saveOfferModel3({ product_id: editor.product_id, badge_text: editor.badge_text });
     }
     setSaving(false);
+
     if (!res.ok) {
-      showToast(res.message || 'ব্যর্থ হয়েছে');
+      showToast(res.message || '❌ সেভ ব্যর্থ হয়েছে');
       return;
     }
-    showToast('✅ অফার সেভ হয়েছে!');
-    closeEditor();
+    showToast('✅ অফার কনফিগারেশন সেভ হয়েছে');
+    setEditor(null);
     router.refresh();
   }
 
-  async function handleDelete() {
-    if (!editor) return;
-    if (!confirm('এই মডেলের ডেটা মুছে ফেলবেন?')) return;
-    const res = await deleteOfferModel(editor.model);
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await deleteOfferModel(deleteTarget);
+    setDeleting(false);
+
     if (!res.ok) {
-      showToast(res.message || 'ব্যর্থ হয়েছে');
+      showToast(res.message || '❌ ডেটা মুছতে ব্যর্থ');
       return;
     }
-    if (cfg.active_model === editor.model) {
+    if (cfg.active_model === deleteTarget) {
       setCfg((prev) => ({ ...prev, active_model: 'none' }));
     }
-    showToast('🗑️ মডেল ডেটা মুছে ফেলা হয়েছে');
-    closeEditor();
+    showToast('🗑️ মডেলের ডেটা রিসেট করা হয়েছে');
+    setDeleteTarget(null);
+    setEditor(null);
     router.refresh();
   }
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      {/* ══ ১. ইনফো বার ══ */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-white/90 bg-white p-4 shadow-sh1">
         <div>
-          <h1 className="font-bold text-xl text-ink">📢 অফার পপআপ ম্যানেজমেন্ট</h1>
-          <p className="mt-0.5 text-sm text-muted">ভিজিটরদের জন্য পপআপ ও অফার পেজ কনফিগার করুন</p>
+          <div className="font-body text-[14px] font-black text-ink">ওয়েবসাইট অফার পপআপ</div>
+          <div className="font-body text-[11.5px] font-medium text-muted">
+            যেকোনো একটি মডেল বেছে নিন এবং টগল অন করে লাইভ করুন
+          </div>
         </div>
         <button
           type="button"
           onClick={() => router.refresh()}
-          className="rounded-brand border border-border-base px-3.5 py-2 text-sm font-medium text-ink transition-brand hover:border-brand-primary"
+          className="flex h-10 items-center gap-1.5 rounded-full border border-border-base/80 bg-white px-4 font-body text-[12px] font-bold text-ink transition-all duration-brand hover:border-brand-light hover:text-brand-light active:scale-95"
         >
-          🔄 রিফ্রেশ
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-brand-light">
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <path d="M21 4v5h-5" />
+          </svg>
+          রিফ্রেশ
         </button>
       </div>
 
-      <div className="mb-5 text-center">
-        <div className="mb-1.5 text-[17px] font-extrabold text-ink">আপনার ওয়েবসাইটে অফার যুক্ত করুন</div>
-        <div className="text-xs text-muted">একটি মডেল বেছে নিন, তথ্য সেট করুন এবং চালু করুন</div>
-      </div>
-
-      {/* Model Pill Buttons */}
-      <div className="mx-auto mb-2.5 max-w-lg">
-        {MODEL_PILLS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => openEditor(p.key)}
-            className={`mb-2.5 block w-full rounded-full border-2 px-6 py-4 text-left text-sm font-bold transition-brand hover:translate-x-1 hover:border-ink hover:bg-surface-muted ${
-              cfg.active_model === p.key ? 'border-success bg-[#F0FDF4] text-success' : 'border-border-base bg-white text-ink'
-            }`}
-          >
-            <span className="mr-2.5">{p.emoji}</span>
-            {p.label}
-            <span className="float-right text-[11px] font-medium text-muted">{p.sub}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div className="mx-auto my-5 flex max-w-lg items-center gap-3 text-[11.5px] font-bold uppercase tracking-wide text-muted">
-        <span className="h-px flex-1 bg-border-base" />
-        প্রিভিউ
-        <span className="h-px flex-1 bg-border-base" />
-      </div>
-
-      {/* Preview Grid */}
-      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
-        {MODEL_PILLS.map((p, i) => {
-          const isLive = cfg.active_model === p.key;
+      {/* ══ ২. মডেল কার্ড গ্রিড (মোবাইলে ১ কলাম, ডেস্কটপে ৩ কলাম) ══ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {MODEL_META.map((m) => {
+          const isLive = cfg.active_model === m.key;
           return (
             <div
-              key={p.key}
-              className={`overflow-hidden rounded-2xl border-[1.5px] bg-white transition-brand ${
-                isLive ? 'border-success shadow-[0_0_0_3px_rgba(16,185,129,.12)]' : 'border-border-base'
+              key={m.key}
+              className={`flex flex-col justify-between overflow-hidden rounded-[24px] border bg-white p-4 shadow-sh1 transition-all duration-brand ${
+                isLive ? 'border-emerald-500/80 ring-2 ring-emerald-500/20' : 'border-white/90'
               }`}
             >
-              <div className="flex items-center justify-between border-b border-border-base bg-[#FAFAFA] px-3.5 py-3">
-                <span className="text-[13px] font-bold text-[#374151]">মডেল {i + 1}</span>
-                <div className="flex items-center gap-2">
-                  {isLive && (
-                    <span className="rounded-full bg-success px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-white">
-                      এখন লাইভ দেখাবে ✓
+              <div>
+                {/* কার্ড হেডার: টাইটেল + লাইভ ব্যাজ + টগল সুইচ */}
+                <div className="flex items-start justify-between gap-2 border-b border-border-base/60 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                      isLive ? 'bg-emerald-50 text-success' : 'bg-brand-light/15 text-brand-light'
+                    }`}>
+                      {m.icon}
                     </span>
-                  )}
-                  <label className="relative inline-block h-6 w-[42px] shrink-0" title={`মডেল ${i + 1} চালু/বন্ধ`}>
-                    <input
-                      type="checkbox"
-                      checked={isLive}
-                      disabled={togglingModel === p.key}
-                      onChange={(e) => handleToggle(p.key, e.target.checked)}
-                      className="peer h-0 w-0 opacity-0"
-                    />
-                    <span className="absolute inset-0 cursor-pointer rounded-full bg-[#D1D5DB] transition-brand before:absolute before:bottom-[3px] before:left-[3px] before:h-[18px] before:w-[18px] before:rounded-full before:bg-white before:shadow-md before:transition-brand peer-checked:bg-success peer-checked:before:translate-x-[18px]" />
-                  </label>
+                    <div className="min-w-0">
+                      <h4 className="font-body text-[13px] font-black leading-tight text-ink">{m.title}</h4>
+                      <p className="mt-0.5 truncate font-body text-[10.5px] font-medium text-muted">{m.subtitle}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {isLive && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-body text-[10px] font-extrabold text-success">
+                        লাইভ
+                      </span>
+                    )}
+                    <label className="relative inline-block h-6 w-[42px] shrink-0 cursor-pointer" title={`${m.title} চালু/বন্ধ`}>
+                      <input
+                        type="checkbox"
+                        checked={isLive}
+                        disabled={togglingModel === m.key}
+                        onChange={(e) => handleToggle(m.key, e.target.checked)}
+                        className="peer h-0 w-0 opacity-0"
+                      />
+                      <span className="absolute inset-0 rounded-full bg-border-base transition-all duration-brand before:absolute before:bottom-[3px] before:left-[3px] before:h-[18px] before:w-[18px] before:rounded-full before:bg-white before:shadow-md before:transition-all before:duration-brand peer-checked:bg-emerald-500 peer-checked:before:translate-x-[18px]" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* লাইভ প্রিভিউ এলাকা */}
+                <div className="min-h-[140px] py-3.5">
+                  <ModelPreview model={m.key} cfg={cfg} products={products} />
                 </div>
               </div>
-              <div className="min-h-[100px] p-3.5">
-                <OfferPreview model={p.key} cfg={cfg} products={products} />
-              </div>
+
+              {/* কনফিগারেশন বাটন */}
+              <button
+                type="button"
+                onClick={() => openEditor(m.key)}
+                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-brand-light/40 bg-brand-light/10 font-body text-[12.5px] font-extrabold text-ink transition-all duration-brand hover:bg-brand-light hover:text-white active:scale-[0.98]"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                সেটআপ / এডিট করুন
+              </button>
             </div>
           );
         })}
       </div>
 
+      {/* ══ ৩. এডিটর মডাল (মোবাইলে বটম-শীট, ডেস্কটপে সেন্টার্ড) ══ */}
       {editor && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center">
-          <div className="fixed inset-0" onClick={closeEditor} aria-hidden="true" />
-          <div className="relative my-6 w-full max-w-md rounded-brand bg-brand-surface p-5 shadow-sh3">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-ink">{MODEL_TITLES[editor.model]}</h3>
-              <button type="button" onClick={closeEditor} className="text-lg text-muted hover:text-ink">
-                ✕
-              </button>
+        <div
+          className="animate-soft-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-ink/45 backdrop-blur-[3px] md:items-center md:p-5"
+          onClick={(e) => e.target === e.currentTarget && !saving && setEditor(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="animate-sheet-up flex max-h-[94dvh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[30px] bg-white shadow-[0_-12px_50px_rgba(26,26,26,0.22)] md:max-h-[90dvh] md:rounded-[28px] md:shadow-[0_24px_70px_rgba(26,26,26,0.28)]"
+            style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            {/* হেডার */}
+            <div className="shrink-0 border-b border-brand-light/20 bg-gradient-to-b from-brand-light/[0.12] to-white px-5 pb-3.5 pt-2.5 md:pt-4">
+              <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-brand-light/30 md:hidden" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-body text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-light">
+                    অফার এডিটর
+                  </div>
+                  <h3 className="mt-0.5 font-body text-[18px] font-black text-ink">
+                    {MODEL_META.find((x) => x.key === editor.model)?.title}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditor(null)}
+                  disabled={saving}
+                  aria-label="বন্ধ করুন"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sh1 transition-all duration-brand hover:bg-border-base active:scale-90 disabled:opacity-50"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            {editor.model === 'model1' && (
-              <div className="flex flex-col gap-3.5">
-                <Field label="টাইটেল">
-                  <input
-                    type="text"
-                    value={editor.title}
-                    onChange={(e) => setEditor({ ...editor, title: e.target.value })}
-                    placeholder="যেমন: বিশেষ ঈদ অফার 🎉"
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                </Field>
-                <Field label="বিবরণ / Body">
-                  <textarea
-                    rows={4}
-                    value={editor.body}
-                    onChange={(e) => setEditor({ ...editor, body: e.target.value })}
-                    placeholder="অফারের বিস্তারিত লিখুন..."
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                </Field>
-                <Field label="বাটন টেক্সট">
-                  <input
-                    type="text"
-                    value={editor.btn_text}
-                    onChange={(e) => setEditor({ ...editor, btn_text: e.target.value })}
-                    placeholder="যেমন: অফার দেখুন"
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                </Field>
-                <Field label="বাটন লিংক (URL)">
-                  <input
-                    type="text"
-                    value={editor.btn_url}
-                    onChange={(e) => setEditor({ ...editor, btn_url: e.target.value })}
-                    placeholder="https://... বা #section"
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                </Field>
-              </div>
-            )}
-
-            {editor.model === 'model2' && (
-              <div className="flex flex-col gap-3.5">
-                <Field label="ব্যানার ইমেজ URL">
-                  <input
-                    type="text"
-                    value={editor.img}
-                    onChange={(e) => setEditor({ ...editor, img: e.target.value })}
-                    placeholder="https://res.cloudinary.com/..."
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                  {editor.img && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={editor.img}
-                      alt="preview"
-                      className="mt-2 max-h-[150px] w-full rounded-lg object-cover"
+            {/* ফর্ম বডি */}
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:space-y-4.5 sm:p-6">
+              {editor.model === 'model1' && (
+                <>
+                  <Field label="টাইটেল" required>
+                    <input
+                      type="text"
+                      value={editor.title}
+                      onChange={(e) => setEditor({ ...editor, title: e.target.value })}
+                      placeholder="যেমন: বিশেষ অফার চলছে!"
+                      className={FIELD_CLS}
                     />
+                  </Field>
+                  <Field label="বিবরণ / অফার বিস্তারিত">
+                    <textarea
+                      rows={3}
+                      value={editor.body}
+                      onChange={(e) => setEditor({ ...editor, body: e.target.value })}
+                      placeholder="অফারের বিস্তারিত নিয়ম বা সুবিধা লিখুন..."
+                      className={TEXTAREA_CLS}
+                    />
+                  </Field>
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                    <Field label="বাটন টেক্সট">
+                      <input
+                        type="text"
+                        value={editor.btn_text}
+                        onChange={(e) => setEditor({ ...editor, btn_text: e.target.value })}
+                        placeholder="অফার দেখুন"
+                        className={FIELD_CLS}
+                      />
+                    </Field>
+                    <Field label="বাটন লিংক (URL)">
+                      <input
+                        type="text"
+                        value={editor.btn_url}
+                        onChange={(e) => setEditor({ ...editor, btn_url: e.target.value })}
+                        placeholder="https://... বা /offers"
+                        className={FIELD_CLS}
+                      />
+                    </Field>
+                  </div>
+                </>
+              )}
+
+              {editor.model === 'model2' && (
+                <>
+                  <Field label="ব্যানার ইমেজ লিংক (URL)" required>
+                    <input
+                      type="text"
+                      value={editor.img}
+                      onChange={(e) => setEditor({ ...editor, img: e.target.value })}
+                      placeholder="https://res.cloudinary.com/..."
+                      className={FIELD_CLS}
+                    />
+                  </Field>
+                  {editor.img && (
+                    <div className="overflow-hidden rounded-2xl border border-border-base/80 bg-surface-muted">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={editor.img} alt="ব্যানার প্রিভিউ" className="max-h-[160px] w-full object-cover" />
+                    </div>
                   )}
-                </Field>
-                <Field label="ক্লিক করলে যাবে (URL)">
-                  <input
-                    type="text"
-                    value={editor.url}
-                    onChange={(e) => setEditor({ ...editor, url: e.target.value })}
-                    placeholder="https://... বা /#section"
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                </Field>
-              </div>
-            )}
+                  <Field label="ক্লিক করলে কোথায় যাবে (URL)">
+                    <input
+                      type="text"
+                      value={editor.url}
+                      onChange={(e) => setEditor({ ...editor, url: e.target.value })}
+                      placeholder="https://... বা /products"
+                      className={FIELD_CLS}
+                    />
+                  </Field>
+                </>
+              )}
 
-            {editor.model === 'model3' && (
-              <div className="flex flex-col gap-3.5">
-                <Field label="প্রোডাক্ট বেছে নিন">
-                  <select
-                    value={editor.product_id}
-                    onChange={(e) => setEditor({ ...editor, product_id: e.target.value })}
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  >
-                    <option value="">— প্রোডাক্ট বেছে নিন —</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={String(p.id)}>
-                        {p.name} — ৳{Number(p.price || 0).toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="ব্যাজ টেক্সট (যেমন: HOT DEAL, ৩০% ছাড়)">
-                  <input
-                    type="text"
-                    value={editor.badge_text}
-                    onChange={(e) => setEditor({ ...editor, badge_text: e.target.value })}
-                    placeholder="HOT DEAL"
-                    className="w-full rounded-lg border border-border-base px-3 py-2 text-sm"
-                  />
-                </Field>
-              </div>
-            )}
+              {editor.model === 'model3' && (
+                <>
+                  <Field label="প্রোডাক্ট বেছে নিন" required>
+                    <SelectBox
+                      value={editor.product_id}
+                      onChange={(v) => setEditor({ ...editor, product_id: v })}
+                    >
+                      <option value="">— যেকোনো একটি প্রোডাক্ট বাছুন —</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {p.name} — ৳{Number(p.price || 0).toLocaleString('en-US')}
+                        </option>
+                      ))}
+                    </SelectBox>
+                  </Field>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex gap-2">
+                  <Field label="স্পেশাল ব্যাজ টেক্সট">
+                    <input
+                      type="text"
+                      value={editor.badge_text}
+                      onChange={(e) => setEditor({ ...editor, badge_text: e.target.value })}
+                      placeholder="HOT DEAL / ২০% ছাড়"
+                      className={FIELD_CLS}
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
+
+            {/* ফুটার */}
+            <div className="shrink-0 border-t border-border-base/70 px-5 pt-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(editor.model)}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand hover:bg-danger hover:text-white active:scale-95"
+                  title="এই মডেলের ডেটা মুছুন"
+                  aria-label="ডেটা মুছুন"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditor(null)}
+                  disabled={saving}
+                  className="h-12 flex-1 rounded-full bg-surface-muted font-body text-[13.5px] font-extrabold text-ink transition-all duration-brand hover:bg-border-base active:scale-[0.98] disabled:opacity-50"
+                >
+                  বাতিল
+                </button>
+
                 <button
                   type="button"
                   disabled={saving}
                   onClick={handleSave}
-                  className="rounded-brand bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-brand hover:opacity-90 disabled:opacity-50"
+                  className="flex h-12 flex-[2] items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
                 >
-                  {saving ? 'সেভ হচ্ছে...' : '💾 সেভ করুন'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="rounded-brand border border-[#FECACA] bg-[#FEE2E2] px-4 py-2.5 text-sm font-semibold text-[#991B1B] transition-brand hover:bg-[#FECACA]"
-                >
-                  🗑️ অফার মুছুন
+                  {saving ? 'সেভ হচ্ছে...' : 'সেভ করুন'}
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={closeEditor}
-                className="rounded-brand border border-border-base px-4 py-2.5 text-sm font-medium text-ink transition-brand hover:border-brand-primary"
-              >
-                বাতিল
-              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ══ ৪. সেন্ট্রাল কনফার্মেশন ডায়ালগ ══ */}
+      {deleteTarget && (
+        <ConfirmDialog
+          title="মডেলের তথ্য মুছে ফেলবেন?"
+          message="এই মডেলের সেভ করা সমস্ত ডেটা মুছে যাবে এবং লাইভ থাকলে স্বয়ংক্রিয়ভাবে বন্ধ হয়ে যাবে।"
+          confirmLabel="হ্যাঁ, মুছে ফেলুন"
+          busyLabel="মুছে ফেলা হচ্ছে..."
+          busy={deleting}
+          tone="danger"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-bold text-ink">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-// legacy _renderOfferPreview() — মডেল অনুযায়ী ৩ রকম প্রিভিউ, ডেটা না থাকলে empty state
-function OfferPreview({ model, cfg, products }: { model: ModelKey; cfg: OfferConfig; products: Product[] }) {
+/* ── মডেল প্রিভিউ সাব-কম্পোনেন্ট ── */
+function ModelPreview({
+  model,
+  cfg,
+  products,
+}: {
+  model: ModelKey;
+  cfg: OfferConfig;
+  products: Product[];
+}) {
   if (model === 'model1') {
     const d = cfg.model1;
-    if (!d.title && !d.body) {
-      return <EmptyState hint="মডেল ১ বাটনে ক্লিক করে সেটআপ করুন" />;
-    }
+    if (!d.title && !d.body) return <EmptyPreview hint="সেটআপ করে টেক্সট বসান" />;
     return (
-      <div>
-        <div className="-mx-3.5 -mt-3.5 mb-3 h-[3px] bg-gradient-to-r from-gold via-danger to-info" />
-        <div className="mb-1 text-sm font-extrabold leading-tight text-ink">{d.title}</div>
-        <div className="mb-2 text-xs leading-relaxed text-muted">{d.body}</div>
-        <span className="inline-block rounded-lg bg-ink px-3.5 py-1.5 text-xs font-bold text-white">
-          {d.btn_text || 'অফার দেখুন'}
+      <div className="rounded-2xl border border-brand-light/30 bg-brand-light/[0.06] p-3.5">
+        <h5 className="font-body text-[13.5px] font-black text-ink">{d.title || 'শিরোনাম নেই'}</h5>
+        <p className="mt-1 line-clamp-3 font-body text-[12px] font-medium leading-relaxed text-muted">
+          {d.body || 'কোনো বিবরণ নেই'}
+        </p>
+        <span className="mt-3 inline-flex items-center rounded-full bg-brand-light px-3 py-1 font-body text-[11px] font-black text-white">
+          {d.btn_text || 'বাটন টেক্সট'}
         </span>
       </div>
     );
@@ -385,37 +490,39 @@ function OfferPreview({ model, cfg, products }: { model: ModelKey; cfg: OfferCon
 
   if (model === 'model2') {
     const d = cfg.model2;
-    if (!d.img) {
-      return <EmptyState hint="মডেল ২ বাটনে ক্লিক করে সেটআপ করুন" />;
-    }
+    if (!d.img) return <EmptyPreview hint="ব্যানার ইমেজের URL বসান" />;
     return (
-      <div>
+      <div className="overflow-hidden rounded-2xl border border-border-base/80 bg-surface-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={d.img}
-          alt="ব্যানার"
-          className="block max-h-[120px] w-full rounded-lg object-cover"
+          alt="অফার ব্যানার"
+          className="max-h-[120px] w-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
-        <div className="mt-1.5 break-all text-[11px] text-muted">{d.url}</div>
+        {d.url && (
+          <div className="truncate border-t border-border-base/60 bg-white px-3 py-1.5 font-mono text-[10.5px] font-medium text-muted">
+            লিংক: {d.url}
+          </div>
+        )}
       </div>
     );
   }
 
   // model3
   const d = cfg.model3;
-  if (!d.product_id) {
-    return <EmptyState hint="মডেল ৩ বাটনে ক্লিক করে সেটআপ করুন" />;
-  }
+  if (!d.product_id) return <EmptyPreview hint="প্রোডাক্ট নির্বাচন করুন" />;
   const p = products.find((x) => String(x.id) === String(d.product_id));
-  if (!p) return <div className="py-4.5 text-center text-xs text-muted">প্রোডাক্ট পাওয়া যাচ্ছে না</div>;
+  if (!p) return <EmptyPreview hint="প্রোডাক্টটি খুঁজে পাওয়া যায়নি" />;
+
   const imgs = Array.isArray(p.imgs) ? p.imgs : p.imgs ? [p.imgs] : ['📦'];
-  const imgSrc = imgs[0] && imgs[0].startsWith('http') ? imgs[0] : null;
+  const imgSrc = imgs[0] && (imgs[0].startsWith('http') || imgs[0].startsWith('/')) ? imgs[0] : null;
+
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-muted text-[26px]">
+    <div className="flex items-center gap-3 rounded-2xl border border-border-base/80 bg-surface-muted/60 p-3">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-2xl">
         {imgSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imgSrc} alt="" className="h-full w-full object-cover" />
@@ -424,25 +531,23 @@ function OfferPreview({ model, cfg, products }: { model: ModelKey; cfg: OfferCon
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1.5 inline-block rounded-full bg-danger px-2.5 py-0.5 text-[10px] font-bold text-white">
+        <span className="inline-block rounded-full bg-danger px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white">
           {d.badge_text || 'HOT DEAL'}
+        </span>
+        <div className="mt-0.5 truncate font-body text-[13px] font-extrabold text-ink">{p.name}</div>
+        <div className="mt-0.5 font-body text-[14px] font-black text-ink">
+          ৳{Number(p.price || 0).toLocaleString('en-US')}
         </div>
-        <div className="mb-0.5 truncate text-[13px] font-bold leading-tight text-ink">{p.name}</div>
-        <span className="text-[15px] font-bold text-ink">৳{Number(p.price || 0).toLocaleString()}</span>
-        {p.old && p.old > p.price && (
-          <span className="ml-1 text-[11px] text-muted line-through">৳{Number(p.old).toLocaleString()}</span>
-        )}
       </div>
     </div>
   );
 }
 
-function EmptyState({ hint }: { hint: string }) {
+function EmptyPreview({ hint }: { hint: string }) {
   return (
-    <div className="py-4.5 text-center text-xs text-[#9CA3AF]">
-      কোনো ডেটা নেই
-      <br />
-      <span className="text-[11px]">{hint}</span>
+    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border-base/80 bg-surface-muted/40 p-6 text-center">
+      <span className="font-body text-[12.5px] font-bold text-muted">কোনো তথ্য কনফিগার করা নেই</span>
+      <span className="mt-0.5 font-body text-[11px] font-medium text-muted/70">{hint}</span>
     </div>
   );
 }
