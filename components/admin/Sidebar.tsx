@@ -422,7 +422,7 @@ export default function Sidebar() {
 
       {/* ══ মোবাইল ফ্রস্টেড বটম ক্যাপসুল বার — অ্যাপল লিকুইড স্কাই-ব্লু লুক ══ */}
       <div
-        className="fixed bottom-3 left-1/2 z-[500] flex w-[calc(100%-20px)] max-w-[420px] -translate-x-1/2 items-center justify-between rounded-full border border-white/80 bg-white/90 p-1.5 shadow-[0_8px_32px_rgba(68,167,252,0.18)] backdrop-blur-2xl md:hidden"
+        className="fixed bottom-3 left-1/2 z-40 flex w-[calc(100%-20px)] max-w-[420px] -translate-x-1/2 items-center justify-between rounded-full border border-white/80 bg-white/90 p-1.5 shadow-[0_8px_32px_rgba(68,167,252,0.18)] backdrop-blur-2xl md:hidden"
         style={{ bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}
       >
         {TAB_ITEMS.slice(0, 2).map((item) => {
@@ -493,7 +493,7 @@ export default function Sidebar() {
       />
 
       <div
-        className={`fixed inset-x-0 bottom-0 z-[560] flex max-h-[85vh] flex-col overflow-hidden rounded-t-[32px] border-t border-white/80 bg-white/95 px-4 pt-3 pb-6 shadow-[0_-14px_45px_rgba(68,167,252,0.18)] backdrop-blur-2xl transition-transform duration-[380ms] ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-[560] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[32px] border-t border-white/80 bg-white/95 px-4 pt-3 pb-6 shadow-[0_-14px_45px_rgba(68,167,252,0.18)] backdrop-blur-2xl transition-transform duration-[380ms] ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
           mobileOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}

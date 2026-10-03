@@ -96,7 +96,7 @@ export default function CouponModal({ editingCoupon, onClose, onSaved }: Props) 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => e.target === e.currentTarget && !saving && onClose()}
     >
-      <div className="max-h-[90vh] w-full max-w-[560px] overflow-y-auto rounded-brand bg-brand-surface p-6 shadow-sh3">
+      <div className="max-h-[90dvh] w-full max-w-[560px] overflow-y-auto rounded-brand bg-brand-surface p-6 shadow-sh3">
         <h3 className="mb-4 font-bold text-lg text-ink">
           {editingCoupon ? '✎ কুপন এডিট করুন' : '+ নতুন কুপন তৈরি করুন'}
         </h3>

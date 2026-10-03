@@ -1,26 +1,16 @@
 import type { OrderStatus } from '@/types';
+import { ORDER_STATUS_META } from '@/lib/orders';
 
-// legacy admin.html-এর .p-pending/.p-confirmed/... CSS ক্লাস থেকে হুবহু hex —
-// DESIGN_SYSTEM.md অনুযায়ী status pill-এর জন্য exact legacy hex রাখার
-// সিদ্ধান্তই নেওয়া হয়েছে, brand token দিয়ে replace করা হয়নি।
-const STATUS_META: Record<OrderStatus, { label: string; bg: string; text: string }> = {
-  pending: { label: 'Pending', bg: '#FEF3C7', text: '#92400E' },
-  confirmed: { label: 'Confirmed', bg: '#DBEAFE', text: '#1E40AF' },
-  shipped: { label: 'Shipped', bg: '#E0E7FF', text: '#3730A3' },
-  delivered: { label: 'Delivered', bg: '#D1FAE5', text: '#065F46' },
-  cancelled: { label: 'Cancelled', bg: '#FEE2E2', text: '#991B1B' },
-  // cancelled-এর চেয়ে গাঢ় লাল — যাতে "গ্রাহক নিজে ক্যান্সেল করেছে" আর
-  // "admin fake/ভুল পেমেন্ট তথ্যের কারণে reject করেছে" টেবিলেই আলাদা বোঝা যায়
-  rejected: { label: 'Rejected', bg: '#FECACA', text: '#7F1D1D' },
-};
-
+// রং আসে lib/orders.ts-এর ORDER_STATUS_META থেকে (পিল, ড্রপডাউন, মোডাল — সব জায়গায় একই)।
+// ব্র্যান্ড নিয়ম অনুযায়ী Confirmed এখন সিগনেচার স্কাই-ব্লু; গাঢ় নীল আর নেই।
 export default function StatusPill({ status }: { status: OrderStatus }) {
-  const m = STATUS_META[status] || STATUS_META.pending;
+  const m = ORDER_STATUS_META[status] || ORDER_STATUS_META.pending;
   return (
     <span
-      className="inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10.5px] font-bold"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 font-body text-[11px] font-extrabold leading-none"
       style={{ background: m.bg, color: m.text }}
     >
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: m.dot }} />
       {m.label}
     </span>
   );

@@ -235,3 +235,16 @@ html {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   মোবাইল বটম-শিট এন্ট্রি অ্যানিমেশন (মোডাল ও ড্রপডাউন শিটের জন্য)
+   ══════════════════════════════════════════════════════════════════════ */
+@keyframes sheetUp {
+  from { transform: translateY(28px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@layer utilities {
+  .animate-sheet-up {
+    animation: sheetUp 0.28s cubic-bezier(.32, .72, 0, 1) both;
+  }
+}

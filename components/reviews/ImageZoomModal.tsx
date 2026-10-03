@@ -6,9 +6,9 @@ export default function ImageZoomModal({ url, onClose }: { url: string; onClose:
       className="fixed inset-0 z-[110] flex cursor-zoom-out items-center justify-center bg-black/70 p-4"
       onClick={onClose}
     >
-      <div className="relative max-h-[90vh] max-w-[90vw]">
+      <div className="relative max-h-[90dvh] max-w-[90vw]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="রিভিউ ছবি" className="block max-h-[90vh] max-w-[90vw] rounded-xl" />
+        <img src={url} alt="রিভিউ ছবি" className="block max-h-[90dvh] max-w-[90vw] rounded-xl" />
         <button
           type="button"
           onClick={onClose}

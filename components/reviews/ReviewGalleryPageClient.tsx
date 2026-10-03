@@ -256,9 +256,9 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
           className="fixed inset-0 z-[110] flex cursor-zoom-out items-center justify-center bg-black/70 p-4"
           onClick={() => setPreviewUrl(null)}
         >
-          <div className="relative max-h-[90vh] max-w-[90vw]">
+          <div className="relative max-h-[90dvh] max-w-[90vw]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Preview" className="block max-h-[90vh] max-w-[90vw] rounded-xl" />
+            <img src={previewUrl} alt="Preview" className="block max-h-[90dvh] max-w-[90vw] rounded-xl" />
             <button
               type="button"
               onClick={() => setPreviewUrl(null)}

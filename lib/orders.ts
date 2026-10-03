@@ -17,13 +17,19 @@ export const ORDER_STATUS_ORDER: OrderStatus[] = [
   'rejected',
 ];
 
-export const ORDER_STATUS_META: Record<OrderStatus, { label: string; dot: string }> = {
-  pending: { label: 'Pending', dot: '#F59E0B' },
-  confirmed: { label: 'Confirmed', dot: '#3B82F6' },
-  shipped: { label: 'Shipped', dot: '#6366F1' },
-  delivered: { label: 'Delivered', dot: '#10B981' },
-  cancelled: { label: 'Cancelled', dot: '#EF4444' },
-  rejected: { label: 'Rejected', dot: '#B91C1C' },
+// একটাই সোর্স অফ ট্রুথ: dot (স্ট্যাটাস ডট/ফিল্টার), bg+text (পিল ও সিলেক্টেড বাটন)।
+// ব্র্যান্ড নিয়ম: গাঢ় নীল/ইন্ডিগো নেই — Confirmed = সিগনেচার স্কাই-ব্লু (#44A7FC),
+// Shipped = ভায়োলেট (যাতে স্কাই-ব্লু থেকে আলাদা বোঝা যায়)। text রংগুলো ছোট লেখার জন্য ≥4.5:1 কনট্রাস্ট।
+export const ORDER_STATUS_META: Record<
+  OrderStatus,
+  { label: string; dot: string; bg: string; text: string }
+> = {
+  pending: { label: 'Pending', dot: '#F59E0B', bg: '#FEF3C7', text: '#92400E' },
+  confirmed: { label: 'Confirmed', dot: '#44A7FC', bg: '#E3F2FF', text: '#0F6FC6' },
+  shipped: { label: 'Shipped', dot: '#8B5CF6', bg: '#EDE9FE', text: '#6D28D9' },
+  delivered: { label: 'Delivered', dot: '#10B981', bg: '#D1FAE5', text: '#065F46' },
+  cancelled: { label: 'Cancelled', dot: '#EF4444', bg: '#FEE2E2', text: '#B91C1C' },
+  rejected: { label: 'Rejected', dot: '#B91C1C', bg: '#FECACA', text: '#7F1D1D' },
 };
 
 // ⚠️ আপডেট: storefront-এ এখন ডায়নামিক অ্যাডভান্স (৳৮,০০০-এর নিচে ৳২০০ ফিক্সড,

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Order, OrderStatus } from '@/types';
 import { listOrders, updateOrderStatus, bulkUpdateOrderStatus } from '@/app/actions/orders';
-import { orderMatchesQuery } from '@/lib/orders';
+import { ORDER_STATUS_ORDER, orderMatchesQuery } from '@/lib/orders';
 import { downloadCsvRows, ordersToCsvRows } from '@/lib/csv';
 import { playChaChing } from '@/lib/sound';
 import { useToast } from '@/components/admin/Toast';
@@ -12,6 +12,7 @@ import { useOrdersRealtime } from '@/components/admin/OrdersRealtimeProvider';
 import OrdersToolbar from '@/components/orders/OrdersToolbar';
 import OrdersTable from '@/components/orders/OrdersTable';
 import OrderDetailModal from '@/components/orders/OrderDetailModal';
+import PageHeader from '@/components/admin/PageHeader';
 import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 import type { DateRange } from '@/components/common/DateRangePicker';
 
@@ -81,6 +82,14 @@ export default function OrdersPageClient({ initialOrders }: Props) {
       return true;
     });
   }, [orders, search, filterStatus, dateRange]);
+
+  const statusCounts = useMemo(() => {
+    const counts = Object.fromEntries(ORDER_STATUS_ORDER.map((st) => [st, 0])) as Record<OrderStatus, number>;
+    orders.forEach((o) => {
+      counts[o.status] = (counts[o.status] || 0) + 1;
+    });
+    return counts;
+  }, [orders]);
 
   const paginated = useMemo(() => {
     const from = (page - 1) * PAGE_SIZE;
@@ -172,16 +181,25 @@ export default function OrdersPageClient({ initialOrders }: Props) {
 
   return (
     <div>
-      <div className="mx-auto mb-3.5 mt-2.5 max-w-full text-center">
-        <h1 className="font-bold text-xl text-ink">অর্ডার ম্যানেজমেন্ট</h1>
-        <p className="mt-0.5 text-[12.5px] text-muted">সকল গ্রাহকের অর্ডার — Confirm করুন বা Cancel করুন</p>
-      </div>
+      <PageHeader
+        icon={
+          <>
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </>
+        }
+        title="অর্ডার ম্যানেজমেন্ট"
+        subtitle="সকল গ্রাহকের অর্ডার — Confirm করুন বা Cancel করুন"
+      />
 
       <OrdersToolbar
         search={search}
         onSearchChange={setSearch}
         filterStatus={filterStatus}
         onSelectFilter={setFilterStatus}
+        statusCounts={statusCounts}
+        totalCount={orders.length}
         selectedCount={selectedIds.size}
         bulkPendingStatus={bulkPendingStatus}
         onSelectBulk={setBulkPendingStatus}
@@ -198,7 +216,9 @@ export default function OrdersPageClient({ initialOrders }: Props) {
         onClearFilters={clearFilters}
       />
 
-      <div className="glass-card-strong rounded-brand p-4 shadow-glass md:p-5">
+      {/* মোবাইলে: কার্ডগুলো সরাসরি নীল ক্যানভাসের উপর (কার্ডের ভেতরে কার্ড নেই);
+          ডেস্কটপে (≥1024px): একটাই সাদা কার্ডে টেবিল + পেজিনেশন */}
+      <div className="lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-white/90 lg:bg-white lg:shadow-sh1">
         <OrdersTable
           orders={paginated}
           selectedIds={selectedIds}
@@ -206,8 +226,15 @@ export default function OrdersPageClient({ initialOrders }: Props) {
           onToggleSelectAll={toggleSelectAll}
           onView={setViewingId}
         />
-        <Pagination page={page} total={filtered.length} onPageChange={setPage} />
+        {filtered.length > 0 && (
+          <div className="mt-3 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1 lg:mt-0 lg:rounded-none lg:border-0 lg:border-t lg:border-border-base/60 lg:px-5 lg:shadow-none">
+            <Pagination page={page} total={filtered.length} onPageChange={setPage} bare />
+          </div>
+        )}
       </div>
+
+      {/* সিলেকশন বার ভাসমান থাকলে শেষ কার্ড যেন ঢাকা না পড়ে */}
+      {selectedIds.size > 0 && <div className="h-28 lg:hidden" />}
 
       {viewingOrder && (
         <OrderDetailModal order={viewingOrder} onClose={() => setViewingId(null)} onStatusChange={handleStatusChange} />

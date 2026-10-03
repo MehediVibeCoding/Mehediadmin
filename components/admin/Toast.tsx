@@ -27,7 +27,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {message && (
         <div
-          className="fixed bottom-6 left-1/2 z-[9999] -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-white shadow-sh3 transition-opacity duration-300"
+          className="pointer-events-none fixed left-1/2 top-[calc(14px+env(safe-area-inset-top,0px))] z-[9999] w-max max-w-[calc(100vw-24px)] -translate-x-1/2 rounded-2xl text-center leading-snug md:bottom-6 md:top-auto md:rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-white shadow-sh3 transition-opacity duration-300"
           style={{ opacity: visible ? 1 : 0 }}
         >
           {message}

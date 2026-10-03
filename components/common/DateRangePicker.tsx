@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 export interface DateRange {
   start: Date;
@@ -22,6 +22,8 @@ interface Props {
   menuItemLabel?: string;
   menuItemSubLabel?: string;
   menuItemIcon?: React.ReactNode;
+  /** ট্রিগারের wrapper div-এ অতিরিক্ত ক্লাস (যেমন মোবাইলে ফুল-উইডথ) */
+  className?: string;
 }
 
 function startOfDay(d: Date): Date {
@@ -58,6 +60,7 @@ export default function DateRangePicker({
   menuItemLabel,
   menuItemSubLabel,
   menuItemIcon,
+  className = '',
 }: Props) {
   const [open, setOpen] = useState(false);
   const today = todayDate();
@@ -70,14 +73,6 @@ export default function DateRangePicker({
     new Date((range?.end || today).getFullYear(), (range?.end || today).getMonth(), 1)
   );
   const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
-  }, []);
 
   function openPicker() {
     const base = range || { start: today, end: today };
@@ -142,31 +137,35 @@ export default function DateRangePicker({
   const nextDisabled = viewMonth >= firstOfMaxMonth;
 
   return (
-    <div className="relative" ref={wrapRef}>
+    <div className={`relative ${className}`} ref={wrapRef}>
       {variant === 'menu-item' ? (
         <button
           type="button"
           onClick={() => (open ? setOpen(false) : openPicker())}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-ink transition-brand hover:bg-brand-bg hover:text-brand-dark"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-body text-[12.5px] font-bold text-ink transition-brand hover:bg-brand-bg/40 hover:text-brand-light"
         >
           {menuItemIcon}
           <span>
             <span className="block">{menuItemLabel}</span>
-            {menuItemSubLabel && <span className="mt-px block text-[10.5px] font-medium text-muted">{menuItemSubLabel}</span>}
+            {menuItemSubLabel && <span className="mt-0.5 block text-[10.5px] font-medium text-muted">{menuItemSubLabel}</span>}
           </span>
         </button>
       ) : (
         <button
           type="button"
           onClick={() => (open ? setOpen(false) : openPicker())}
-          className="flex h-[38px] items-center gap-1.5 rounded-[10px] border border-border-base bg-brand-surface px-3.5 text-xs font-semibold text-ink transition-brand hover:bg-surface-muted"
+          className={`flex h-11 w-full items-center justify-center gap-2 rounded-full border px-4 font-body text-[12.5px] font-bold transition-all duration-brand active:scale-95 lg:h-10 ${
+            active
+              ? 'border-brand-light bg-brand-light/10 text-ink'
+              : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
+          }`}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-brand-accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-brand-light">
             <rect x="3" y="4.5" width="18" height="16.5" rx="3" />
             <path d="M3 9.5h18" />
             <path d="M8 2.5v4M16 2.5v4" />
           </svg>
-          <span className="max-w-[130px] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
+          <span className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
         </button>
       )}
 
@@ -175,26 +174,26 @@ export default function DateRangePicker({
           legacy ইচ্ছাকৃতভাবে এভাবেই বানিয়েছিল, তাই এখানেও একই প্যাটার্ন */}
       {open && (
         <div
-          className="fixed inset-0 z-[999] flex items-center justify-center bg-[#0F0E1E]/[.46] p-5 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[999] flex items-center justify-center bg-ink/40 p-5 backdrop-blur-[3px]"
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-[300px] max-h-[88vh] overflow-y-auto rounded-2xl bg-brand-surface p-4 shadow-sh2"
+            className="max-h-[88dvh] w-full max-w-[330px] overflow-y-auto rounded-[26px] bg-white p-4 shadow-[0_24px_60px_rgba(26,26,26,0.22)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-2.5 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between">
               <button
                 type="button"
                 disabled={prevDisabled}
                 onClick={() => navMonth(-1)}
                 aria-label="আগের মাস"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted transition-brand hover:bg-border-base disabled:opacity-30"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-ink transition-brand hover:bg-brand-bg/60 disabled:opacity-30"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                   <path d="M15 18l-6-6 6-6" />
                 </svg>
               </button>
-              <span className="text-[13px] font-bold text-brand-dark">
+              <span className="font-body text-[14px] font-black text-ink">
                 {viewMonth.toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' })}
               </span>
               <button
@@ -202,14 +201,14 @@ export default function DateRangePicker({
                 disabled={nextDisabled}
                 onClick={() => navMonth(1)}
                 aria-label="পরের মাস"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted transition-brand hover:bg-border-base disabled:opacity-30"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-ink transition-brand hover:bg-brand-bg/60 disabled:opacity-30"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                  <path d="M9 18l6-6 6-6" />
+                  <path d="M9 18l6-6-6-6" />
                 </svg>
               </button>
             </div>
-            <div className="mb-1 grid grid-cols-7 text-center text-[10px] font-bold text-muted">
+            <div className="mb-1.5 grid grid-cols-7 text-center font-body text-[10.5px] font-extrabold text-muted">
               {DOW.map((d) => (
                 <span key={d}>{d}</span>
               ))}
@@ -224,21 +223,21 @@ export default function DateRangePicker({
                 const isSingle = isStart && isEnd;
                 const inRange = d > pendStart && d < pendEnd;
 
-                let cls = 'aspect-square flex items-center justify-center text-xs font-medium transition-brand';
+                let cls = 'aspect-square flex items-center justify-center font-body text-[12.5px] font-semibold transition-brand';
                 if (disabled) {
                   cls += ' cursor-not-allowed text-border-base';
                 } else if (isSingle) {
-                  cls += ' rounded-lg bg-brand-grad font-bold text-white';
+                  cls += ' rounded-xl bg-brand-light font-extrabold text-white';
                 } else if (isStart) {
-                  cls += ' rounded-l-lg bg-brand-grad font-bold text-white';
+                  cls += ' rounded-l-xl bg-brand-light font-extrabold text-white';
                 } else if (isEnd) {
-                  cls += ' rounded-r-lg bg-brand-grad font-bold text-white';
+                  cls += ' rounded-r-xl bg-brand-light font-extrabold text-white';
                 } else if (inRange) {
-                  cls += ' rounded-none bg-brand-bg text-brand-dark';
+                  cls += ' rounded-none bg-brand-light/15 text-ink';
                 } else {
-                  cls += ' rounded-lg text-ink hover:bg-brand-bg';
+                  cls += ' rounded-xl text-ink hover:bg-brand-bg/60';
                 }
-                if (isToday && !isStart && !isEnd && !inRange) cls += ' font-bold text-brand-primary';
+                if (isToday && !isStart && !isEnd && !inRange) cls += ' font-black text-brand-light';
 
                 return (
                   <button key={dateKey(d)} type="button" disabled={disabled} onClick={() => selectDay(d)} className={cls}>
@@ -250,7 +249,7 @@ export default function DateRangePicker({
             <button
               type="button"
               onClick={apply}
-              className="mt-3 w-full rounded-[9px] bg-brand-grad py-2.5 text-xs font-bold text-white transition-brand hover:brightness-110"
+              className="mt-3.5 h-11 w-full rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(68,167,252,0.38)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98]"
             >
               {applyLabel}
             </button>
@@ -258,7 +257,7 @@ export default function DateRangePicker({
               <button
                 type="button"
                 onClick={clear}
-                className="mt-1.5 w-full rounded-[9px] bg-surface-muted py-2.5 text-xs font-semibold text-muted transition-brand hover:bg-border-base"
+                className="mt-2 h-10 w-full rounded-full bg-surface-muted font-body text-[12.5px] font-bold text-muted transition-brand hover:bg-border-base active:scale-[0.98]"
               >
                 সব তারিখ দেখাও
               </button>
