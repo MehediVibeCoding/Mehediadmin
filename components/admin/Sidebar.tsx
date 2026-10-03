@@ -445,7 +445,7 @@ export default function Sidebar() {
         <Link
           href="/products/parser"
           aria-label="AI Planner"
-          className="relative mx-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/20 text-brand-light shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.85),0_3px_12px_rgba(68,167,252,0.22)] backdrop-blur-md transition-all duration-brand active:scale-95 hover:bg-brand-light/30"
+          className="relative mx-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/20 text-brand-light shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.85),0_3px_12px_rgba(68,167,252,0.22)] backdrop-blur-md transition-all duration-brand active:scale-95 hover:bg-brand-light/30"
         >
           <NavIcon className="h-5 w-5 text-brand-light">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -505,7 +505,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-ink/70 hover:bg-border-base"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted text-ink/70 hover:bg-border-base"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />

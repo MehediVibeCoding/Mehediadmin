@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
+import { sanitizeInput } from '@/lib/security';
 import type { ProductReview } from '@/types';
 
 const TABLE = 'product_reviews';
@@ -65,7 +66,8 @@ export async function approveReview(id: number): Promise<ReviewActionResult> {
 
 export async function rejectReview(id: number, reason: string): Promise<ReviewActionResult> {
   await requireAdmin();
-  const rejection_reason = reason.trim();
+  // অডিট §২.২: রিজেকশন কারণও সার্ভারে স্যানিটাইজ
+  const rejection_reason = sanitizeInput(reason).slice(0, 500);
   if (!rejection_reason) return { ok: false, message: '❌ রিজেকশনের কারণ লিখুন' };
 
   const supabase = createServiceRoleClient();

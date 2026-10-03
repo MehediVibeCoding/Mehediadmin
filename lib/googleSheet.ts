@@ -13,7 +13,15 @@ export async function syncConfirmedOrderToSheet(order: Order): Promise<void> {
     return;
   }
 
+  // অডিট §২.৪: Apps Script শুধু সঠিক টোকেন থাকলে লিখবে। টোকেন সেট না থাকলে
+  // আগের আচরণ বজায় থাকে (ব্যাকওয়ার্ড কমপ্যাটিবল), তবে সতর্কবার্তা দেওয়া হয়।
+  const token = process.env.GOOGLE_SHEET_TOKEN;
+  if (!token) {
+    console.warn('GOOGLE_SHEET_TOKEN সেট নেই — Sheet webhook অরক্ষিত অবস্থায় আছে।');
+  }
+
   const payload = {
+    ...(token ? { token } : {}),
     action: 'addConfirmed',
     orderNum: order.order_num,
     date: order.created_at,

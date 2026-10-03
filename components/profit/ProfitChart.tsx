@@ -21,11 +21,17 @@ export default function ProfitChart({ series }: Props) {
 
   useEffect(() => {
     draw();
+    // অডিট §১.৪: resize ইভেন্ট ডিবাউন্স (১৫০ms) — ফোন ঘোরানোর সময় প্রতি সেকেন্ডে ৩০-৬০ বার রি-ড্র বন্ধ
+    let t: ReturnType<typeof setTimeout> | undefined;
     function onResize() {
-      draw();
+      clearTimeout(t);
+      t = setTimeout(draw, 150);
     }
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [series]);
 

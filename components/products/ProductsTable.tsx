@@ -124,7 +124,7 @@ function EditDot({ onClick, title }: { onClick: () => void; title: string }) {
       onClick={onClick}
       title={title}
       aria-label={title}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-light/35 bg-brand-light/10 text-brand-light transition-all duration-brand hover:bg-brand-light hover:text-white active:scale-90"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-light/35 bg-brand-light/10 text-brand-light transition-all duration-brand hover:bg-brand-light hover:text-white active:scale-90"
     >
       <PencilIcon />
     </button>
@@ -429,7 +429,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                       <div
                         onPointerDown={(e) => handlePointerDown(p.id, e)}
                         title="ধরে টানুন"
-                        className="-mr-1 -mt-0.5 flex h-9 w-8 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-xl text-muted active:bg-brand-light/10 active:text-brand-light"
+                        className="-mr-1 -mt-0.5 flex h-11 w-11 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-xl text-muted active:bg-brand-light/10 active:text-brand-light"
                       >
                         <GripIcon />
                       </div>
@@ -570,7 +570,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                             <span
                               onPointerDown={(e) => handlePointerDown(p.id, e)}
                               title="ধরে টানুন"
-                              className="flex h-9 w-8 cursor-grab touch-none select-none items-center justify-center rounded-lg text-muted transition-colors hover:bg-brand-light/10 hover:text-brand-light"
+                              className="flex h-11 w-11 cursor-grab touch-none select-none items-center justify-center rounded-lg text-muted transition-colors hover:bg-brand-light/10 hover:text-brand-light"
                             >
                               <GripIcon />
                             </span>

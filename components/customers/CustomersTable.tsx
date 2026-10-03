@@ -1,4 +1,5 @@
 import type { Customer } from '@/types';
+import { formatDateBn } from '@/lib/dateFormat';
 
 interface Props {
   customers: Customer[];
@@ -6,8 +7,7 @@ interface Props {
 
 const HEADERS = ['কাস্টমার', 'ফোন', 'ইমেইল', 'শেষ অর্ডার', 'মোট অর্ডার', 'মোট খরচ'];
 
-const fmtDate = (d?: string) =>
-  d ? new Date(d).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const fmtDate = (d?: string) => formatDateBn(d);
 
 function Avatar({ name, size }: { name: string; size: number }) {
   return (

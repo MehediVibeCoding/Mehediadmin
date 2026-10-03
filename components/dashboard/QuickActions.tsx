@@ -24,7 +24,7 @@ export default function QuickActions() {
   }
 
   return (
-    <div className="card-hover-glow flex h-full flex-col overflow-hidden rounded-[24px] border border-white/90 bg-white/80 p-5 shadow-sh1 backdrop-blur-xl sm:p-6">
+    <div className="card-hover-glow flex h-full flex-col overflow-hidden rounded-[24px] border border-white/90 bg-white p-5 shadow-sh1 sm:p-6">
       {/* হেডার */}
       <div className="mb-4 flex items-center gap-2.5 border-b border-border-base/50 pb-3.5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-bg/50 text-brand-primary">

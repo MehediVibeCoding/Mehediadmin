@@ -34,6 +34,20 @@ export function OrdersRealtimeProvider({ children }: { children: React.ReactNode
     requestNotifPermission();
     getPendingOrdersCount().then(setPendingCount).catch(() => {});
 
+    // অডিট §১.৩: বাল্ক আপডেটে (যেমন ২০টি অর্ডার একসাথে) প্রতিটা ইভেন্টে
+    // router.refresh() ও count fetch চালালে সার্ভার ২০ বার RSC রি-ফেচ করে।
+    // সব ইভেন্ট একটি ডিবাউন্সড কলে জমা হয় — শেষ ইভেন্টের ৮০০ms পরে একবার।
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      setOrdersVersion((v) => v + 1);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        getPendingOrdersCount().then(setPendingCount).catch(() => {});
+        router.refresh();
+      }, 800);
+    };
+
     const supabase = createClient();
     const channel = supabase
       .channel('admin-orders-watch')
@@ -41,9 +55,7 @@ export function OrdersRealtimeProvider({ children }: { children: React.ReactNode
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'orders' },
         (payload) => {
-          setOrdersVersion((v) => v + 1);
-          getPendingOrdersCount().then(setPendingCount).catch(() => {});
-          router.refresh();
+          scheduleRefresh();
           const orderNum = (payload.new as { order_num?: string } | null)?.order_num || 'নতুন';
           playChaChing();
           sendBrowserNotification('🛒 নতুন অর্ডার!', `অর্ডার নং: ${orderNum} — এখনই দেখুন`, () =>
@@ -53,13 +65,12 @@ export function OrdersRealtimeProvider({ children }: { children: React.ReactNode
         }
       )
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
-        setOrdersVersion((v) => v + 1);
-        getPendingOrdersCount().then(setPendingCount).catch(() => {});
-        router.refresh();
+        scheduleRefresh();
       })
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

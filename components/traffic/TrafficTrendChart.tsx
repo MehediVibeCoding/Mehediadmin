@@ -18,11 +18,17 @@ export default function TrafficTrendChart({ series }: Props) {
 
   useEffect(() => {
     draw();
+    // অডিট §১.৪: resize ডিবাউন্স (১৫০ms)
+    let t: ReturnType<typeof setTimeout> | undefined;
     function onResize() {
-      draw();
+      clearTimeout(t);
+      t = setTimeout(draw, 150);
     }
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [series]);
 

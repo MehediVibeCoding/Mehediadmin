@@ -159,7 +159,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
         </svg>
 
         <div className="relative z-10 flex items-center gap-2.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-white/20 text-white backdrop-blur-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-white/20 text-white">
             {hero.icon}
           </div>
           <span className="font-body text-[12px] font-extrabold uppercase tracking-wider text-white/85">
@@ -183,7 +183,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
           <Link
             key={card.id}
             href={card.href}
-            className={`group relative flex items-center gap-2.5 overflow-hidden rounded-2xl border p-3.5 backdrop-blur-xl transition-all duration-brand hover:-translate-y-0.5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
+            className={`group relative flex items-center gap-2.5 overflow-hidden rounded-2xl border p-3.5 transition-all duration-brand hover:-translate-y-0.5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
           >
             {card.isLive && (
               <span className="absolute right-3 top-3 flex h-2 w-2">

@@ -323,7 +323,7 @@ export default function CouponModal({ editingCoupon, onClose, onSaved }: Props) 
             </div>
           )}
 
-          <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={onClose}
