@@ -6,6 +6,7 @@ import { answerQuestion, deleteQuestion, deleteAnswer } from '@/app/actions/prod
 import { useToast } from '@/components/admin/Toast';
 import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { formatDateBn } from '@/lib/dateFormat';
 
 interface Props {
   questions: ProductQuestionWithAnswers[];
@@ -20,11 +21,7 @@ const TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'সব প্রশ্ন' },
 ];
 
-function formatDate(d: string) {
-  return d
-    ? new Date(d).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—';
-}
+const formatDate = (d: string) => formatDateBn(d);
 
 /* ── ইনলাইন্ড উত্তর দেওয়ার মডাল / বটম-শীট ── */
 function AnswerQuestionModal({
@@ -115,7 +112,7 @@ function AnswerQuestionModal({
 
         {/* ফুটার */}
         <div className="shrink-0 border-t border-border-base/70 px-5 pt-3">
-          <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={onCancel}

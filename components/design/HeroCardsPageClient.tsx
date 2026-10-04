@@ -186,10 +186,10 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
                     </span>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent from-50% to-black/60" />
-                  <span className="absolute bottom-2.5 left-2 right-2 inline-flex max-w-full items-center gap-1 truncate rounded-full border border-white/30 bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur">
+                  <span className="absolute bottom-2.5 left-2 right-2 inline-flex max-w-full items-center gap-1 truncate rounded-full border border-white/30 bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white">
                     {c.label || 'Shop Now'}
                   </span>
-                  <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur">
+                  <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold text-white">
                     ✏️ এডিট
                   </span>
                   <span className="absolute left-2 top-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white">
@@ -367,7 +367,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
                     <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl">🖼️</span>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent from-55% to-black/65" />
-                  <span className="absolute bottom-3 left-2.5 right-2.5 inline-flex items-center gap-1 truncate rounded-full border border-white/30 bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur">
+                  <span className="absolute bottom-3 left-2.5 right-2.5 inline-flex items-center gap-1 truncate rounded-full border border-white/30 bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-white">
                     {(editor.label || 'SHOP NOW').toUpperCase()}
                   </span>
                 </div>

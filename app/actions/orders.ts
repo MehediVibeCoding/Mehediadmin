@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { mapOrderRow, isDiamondByDeliveredCount } from '@/lib/orders';
+import { mapOrderRow, isDiamondByDeliveredCount, ORDER_STATUS_ORDER } from '@/lib/orders';
 import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import type { Order, OrderItem, OrderStatus } from '@/types';
 
@@ -50,6 +50,102 @@ export async function getPendingOrdersCount(): Promise<number> {
     .eq('status', 'pending');
   if (error) return 0;
   return count || 0;
+}
+
+// ── সার্ভার-সাইড পেজিনেশন + ফিল্টার (অডিট §১.১) ─────────────────────────
+// আগে অর্ডার পেজ সব অর্ডার আনত, ব্রাউজারে ফিল্টার/পেজ ভাগ করত। এখন ডাটাবেজ
+// শুধু চাওয়া পেজের সারি, মোট সংখ্যা ও স্ট্যাটাস-কাউন্ট পাঠায়।
+export interface OrdersPageParams {
+  page: number; // 1-based
+  pageSize: number;
+  status: 'all' | OrderStatus;
+  search: string;
+  fromIso?: string | null;
+  toIso?: string | null;
+}
+
+export interface OrdersPageResult {
+  rows: Order[];
+  /** ফিল্টার অনুযায়ী মোট (পেজিনেশনের জন্য) */
+  total: number;
+  /** সব অর্ডারের মোট (টুলবারের "সব" ট্যাবের জন্য) */
+  grandTotal: number;
+  statusCounts: Record<OrderStatus, number>;
+}
+
+// PostgREST .or() ফিল্টারে কমা/বন্ধনী/ওয়াইল্ডকার্ড ভেঙে যায় — সেগুলো বাদ দেওয়া হয়
+const SEARCH_UNSAFE = /[%_*\\,()"]/g;
+
+export async function listOrdersPage(params: OrdersPageParams): Promise<OrdersPageResult> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+
+  const pageSize = Math.min(Math.max(1, Math.floor(params.pageSize)), 100);
+  const page = Math.max(1, Math.floor(params.page));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  // সার্চ ম্যাচিং আগের client-side orderMatchesQuery-এর সাথে এক: অর্ডার নং, নাম
+  // (case-insensitive substring) এবং ফোন (শুধু সংখ্যা দিয়ে, query-তে digit থাকলে)
+  const term = params.search.replace(SEARCH_UNSAFE, '').trim();
+  const digits = params.search.replace(/\D/g, '');
+
+  let query = supabase
+    .from('orders')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  if (params.status !== 'all') query = query.eq('status', params.status);
+  if (params.fromIso) query = query.gte('created_at', params.fromIso);
+  if (params.toIso) query = query.lte('created_at', params.toIso);
+  if (term) {
+    const conds = [`order_num.ilike.*${term}*`, `customer_name.ilike.*${term}*`];
+    if (digits) conds.push(`customer_phone.ilike.*${digits}*`);
+    query = query.or(conds.join(','));
+  }
+
+  const [pageRes, grandRes, ...statusRes] = await Promise.all([
+    query.range(from, to),
+    supabase.from('orders').select('id', { count: 'exact', head: true }),
+    ...ORDER_STATUS_ORDER.map((st) =>
+      supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', st)
+    ),
+  ]);
+
+  if (pageRes.error) throw new Error('অর্ডার লোড ব্যর্থ: ' + pageRes.error.message);
+
+  const statusCounts = Object.fromEntries(
+    ORDER_STATUS_ORDER.map((st, i) => [st, statusRes[i]?.count || 0])
+  ) as Record<OrderStatus, number>;
+
+  // ডায়মন্ড ট্যাগ: ওই পেজের ইউজারদের মোট ডেলিভার্ড অর্ডার (পুরো ডেটার উপর হিসাব, শুধু পেজের না)
+  const rawRows = pageRes.data || [];
+  const userIds = Array.from(new Set(rawRows.map((r) => r.user_id).filter(Boolean))) as string[];
+  const deliveredByUser = new Map<string, number>();
+  if (userIds.length > 0) {
+    const { data: delivered } = await supabase
+      .from('orders')
+      .select('user_id')
+      .eq('status', 'delivered')
+      .in('user_id', userIds);
+    (delivered || []).forEach((r: { user_id: string | null }) => {
+      if (r.user_id) deliveredByUser.set(r.user_id, (deliveredByUser.get(r.user_id) || 0) + 1);
+    });
+  }
+
+  const rows = rawRows.map((r) => {
+    const order = mapOrderRow(r);
+    const delivered = order.user_id ? deliveredByUser.get(order.user_id) || 0 : 0;
+    if (isDiamondByDeliveredCount(delivered)) order.member_tier = 'diamond';
+    return order;
+  });
+
+  return {
+    rows,
+    total: pageRes.count || 0,
+    grandTotal: grandRes.count || 0,
+    statusCounts,
+  };
 }
 
 // ══════════════════════════════════════════════════════════════

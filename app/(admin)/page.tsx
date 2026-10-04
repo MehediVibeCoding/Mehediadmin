@@ -65,7 +65,7 @@ export default async function DashboardPage() {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return (
-      <div className="card-hover-glow mx-auto max-w-xl rounded-[24px] border border-red-200/80 bg-white/85 p-6 shadow-sh1 backdrop-blur-xl">
+      <div className="card-hover-glow mx-auto max-w-xl rounded-[24px] border border-red-200/80 bg-white p-6 shadow-sh1">
         <div className="flex items-center gap-3 border-b border-red-100 pb-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-danger">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

@@ -29,7 +29,7 @@ export default function LowStockAlert({ items }: { items: LowStockItem[] }) {
   if (!items.length) return null;
 
   return (
-    <div className="card-hover-glow mt-5 overflow-hidden rounded-[24px] border border-white/90 bg-white/80 p-5 shadow-sh1 backdrop-blur-xl sm:p-6">
+    <div className="card-hover-glow mt-5 overflow-hidden rounded-[24px] border border-white/90 bg-white p-5 shadow-sh1 sm:p-6">
       {/* হেডার ও অ্যাকশন পিল বাটন */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border-base/50 pb-3.5">
         <div className="flex items-center gap-2.5">

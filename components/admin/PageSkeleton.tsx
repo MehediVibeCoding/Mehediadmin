@@ -18,7 +18,7 @@ export default function PageSkeleton() {
         <Bar className="h-[38px] w-32" />
         <Bar className="h-[38px] w-[38px]" />
       </div>
-      <div className="glass-card-strong rounded-brand p-5 shadow-glass">
+      <div className="rounded-brand border border-border-base bg-white p-5 shadow-sh1">
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Bar key={i} className="h-10 w-full" />

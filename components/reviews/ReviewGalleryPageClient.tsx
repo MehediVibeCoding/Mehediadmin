@@ -192,7 +192,7 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
                 title="বড় করে দেখতে ক্লিক করুন"
               >
                 {!r.is_active && (
-                  <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-ink/75 px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white backdrop-blur-sm">
+                  <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-ink/75 px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white">
                     ড্রাফট (লুকানো)
                   </span>
                 )}
@@ -382,7 +382,7 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
 
             {/* ফুটার */}
             <div className="shrink-0 border-t border-border-base/70 px-5 pt-3">
-              <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setEditor(null)}

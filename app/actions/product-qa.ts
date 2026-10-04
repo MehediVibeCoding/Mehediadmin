@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
+import { sanitizeInput } from '@/lib/security';
 import type { ProductQuestion, ProductQuestionAnswer, ProductQuestionWithAnswers } from '@/types';
 
 const Q_TABLE = 'product_questions';
@@ -62,7 +63,8 @@ export interface QaActionResult {
 
 export async function answerQuestion(questionId: number, answerText: string): Promise<QaActionResult> {
   await requireAdmin();
-  const answer = answerText.trim();
+  // অডিট §২.২: লেখা DB-তে যাওয়ার আগে সার্ভারে HTML/script স্ট্রিপ
+  const answer = sanitizeInput(answerText).slice(0, 2000);
   if (!answer) return { ok: false, message: '❌ উত্তর লিখুন' };
 
   const supabase = createServiceRoleClient();

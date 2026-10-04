@@ -5,6 +5,7 @@ import StatusPill from '@/components/admin/StatusPill';
 import Checkbox from '@/components/common/Checkbox';
 import { useToast } from '@/components/admin/Toast';
 import { getOrderAdvance, getOrderDueCOD, isAdvanceTier2, needsDiamondAction } from '@/lib/orders';
+import { formatDateBn } from '@/lib/dateFormat';
 
 interface Props {
   orders: Order[];
@@ -26,8 +27,8 @@ const TABLE_HEADERS: { label: string; align?: 'right' }[] = [
 ];
 
 const money = (n: number) => '৳' + (n || 0).toLocaleString('en-US');
-const fmtDate = (d?: string) =>
-  new Date(d || Date.now()).toLocaleDateString('bn-BD', { month: 'short', day: 'numeric', year: 'numeric' });
+// তারিখ না থাকলে আজকের তারিখ (আগের আচরণ অপরিবর্তিত)
+const fmtDate = (d?: string) => formatDateBn(d || new Date().toISOString());
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   return (
@@ -138,7 +139,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
               >
                 {/* হেডার: চেকবক্স · অর্ডার নং · স্ট্যাটাস */}
                 <div className="flex items-center gap-1.5">
-                  <Checkbox checked={isSelected} onChange={() => onToggleSelect(o.id)} label={`${o.order_num} সিলেক্ট করুন`} className="-ml-1.5" />
+                  <Checkbox checked={isSelected} onChange={() => onToggleSelect(o.id)} label={`${o.order_num} সিলেক্ট করুন`} />
                   <button
                     type="button"
                     onClick={() => onView(o.id)}

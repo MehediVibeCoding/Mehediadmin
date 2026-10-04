@@ -216,7 +216,7 @@ export default function GuidePagesListModal({
                 <p className="mb-3 mt-2.5 font-body text-[11.5px] font-medium leading-snug text-muted">
                   পরের ধাপে সরাসরি এডিটরের &quot;পেস্ট করে বসান&quot; ট্যাব খুলবে — সেখানে কনটেন্ট পেস্ট করলেই URL Slug, টাইটেল, মেটা — সবকিছু নিজে থেকে বসে যাবে।
                 </p>
-                <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setCreating(false)}

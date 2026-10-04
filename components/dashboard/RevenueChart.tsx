@@ -20,11 +20,17 @@ export default function RevenueChart({ revenueByDate }: Props) {
 
   useEffect(() => {
     draw();
+    // অডিট §১.৪: resize ডিবাউন্স (১৫০ms)
+    let t: ReturnType<typeof setTimeout> | undefined;
     function onResize() {
-      draw();
+      clearTimeout(t);
+      t = setTimeout(draw, 150);
     }
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, revenueByDate]);
 
@@ -176,7 +182,7 @@ export default function RevenueChart({ revenueByDate }: Props) {
   }
 
   return (
-    <div className="card-hover-glow overflow-hidden rounded-[24px] border border-white/90 bg-white/80 p-5 shadow-sh1 backdrop-blur-xl sm:p-6">
+    <div className="card-hover-glow overflow-hidden rounded-[24px] border border-white/90 bg-white p-5 shadow-sh1 sm:p-6">
       {/* হেডার ও ট্যাকটাইল টাইম-পিল সিলেক্টর */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border-base/50 pb-3.5">
         <div className="flex items-center gap-2.5">

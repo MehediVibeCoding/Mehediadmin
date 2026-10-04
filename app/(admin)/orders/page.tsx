@@ -1,12 +1,18 @@
-import { listOrders } from '@/app/actions/orders';
+import { listOrdersPage } from '@/app/actions/orders';
 import OrdersPageClient from './OrdersPageClient';
+import { PAGE_SIZE } from '@/components/common/Pagination';
 
 export const dynamic = 'force-dynamic';
 
 export default async function OrdersPage() {
   try {
-    const orders = await listOrders();
-    return <OrdersPageClient initialOrders={orders} />;
+    const initial = await listOrdersPage({
+      page: 1,
+      pageSize: PAGE_SIZE,
+      status: 'all',
+      search: '',
+    });
+    return <OrdersPageClient initialPage={initial} />;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return (

@@ -601,7 +601,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
                 {error}
               </div>
             )}
-            <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={onClose}

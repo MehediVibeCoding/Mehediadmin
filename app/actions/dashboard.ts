@@ -4,11 +4,11 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { listProducts } from '@/app/actions/products';
 import { mapOrderRow } from '@/lib/orders';
-import type { Order, OrderStatus, Product } from '@/types';
+import { computeOrderProfit, PROFIT_STATUSES } from '@/lib/profit';
+import type { Order } from '@/types';
 
-const DEFAULT_UNIT_PROFIT = 200; // বেশিরভাগ প্রোডাক্টে ডিফল্ট প্রফিট ৳২০০, specs._profit না থাকলে
-
-const CONFIRMED_STATUSES: OrderStatus[] = ['confirmed', 'shipped', 'delivered'];
+// অডিট §৭.২: প্রফিট লজিক lib/profit.ts-এ একটাই উৎস। CONFIRMED_STATUSES = PROFIT_STATUSES
+const CONFIRMED_STATUSES = PROFIT_STATUSES;
 const PAGE_VIEWS_LOOKBACK_DAYS = 90;
 
 export interface DashboardStats {
@@ -35,26 +35,6 @@ export interface DashboardData {
   recentOrders: Order[];
   revenueByDate: Record<string, number>; // YYYY-MM-DD → confirmed/shipped/delivered মোট total
   lowStock: LowStockItem[];
-}
-
-// প্রোডাক্ট নাম দিয়ে match করে প্রতি ইউনিটের প্রফিট বের করো (legacy getUnitProfitByName)
-function getUnitProfitByName(name: string, products: Product[]): number {
-  const key = (name || '').toLowerCase().trim();
-  if (!key) return DEFAULT_UNIT_PROFIT;
-  const p = products.find((x) => (x.name || '').toLowerCase().trim() === key);
-  // 🔒 আগে p?.specs?._profit থেকে আসত (RLS-এ পাবলিক-রিডেবল ছিল) — এখন product_costs-জয়েনড p.unit_profit
-  const profit = p?.unit_profit;
-  if (profit != null && !Number.isNaN(Number(profit))) return Number(profit);
-  return DEFAULT_UNIT_PROFIT;
-}
-
-// একটা অর্ডারের সব আইটেমের মোট নেট প্রফিট (legacy computeOrderProfit)
-function computeOrderProfit(order: Order, products: Product[]): number {
-  return (order.items || []).reduce((sum, it) => {
-    const unitProfit = getUnitProfitByName(it.name, products);
-    const qty = Number(it.qty) || 0;
-    return sum + unitProfit * qty;
-  }, 0);
 }
 
 export async function getDashboardData(): Promise<DashboardData> {

@@ -191,7 +191,7 @@ function RejectReviewModal({
         </div>
 
         <div className="shrink-0 border-t border-border-base/70 px-5 pt-3">
-          <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={onCancel}

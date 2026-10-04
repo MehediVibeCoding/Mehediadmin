@@ -5,8 +5,15 @@ import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { DEFAULT_CATEGORIES, type CategoryOption } from '@/lib/constants/categories';
+import { sanitizeSvgHtml, MAX_ICON_LENGTH } from '@/lib/sanitizeSvg';
 
 const SETTING_KEY = 'vc_categories';
+
+// অডিট §২.১: আইকন ডাটাবেজে লেখার আগে সার্ভারেই স্যানিটাইজ + দৈর্ঘ্য সীমা
+function cleanIcon(raw: string | undefined): string {
+  const trimmed = (raw ?? '').trim().slice(0, MAX_ICON_LENGTH);
+  return sanitizeSvgHtml(trimmed) || '📦';
+}
 
 // legacy getCats()-এর সমতুল্য — কোনো আলাদা "categories" টেবিল নেই, বরং
 // store_settings key 'vc_categories'-এ owner-এর সেভ করা কাস্টম লিস্ট (JSON
@@ -63,7 +70,7 @@ export async function addCategory(input: { id: string; name: string; icon: strin
   await requireAdmin();
   const id = input.id.trim().toLowerCase().replace(/\s/g, '');
   const name = input.name.trim();
-  const icon = input.icon.trim() || '📦';
+  const icon = cleanIcon(input.icon);
 
   if (!name) return { ok: false, message: 'ক্যাটাগরির নাম দিন' };
   if (!id) return { ok: false, message: 'ক্যাটাগরির ID দিন' };
@@ -84,7 +91,7 @@ export async function updateCategory(
 ): Promise<CategoryActionResult> {
   await requireAdmin();
   const name = input.name.trim();
-  const icon = input.icon.trim() || '📦';
+  const icon = cleanIcon(input.icon);
   if (!name) return { ok: false, message: 'ক্যাটাগরির নাম দিন' };
 
   const cats = await getCategories();
