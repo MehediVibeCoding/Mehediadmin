@@ -5,14 +5,13 @@ import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { DEFAULT_CATEGORIES, type CategoryOption } from '@/lib/constants/categories';
-import { sanitizeSvgHtml, MAX_ICON_LENGTH } from '@/lib/sanitizeSvg';
+import { sanitizeIcon } from '@/lib/sanitizeIcon';
 
 const SETTING_KEY = 'vc_categories';
 
 // অডিট §২.১: আইকন ডাটাবেজে লেখার আগে সার্ভারেই স্যানিটাইজ + দৈর্ঘ্য সীমা
 function cleanIcon(raw: string | undefined): string {
-  const trimmed = (raw ?? '').trim().slice(0, MAX_ICON_LENGTH);
-  return sanitizeSvgHtml(trimmed) || '📦';
+  return sanitizeIcon(raw) || '📦';
 }
 
 // legacy getCats()-এর সমতুল্য — কোনো আলাদা "categories" টেবিল নেই, বরং
