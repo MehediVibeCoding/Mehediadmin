@@ -1,6 +1,6 @@
 import { listOrdersPage } from '@/app/actions/orders';
 import OrdersPageClient from './OrdersPageClient';
-import { PAGE_SIZE } from '@/components/common/Pagination';
+import { PAGE_SIZE } from '@/lib/constants/pagination';
 
 export const dynamic = 'force-dynamic';
 
