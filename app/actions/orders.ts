@@ -80,8 +80,8 @@ export async function listOrdersPage(params: OrdersPageParams): Promise<OrdersPa
   await requireAdmin();
   const supabase = createServiceRoleClient();
 
-  const pageSize = Math.min(Math.max(1, Math.floor(params.pageSize)), 100);
-  const page = Math.max(1, Math.floor(params.page));
+  const pageSize = Math.min(Math.max(1, Math.floor(Number(params.pageSize)) || 14), 100);
+  const page = Math.max(1, Math.floor(Number(params.page)) || 1);
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
