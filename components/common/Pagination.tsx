@@ -1,6 +1,8 @@
 'use client';
 
-export const PAGE_SIZE = 14; // legacy PG_SIZE
+import { PAGE_SIZE } from '@/lib/constants/pagination';
+
+export { PAGE_SIZE };
 
 interface Props {
   page: number;
