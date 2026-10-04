@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Order, OrderStatus } from '@/types';
-import { listOrders, updateOrderStatus, bulkUpdateOrderStatus } from '@/app/actions/orders';
-import { ORDER_STATUS_ORDER, orderMatchesQuery } from '@/lib/orders';
+import {
+  listOrders,
+  listOrdersPage,
+  updateOrderStatus,
+  bulkUpdateOrderStatus,
+  type OrdersPageResult,
+} from '@/app/actions/orders';
 import { downloadCsvRows, ordersToCsvRows } from '@/lib/csv';
 import { playChaChing } from '@/lib/sound';
 import { useToast } from '@/components/admin/Toast';
@@ -16,9 +21,12 @@ import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 import type { DateRange } from '@/components/common/DateRangePicker';
 
 interface Props {
-  initialOrders: Order[];
+  initialPage: OrdersPageResult;
 }
 
+type StatusFilter = 'all' | OrderStatus;
+
+// শুধু এক্সপোর্টের জন্য পুরো তালিকা দরকার — বাকি সময় সার্ভার থেকে শুধু পেজ আসে
 function inRange(dateStr: string, range: DateRange): boolean {
   const d = new Date(dateStr);
   const start = new Date(range.start);
@@ -28,26 +36,82 @@ function inRange(dateStr: string, range: DateRange): boolean {
   return d >= start && d <= end;
 }
 
-export default function OrdersPageClient({ initialOrders }: Props) {
+// স্থানীয় সময়ের দিনের শুরু/শেষ → ISO (ডাটাবেজে created_at তুলনার জন্য)
+function rangeToIso(range: DateRange): { from: string; to: string } {
+  const start = new Date(range.start);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(range.end);
+  end.setHours(23, 59, 59, 999);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+export default function OrdersPageClient({ initialPage }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+
+  const [rows, setRows] = useState<Order[]>(initialPage.rows);
+  const [total, setTotal] = useState(initialPage.total);
+  const [grandTotal, setGrandTotal] = useState(initialPage.grandTotal);
+  const [statusCounts, setStatusCounts] = useState(initialPage.statusCounts);
+  const [loading, setLoading] = useState(false);
+
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | OrderStatus>('all');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  const [page, setPage] = useState(1);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPendingStatus, setBulkPendingStatus] = useState<OrderStatus | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [page, setPage] = useState(1);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const { showToast } = useToast();
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
   const { ordersVersion } = useOrdersRealtime();
+
+  // বর্তমান ফিল্টার/পেজ — কলব্যাক ও রিয়েলটাইমে সবসময় সর্বশেষ মান ব্যবহার করার জন্য
+  const paramsRef = useRef({ page, filterStatus, debouncedSearch, dateRange });
+  paramsRef.current = { page, filterStatus, debouncedSearch, dateRange };
+
+  // দেরিতে আসা পুরনো রেসপন্স যেন নতুনটাকে না ঢেকে দেয়
+  const reqIdRef = useRef(0);
+
+  const load = useCallback(
+    async (p: { page: number; filterStatus: StatusFilter; debouncedSearch: string; dateRange: DateRange | null }) => {
+      const id = ++reqIdRef.current;
+      setLoading(true);
+      try {
+        const iso = p.dateRange ? rangeToIso(p.dateRange) : null;
+        const res = await listOrdersPage({
+          page: p.page,
+          pageSize: PAGE_SIZE,
+          status: p.filterStatus,
+          search: p.debouncedSearch,
+          fromIso: iso?.from ?? null,
+          toIso: iso?.to ?? null,
+        });
+        if (id !== reqIdRef.current) return;
+        setRows(res.rows);
+        setTotal(res.total);
+        setGrandTotal(res.grandTotal);
+        setStatusCounts(res.statusCounts);
+        // পেজ শেষ হয়ে গেলে (যেমন অর্ডার মুছে/বদলে) সর্বশেষ বৈধ পেজে নামানো
+        const maxPage = Math.max(1, Math.ceil(res.total / PAGE_SIZE));
+        if (p.page > maxPage) setPage(maxPage);
+      } catch {
+        if (id === reqIdRef.current) showToastRef.current('❌ অর্ডার লোড ব্যর্থ হয়েছে');
+      } finally {
+        if (id === reqIdRef.current) setLoading(false);
+      }
+    },
+    []
+  );
 
   // Dashboard-এর "পেন্ডিং অর্ডার" quick-action শর্টকাট থেকে আসলে (?status=pending)
   // সেই স্ট্যাটাস ফিল্টার প্রি-সিলেক্ট করে দাও, তারপর URL পরিষ্কার করো
-  // (Categories → Products-এর ?openAdd প্যাটার্নের মতোই)
   useEffect(() => {
     const status = searchParams.get('status');
     if (status) {
@@ -57,45 +121,44 @@ export default function OrdersPageClient({ initialOrders }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // realtime নতুন/আপডেট ইভেন্ট এলে (OrdersRealtimeProvider থেকে) নীরবে লিস্ট রিফ্রেশ —
-  // প্রথম মাউন্টে স্কিপ করা হচ্ছে কারণ initialOrders আগে থেকেই সার্ভার থেকে আনা
-  const mountedRef = useRef(false);
+  // সার্চ টাইপ করার সময় প্রতি অক্ষরে সার্ভার কল না করে ৩০০ms পরে
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // পেজ/ফিল্টার বদলালে সার্ভার থেকে নতুন পেজ। প্রথম মাউন্টে initialPage থাকায় স্কিপ।
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
       return;
     }
-    listOrders().then(setOrders).catch(() => {});
-  }, [ordersVersion]);
+    load({ page, filterStatus, debouncedSearch, dateRange });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filterStatus, debouncedSearch, dateRange]);
 
-  // ফিল্টার বদলালে ১ পেজে ফিরে যাওয়া (legacy pgSyncFilterSig)
+  // realtime ইভেন্ট (OrdersRealtimeProvider) এলে বর্তমান ফিল্টারে নীরবে রিফ্রেশ
   useEffect(() => {
+    if (ordersVersion === 0) return;
+    load(paramsRef.current);
+  }, [ordersVersion, load]);
+
+  const viewingOrder = viewingId ? rows.find((o) => o.id === viewingId) || null : null;
+
+  // ফিল্টার বদলালে সবসময় ১ পেজে
+  const selectFilter = useCallback((s: StatusFilter) => {
+    setFilterStatus(s);
     setPage(1);
-  }, [search, filterStatus, dateRange]);
+  }, []);
 
-  const filtered = useMemo(() => {
-    return orders.filter((o) => {
-      if (!orderMatchesQuery(o, search)) return false;
-      if (filterStatus !== 'all' && o.status !== filterStatus) return false;
-      if (dateRange && !inRange(o.created_at, dateRange)) return false;
-      return true;
-    });
-  }, [orders, search, filterStatus, dateRange]);
-
-  const statusCounts = useMemo(() => {
-    const counts = Object.fromEntries(ORDER_STATUS_ORDER.map((st) => [st, 0])) as Record<OrderStatus, number>;
-    orders.forEach((o) => {
-      counts[o.status] = (counts[o.status] || 0) + 1;
-    });
-    return counts;
-  }, [orders]);
-
-  const paginated = useMemo(() => {
-    const from = (page - 1) * PAGE_SIZE;
-    return filtered.slice(from, from + PAGE_SIZE);
-  }, [filtered, page]);
-
-  const viewingOrder = viewingId ? orders.find((o) => o.id === viewingId) || null : null;
+  const applyDate = useCallback((r: DateRange | null) => {
+    setDateRange(r);
+    setPage(1);
+  }, []);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -110,7 +173,7 @@ export default function OrdersPageClient({ initialOrders }: Props) {
   function toggleSelectAll(checked: boolean) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      paginated.forEach((o) => (checked ? next.add(o.id) : next.delete(o.id)));
+      rows.forEach((o) => (checked ? next.add(o.id) : next.delete(o.id)));
       if (next.size === 0) setBulkPendingStatus(null);
       return next;
     });
@@ -119,11 +182,13 @@ export default function OrdersPageClient({ initialOrders }: Props) {
   async function handleStatusChange(id: string, status: OrderStatus) {
     const res = await updateOrderStatus(id, status);
     if (res.status === 'ok') {
-      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+      setRows((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
       if (status === 'confirmed') playChaChing();
-      showToast('✅ স্ট্যাটাস আপডেট হয়েছে');
+      showToastRef.current('✅ স্ট্যাটাস আপডেট হয়েছে');
+      // কাউন্ট ও ফিল্টারের সাথে মিল রাখতে বর্তমান পেজ আবার আনি
+      load(paramsRef.current);
     } else {
-      showToast('❌ ' + (res.message || 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
+      showToastRef.current('❌ ' + (res.message || 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
     }
   }
 
@@ -134,13 +199,12 @@ export default function OrdersPageClient({ initialOrders }: Props) {
     const res = await bulkUpdateOrderStatus(ids, bulkPendingStatus);
     setBulkBusy(false);
     if (res.status === 'ok') {
-      const status = bulkPendingStatus;
-      setOrders((prev) => prev.map((o) => (ids.includes(o.id) ? { ...o, status } : o)));
-      showToast(`✅ ${res.changed}টি অর্ডার আপডেট হয়েছে`);
+      showToastRef.current(`✅ ${res.changed}টি অর্ডার আপডেট হয়েছে`);
       setSelectedIds(new Set());
       setBulkPendingStatus(null);
+      load(paramsRef.current);
     } else {
-      showToast('❌ ' + (res.message || 'বাল্ক আপডেট ব্যর্থ হয়েছে'));
+      showToastRef.current('❌ ' + (res.message || 'বাল্ক আপডেট ব্যর্থ হয়েছে'));
     }
   }
 
@@ -152,30 +216,40 @@ export default function OrdersPageClient({ initialOrders }: Props) {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      setOrders(await listOrders());
-      showToast('🔄 রিফ্রেশ হয়েছে');
-    } catch {
-      showToast('❌ রিফ্রেশ ব্যর্থ হয়েছে');
+      await load(paramsRef.current);
+      showToastRef.current('🔄 রিফ্রেশ হয়েছে');
     } finally {
       setRefreshing(false);
     }
   }
 
-  function exportAll() {
-    downloadCsvRows(ordersToCsvRows(orders), 'orders_all');
-    showToast('⬇️ CSV ডাউনলোড শুরু হয়েছে');
+  async function exportAll() {
+    try {
+      const all = await listOrders();
+      downloadCsvRows(ordersToCsvRows(all), 'orders_all');
+      showToastRef.current('⬇️ CSV ডাউনলোড শুরু হয়েছে');
+    } catch {
+      showToastRef.current('❌ এক্সপোর্ট ব্যর্থ হয়েছে');
+    }
   }
 
-  function exportRange(range: DateRange) {
-    const rows = orders.filter((o) => inRange(o.created_at, range));
-    downloadCsvRows(ordersToCsvRows(rows), 'orders_range');
-    showToast(`⬇️ ${rows.length}টি অর্ডারের CSV ডাউনলোড শুরু হয়েছে`);
+  async function exportRange(range: DateRange) {
+    try {
+      const all = await listOrders();
+      const list = all.filter((o) => inRange(o.created_at, range));
+      downloadCsvRows(ordersToCsvRows(list), 'orders_range');
+      showToastRef.current(`⬇️ ${list.length}টি অর্ডারের CSV ডাউনলোড শুরু হয়েছে`);
+    } catch {
+      showToastRef.current('❌ এক্সপোর্ট ব্যর্থ হয়েছে');
+    }
   }
 
   function clearFilters() {
     setSearch('');
+    setDebouncedSearch('');
     setFilterStatus('all');
     setDateRange(null);
+    setPage(1);
   }
 
   return (
@@ -184,9 +258,9 @@ export default function OrdersPageClient({ initialOrders }: Props) {
         search={search}
         onSearchChange={setSearch}
         filterStatus={filterStatus}
-        onSelectFilter={setFilterStatus}
+        onSelectFilter={selectFilter}
         statusCounts={statusCounts}
-        totalCount={orders.length}
+        totalCount={grandTotal}
         selectedCount={selectedIds.size}
         bulkPendingStatus={bulkPendingStatus}
         onSelectBulk={setBulkPendingStatus}
@@ -195,27 +269,29 @@ export default function OrdersPageClient({ initialOrders }: Props) {
         bulkBusy={bulkBusy}
         dateActive={!!dateRange}
         dateRange={dateRange}
-        onDateApply={setDateRange}
+        onDateApply={applyDate}
         onExportAll={exportAll}
         onExportRange={exportRange}
         onRefresh={handleRefresh}
-        refreshing={refreshing}
+        refreshing={refreshing || loading}
         onClearFilters={clearFilters}
       />
 
       {/* মোবাইলে: কার্ডগুলো সরাসরি নীল ক্যানভাসের উপর (কার্ডের ভেতরে কার্ড নেই);
           ডেস্কটপে (≥1024px): একটাই সাদা কার্ডে টেবিল + পেজিনেশন */}
       <div className="lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-white/90 lg:bg-white lg:shadow-sh1">
-        <OrdersTable
-          orders={paginated}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-          onView={setViewingId}
-        />
-        {filtered.length > 0 && (
+        <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+          <OrdersTable
+            orders={rows}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+            onView={setViewingId}
+          />
+        </div>
+        {total > 0 && (
           <div className="mt-3 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1 lg:mt-0 lg:rounded-none lg:border-0 lg:border-t lg:border-border-base/60 lg:px-5 lg:shadow-none">
-            <Pagination page={page} total={filtered.length} onPageChange={setPage} bare />
+            <Pagination page={page} total={total} onPageChange={setPage} bare />
           </div>
         )}
       </div>
