@@ -84,7 +84,7 @@ export default function RecentOrders({ orders }: Props) {
                     ৳{(o.total || 0).toLocaleString('en-US')}
                   </td>
                   <td className="whitespace-nowrap py-3 pr-3 text-right sm:text-left">
-                    <StatusPill status={o.status} />
+                    <StatusPill status={o.status} verification={o.payment_verified ? o.verification_method : null} />
                   </td>
                 </tr>
               ))

@@ -126,7 +126,7 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <StatusPill status={order.status} />
+              <StatusPill status={order.status} verification={order.payment_verified ? order.verification_method : null} />
               <button
                 type="button"
                 onClick={onClose}
@@ -229,6 +229,16 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
               <VerifyBox label="bKash TXN ID" value={order.payment_txn} onCopy={copyTxt} />
               <VerifyBox label="সেন্ডারের শেষ ৪ ডিজিট" value={order.payment_last4} onCopy={copyTxt} />
               <VerifyBox label="ডিভাইস ফিঙ্গারপ্রিন্ট" value={order.fingerprint_id} onCopy={copyTxt} />
+              {(order.overpaid_amount || 0) > 0 && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:col-span-3">
+                  <div className="font-body text-[12.5px] font-bold text-emerald-800">
+                    এই কাস্টমার {money(order.overpaid_amount || 0)} এক্সট্রা পাঠিয়েছে
+                  </div>
+                </div>
+              )}
+              {order.verified_sender && (
+                <VerifyBox label="প্রেরকের পূর্ণ নম্বর (এসএমএস থেকে)" value={order.verified_sender} onCopy={copyTxt} />
+              )}
             </div>
           </section>
 

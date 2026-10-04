@@ -149,7 +149,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                     {o.order_num}
                   </button>
                   <div className="ml-auto">
-                    <StatusPill status={o.status} />
+                    <StatusPill status={o.status} verification={o.payment_verified ? o.verification_method : null} />
                   </div>
                 </div>
 
@@ -165,6 +165,11 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                   </span>
                   {diamondAction && <DiamondBadge />}
                   {hasCoupon && <CouponBadge code={o.coupon_code} amount={o.discount_amount || 0} />}
+                  {(o.overpaid_amount || 0) > 0 && (
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-body text-[10.5px] font-extrabold text-emerald-700">
+                      +৳{o.overpaid_amount} এক্সট্রা
+                    </span>
+                  )}
                 </div>
 
                 {/* গ্রাহক */}
@@ -306,7 +311,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 font-black text-danger">{money(due)}</td>
                     <td className="whitespace-nowrap px-3 py-3">
-                      <StatusPill status={o.status} />
+                      <StatusPill status={o.status} verification={o.payment_verified ? o.verification_method : null} />
                     </td>
                     <td className="whitespace-nowrap py-3 pl-3 pr-5 text-right">
                       <button

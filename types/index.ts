@@ -59,6 +59,14 @@ export interface Order {
   // app/actions/orders.ts (ডেলিভার্ড-কাউন্ট হিসাব) দুটোতেই ব্যবহার হচ্ছিল,
   // ফলে `next build` টাইপ-এরর দিয়ে আটকে যেত।
   user_id: string | null;
+  // 🤖 বিকাশ অটো-ভেরিফিকেশন (Vangcur webhook + match_bkash_payment RPC সেট করে)।
+  // verification_method: 'auto_trxid' → "Tnx Confirm", 'auto_last4' → "LD Confirm"; ম্যানুয়াল কনফার্মে null।
+  payment_verified?: boolean;
+  verification_method?: 'auto_trxid' | 'auto_last4' | 'manual' | null;
+  // এসএমএস থেকে পাওয়া প্রেরকের পূর্ণ ১১ ডিজিট নম্বর
+  verified_sender?: string | null;
+  // অগ্রিমের চেয়ে কাস্টমার যত টাকা বেশি পাঠিয়েছে — শুধু তথ্য, COD হিসাবে কোনো প্রভাব নেই
+  overpaid_amount?: number;
   // ডাটাবেজ কলাম না — listOrders()-এ fetch করার পরে ডেলিভার্ড-অর্ডার গুনে
   // রানটাইমে বসানো হয় (৫-৯টা ডেলিভার্ড অর্ডার হলে 'diamond')। তাই ঐচ্ছিক —
   // সব জায়গায় (যেমন createOrder-এর রিটার্নে) এটা বসে না।

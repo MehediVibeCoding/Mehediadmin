@@ -111,6 +111,10 @@ export function mapOrderRow(o: any): Order {
     fingerprint_id: o.fingerprint_id || null,
     ip: o.ip || '',
     user_id: o.user_id || null,
+    payment_verified: !!o.payment_verified,
+    verification_method: o.verification_method || null,
+    verified_sender: o.verified_sender || null,
+    overpaid_amount: Number(o.overpaid_amount) || 0,
   };
 }
 
