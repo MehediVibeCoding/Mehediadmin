@@ -152,7 +152,7 @@
 - নেটিভ চেকবক্স / নেটিভ select তীর (নিচে ৩.২)।
 - `vh` ইউনিট উচ্চতায় (→ `dvh`)।
 - ডিফাইন-না-করা ক্লাস: **`glass-card`, `glass-card-strong`, `text-brand-dark`, `shadow-xs`, `mt-4.5`** (এগুলো নীরবে কিছুই করে না)।
-- পেজের উপরের লোগো/টাইটেল/সাবটাইটেল (`components/admin/PageHeader.tsx` ফাইলটা আছে কিন্তু **অব্যবহৃত — ব্যবহার করবে না**)।
+- পেজের উপরের লোগো/টাইটেল/সাবটাইটেল (পুরনো `PageHeader` কম্পোনেন্ট মুছে ফেলা হয়েছে — আর বানাবে না)।
 
 ### ৩.২ Tailwind ৩.৪ ও `globals.css`-এর ফাঁদ
 
@@ -184,6 +184,7 @@
 | `StatusPill` | `components/admin/StatusPill` | অর্ডার স্ট্যাটাস পিল; `verification?` দিলে অটো-কনফার্ম ট্যাগ ("Tnx Confirm"/"LD Confirm") |
 | `useToast` | `components/admin/Toast` | `showToast('✅ …')` / `'❌ …'` (মোবাইলে উপরে, ডেস্কটপে নিচে) |
 | `PageSkeleton` | `components/admin/PageSkeleton` | লোডিং স্কেলিটন (§১০-এর নোট দেখো) |
+| `PageErrorBox` | `components/common/PageErrorBox` | সার্ভার-পেজের `catch`-এ ডাটা-লোড এরর কার্ড — `title`, `message`, `hint?`। সব পেজে (ড্যাশবোর্ডসহ) এটাই; নিজে এরর বক্স বানাবে না |
 | `useOrdersRealtime` | `components/admin/OrdersRealtimeProvider` | `ordersVersion` (রিয়েলটাইম রিফ্রেশ ডিবাউন্সড) |
 
 ### হেল্পার (`lib/`)
@@ -441,17 +442,16 @@
 | হিরো ক্যাটাগরি কার্ড | `components/design/HeroCardsPageClient.tsx` |
 | গাইড টেমপ্লেট | `components/design/GuideTemplatesPageClient.tsx` (+ `GuideBlockListEditor`-এ `ConfirmDialog`) |
 | AI প্ল্যানার | `app/(admin)/products/parser/ParserPageClient.tsx` |
-| স্কেলিটন | `components/admin/PageSkeleton.tsx` (টুলবার কার্ড + কার্ড তালিকার কাঠামো) |
+| ড্যাশবোর্ড | `app/(admin)/page.tsx`, `components/dashboard/{WeatherWidget,StatGrid,RevenueChart,OrderStatusDonut,RecentOrders,QuickActions,LowStockAlert}.tsx` |
+| ট্রাফিক | `app/(admin)/traffic/TrafficPageClient.tsx`, `components/traffic/{TrafficStatCards,TrafficTrendChart,TrafficDayTable,TopViewedProducts,PeakHoursChart}.tsx` |
+| লগইন | `app/login/page.tsx` |
+| সাইডবার ও মোবাইল ডক | `components/admin/Sidebar.tsx` (§১২ দেখো) |
+| স্কেলিটন | `components/admin/PageSkeleton.tsx` (টুলবার কার্ড + কার্ড তালিকার কাঠামো), `app/(admin)/loading.tsx` (ড্যাশবোর্ডের ওয়েদার-কার্ড কাঠামো) |
+| এরর বক্স | `components/common/PageErrorBox.tsx` (সব `page.tsx`-এর `catch`) |
 
 ### ⏳ বাকি (এখনও পুরনো টোকেন/প্যাটার্ন আছে)
 
-| পেজ/অংশ | ফাইল | কী বাকি |
-|---|---|---|
-| ড্যাশবোর্ড | `app/(admin)/page.tsx`, `components/dashboard/*` | `brand-primary`, `shadow-xs`; কার্ডে ব্লার; §৫ রেসিপিতে আনা |
-| ট্রাফিক | `components/traffic/*` | `brand-primary`/`brand-accent` (চার্ট ও টেবিল) |
-| লগইন | `app/login/page.tsx` | `brand-primary` |
-| সাইডবার | `components/admin/Sidebar.tsx` | `shadow-xs` (নিষ্ক্রিয় ক্লাস) |
-| অব্যবহৃত | `components/coupons/DeleteConfirmDialog.tsx`, `components/admin/PageHeader.tsx` | কেউ ব্যবহার করে না; নিরাপদে মোছা যায় |
+বাকি নেই — তালিকার সব পেজ/অংশ নতুন ডিজাইনে এসেছে। নতুন পেজ বা কম্পোনেন্ট যোগ করলে §৫ রেসিপি ও §১০ চেকলিস্ট মেনে চলবে।
 
 ### ⚠️ পরিচিত ঋণ (জানা আছে, আলাদা সেশনে ঠিক হবে)
 - মোবাইলে ৩৬px টাচ টার্গেট: ফিল্টার চিপ, "সবকিছু দেখুন" বাটন, `Pagination` বোতাম, `Checkbox` (§৭-১)। *(প্রোডাক্ট কার্ডের গ্রিপ/এডিট/ডিলিট ইতিমধ্যে ৪৪px।)*
@@ -498,5 +498,36 @@ grep -rnE "(bg|border|text|ring|from|to|via)-[a-z-]+/(1[1-4]|1[6-9]|2[1-4]|2[6-9
 
 ## ১১. পরিবর্তন লগ
 
+- **v2.1 (২০২৬-১০-০৫):** লিকুইড গ্লাস, সাইডবার লোগো/স্ট্যাগার ও ওয়েদার হিরো কার্ডের নিয়ম (§১২); `PageErrorBox` শেয়ার্ড এরর কার্ড; ড্যাশবোর্ড `loading.tsx` নতুন কাঠামোয়; ট্রাফিকের `TopViewedProducts`/`PeakHoursChart` নতুন ডিজাইনে; অব্যবহৃত `PageHeader`, `DeleteConfirmDialog` মোছা; §৯-এর "বাকি" তালিকা খালি।
 - **v2 (২০২৬-১০-০৪):** সম্পূর্ণ নতুন করে লেখা। স্কাই-ব্লু-অনলি নিয়ম; কার্ড/টেবিল, মডাল-শীট, ড্রপডাউন-শীট, কম্প্যাক্ট এক্সপ্যান্ডেবল কার্ড, ওপেন হেডিং, ফর্ম ফিল্ড, `ConfirmDialog` রেসিপি; Tailwind ফাঁদ; পেজ-স্ট্যাটাস; যাচাই কমান্ড।
 - **v1 (আদি):** মূল সাইটের টোকেন কপি; `brand-primary` প্রাইমারি (**বাতিল**)।
+
+---
+
+## ১২. লিকুইড গ্লাস, সাইডবার ও ওয়েদার হিরো কার্ড
+
+### ১২.১ লিকুইড গ্লাস (মোবাইল নিচের ডক ও মেনু ড্রয়ার)
+স্টাইল `app/globals.css`-এ (`.liquid-glass-bar`, `.liquid-glass-sheet`, `.liquid-glass-lens`, `.liquid-glass-orb`); ব্যবহার `components/admin/Sidebar.tsx`-এ। শুধু এই দুই জায়গায় ব্যবহার করবে — কার্ড/তালিকায় নয় (§৩.১)।
+
+- **স্তর:** backdrop blur+saturate → সাদা গ্রেডিয়েন্ট → `::before` গ্রেডিয়েন্ট রিম → `::after` উপরের শিন → স্কাই-ব্লু শ্যাডো।
+- **লেন্স:** সক্রিয় ট্যাবের নিচে স্কাই-ব্লু কাঁচের ফোঁটা। বাইরের স্তর `translateX` স্প্রিং-এ সরে, ভেতরের স্তর (`data-moved`) সরার সময় `lensSquish` দিয়ে টানা-চ্যাপ্টা হয়। ট্যাবে চাপ দেওয়ার সাথে সাথেই লেন্স সরে (আশাবাদী স্লট), রুট বদলালে মুছে যায়।
+- **অর্ব:** মাঝের "+" (AI Planner) ১১px উঁচুতে ভাসা কাঁচের গোলক; সক্রিয় হলে সলিড স্কাই।
+- **ড্রয়ার:** `liquid-glass-sheet`; হ্যান্ডেল ধরে নিচে টেনে বন্ধ (১১০px পেরোলে); খোলা থাকলে `body` স্ক্রল লক; Esc দিয়ে বন্ধ।
+- ব্লার সাপোর্ট না থাকলে (`@supports not`) প্রায় অস্বচ্ছ সাদা ফলব্যাক; `prefers-reduced-motion`-এ squish বন্ধ।
+
+### ১২.২ ডেস্কটপ সাইডবার — "ঝাঁকুনি-মুক্ত" নিয়ম
+হোভারে **কোনো আইটেমের জ্যামিতি (উচ্চতা/আইকনের অবস্থান) বদলাবে না**। শুধু (১) সাইডবারের প্রস্থ বাড়ে, (২) লেখা ফেড-ইন হয়।
+- আইকন সবসময় ৫২px বক্সে (সরু অবস্থায় ঠিক মাঝে); লেবেল সবসময় DOM-এ, `opacity`/`translate` দিয়ে লুকানো — `width`/`height` `0→auto` নয়।
+- সেকশন টাইটেলের সারির উচ্চতা স্থির (`h-7`); সরু অবস্থায় ছোট দাগ, চওড়ায় লেখা (ক্রস-ফেড)।
+- লোগো একই বক্সে ক্রস-ফেড: সরু = "V" মার্ক (`BrandMark`), চওড়া = পুরো লোগো (`BrandLogo`)।
+- লেবেল স্ট্যাগার: `index * 16ms` দেরিতে ফোটে (শুধু খোলার সময়); বন্ধের সময় দেরি ০।
+- সাইডবার ও প্রতিটা সারিতে `contain` (লেআউট আলাদা); ব্লার `backdrop-blur-xl` — `2xl` নয় (প্রস্থ বদলানোর সময় ভারী)।
+- কীবোর্ড ফোকাসে (`:focus-visible`) খোলে, মাউস-ক্লিকের ফোকাসে নয়।
+- সক্রিয় আইটেম = সবচেয়ে নির্দিষ্ট (লম্বা) `href` — `/products/parser`-এ "প্রোডাক্ট" ও "AI Planner" একসাথে জ্বলবে না।
+
+### ১২.৩ ওয়েদার হিরো কার্ড (ড্যাশবোর্ডের উপরে)
+`components/dashboard/WeatherWidget.tsx` — পেজের আলাদা টাইটেল নেই; কার্ডের ভেতরেই সব:
+- উপরে: "Hi {name}, Welcome to Vangcur Dashboard" + তারিখ চিপ (`dateLabel` prop; তারিখ `timeZone: 'Asia/Dhaka'` দিয়ে — সার্ভারের টাইমজোনে নয়)।
+- নিচে (বর্ডার-টপ দিয়ে আলাদা): আবহাওয়া আইকন + তাপমাত্রা + লোকেশন, ডানে তিনটা স্ট্যাট চিপ।
+- কার্ডের ক্লাস: `rounded-[24px] border border-white/90 bg-gradient-to-br from-brand-bg/70 via-white to-white shadow-sh1`।
+- স্কেলিটন (`app/(admin)/loading.tsx`) এই কাঠামোই নকল করে।

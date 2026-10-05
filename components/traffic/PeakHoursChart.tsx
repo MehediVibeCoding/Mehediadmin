@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { PeakHourLabels } from '@/lib/traffic';
+import SectionHeading from '@/components/common/SectionHeading';
 
 interface Props {
   hourCounts: number[];
@@ -9,10 +10,8 @@ interface Props {
   labels: PeakHourLabels;
 }
 
-// legacy drawPeakHoursChart() — সাধারণ বার brand-light (#44A4FB, legacy-র
-// হালকা ইন্ডিগো #a5b4fc-এর জায়গায় DESIGN_SYSTEM chart-color নিয়ম অনুযায়ী
-// secondary token), শূন্য-ভ্যালু বার border-base (#E5E7EB, legacy hex-এর
-// সাথেই exact মিল), পিক ৩-ঘণ্টার উইন্ডো warn (#F59E0B, legacy hex exact মিল)।
+// ক্যানভাস বার চার্ট — সাধারণ বার স্কাই-ব্লু (#44A7FC), শূন্য-ভ্যালু বার border-base (#E5E7EB),
+// পিক ৩-ঘণ্টার উইন্ডো warn (#F59E0B)।
 export default function PeakHoursChart({ hourCounts, peakStart, labels }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -63,7 +62,7 @@ export default function PeakHoursChart({ hourCounts, peakStart, labels }: Props)
       const bh = Math.max(1, (v / maxVal) * chartH);
       const y = pad.t + chartH - bh;
       const isPeak = peakWindow.includes(h) && v > 0;
-      ctx.fillStyle = v === 0 ? '#E5E7EB' : isPeak ? '#F59E0B' : '#44A4FB';
+      ctx.fillStyle = v === 0 ? '#E5E7EB' : isPeak ? '#F59E0B' : '#44A7FC';
       ctx.beginPath();
       const r = Math.min(2, barW / 2);
       ctx.moveTo(x + r, y);
@@ -84,9 +83,9 @@ export default function PeakHoursChart({ hourCounts, peakStart, labels }: Props)
   }
 
   return (
-    <div className="rounded-brand bg-brand-surface p-5 shadow-sh1">
-      <div className="mb-3 text-sm font-bold text-ink">⏰ পিক ট্রাফিক আওয়ার</div>
-      <div className="mb-3 rounded-[10px] bg-brand-bg px-3 py-2.5 text-[12.5px] font-semibold text-brand-primary">
+    <div className="rounded-[24px] border border-white/90 bg-white p-4 shadow-sh1 sm:p-5">
+      <SectionHeading hint="দিনের কোন সময়ে সবচেয়ে বেশি ভিজিটর আসে">পিক ট্রাফিক আওয়ার</SectionHeading>
+      <div className="mb-3 rounded-2xl border border-brand-light/25 bg-brand-light/10 px-3.5 py-2.5 font-body text-[12.5px] font-extrabold text-[#0F6FC6]">
         {labels.note}
       </div>
       <div ref={wrapRef} className="overflow-x-auto py-1">

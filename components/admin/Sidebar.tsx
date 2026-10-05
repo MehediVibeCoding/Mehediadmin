@@ -324,27 +324,42 @@ function LogoutIcon() {
    ══════════════════════════════════════════════════════════════════════ */
 const ICON_BOX = 'flex w-[52px] shrink-0 items-center justify-center';
 const ITEM_BASE =
-  'group relative flex h-[44px] w-full items-center overflow-hidden rounded-[14px] transition-[background-color,color,box-shadow] duration-200';
+  'group relative flex h-[44px] w-full items-center overflow-hidden rounded-[14px] transition-[background-color,color,box-shadow] duration-200 [contain:layout_paint]';
+
+// প্রতিটা আইটেমের লেবেল একটু একটু দেরিতে ফোটে (stagger) — শুধু opacity/transform, জ্যামিতি অপরিবর্তিত।
+// বন্ধ হওয়ার সময় দেরি ০, তাই সাইডবার গুটোনোর সাথে লেখা আগেই মিলিয়ে যায়।
+const ALL_HREFS = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
+const STAGGER_BASE = 120;
+const STAGGER_STEP = 16;
+
+function staggerStyle(expanded: boolean, index: number): React.CSSProperties {
+  return { transitionDelay: expanded ? `${STAGGER_BASE + index * STAGGER_STEP}ms` : '0ms' };
+}
 
 function labelCls(expanded: boolean) {
-  return `shrink-0 whitespace-nowrap font-body text-[13px] font-bold tracking-tight transition-[opacity,transform] ease-out ${
-    expanded ? 'translate-x-0 opacity-100 delay-100 duration-200' : '-translate-x-2 opacity-0 duration-100'
+  return `shrink-0 whitespace-nowrap font-body text-[13px] font-bold tracking-tight transition-[opacity,transform] ease-out motion-reduce:transition-none ${
+    expanded ? 'translate-x-0 opacity-100 duration-300' : '-translate-x-2 opacity-0 duration-100'
   }`;
 }
 
 function fadeCls(expanded: boolean) {
-  return `transition-opacity duration-150 ${expanded ? 'opacity-100 delay-100' : 'opacity-0'}`;
+  return `transition-opacity motion-reduce:transition-none ${expanded ? 'opacity-100 duration-300' : 'opacity-0 duration-100'}`;
 }
 
 function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boolean; expanded: boolean }) {
+  const index = ALL_HREFS.indexOf(item.href);
+  const delay = staggerStyle(expanded, index);
   if (!item.enabled) {
     return (
       <div aria-disabled="true" className={`${ITEM_BASE} cursor-not-allowed text-muted/45`}>
         <span className={ICON_BOX}>
           <NavIcon className="h-5 w-5">{item.icon}</NavIcon>
         </span>
-        <span className={labelCls(expanded)}>{item.label}</span>
+        <span className={labelCls(expanded)} style={delay}>
+          {item.label}
+        </span>
         <span
+          style={delay}
           className={`ml-auto mr-3 shrink-0 rounded-full bg-surface-muted px-1.5 py-0.5 font-body text-[9px] font-semibold text-muted ${fadeCls(expanded)}`}
         >
           শীঘ্রই
@@ -360,7 +375,7 @@ function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boo
       aria-current={active ? 'page' : undefined}
       className={`${ITEM_BASE} ${
         active
-          ? 'bg-brand-light text-white shadow-[0_4px_16px_rgba(68,167,252,0.35)]'
+          ? 'bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.35)]'
           : 'text-ink/75 hover:bg-brand-light/10 hover:text-ink'
       }`}
     >
@@ -370,12 +385,14 @@ function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boo
         </NavIcon>
       </span>
 
-      <span className={labelCls(expanded)}>{item.label}</span>
+      <span className={labelCls(expanded)} style={delay}>
+          {item.label}
+        </span>
 
       {item.badge && (
         <span
           className={`ml-auto mr-3 shrink-0 rounded-full px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white ${fadeCls(expanded)}`}
-          style={{ background: item.badge.bg }}
+          style={{ background: item.badge.bg, ...delay }}
         >
           {item.badge.text}
         </span>
@@ -395,15 +412,15 @@ function SectionLabel({ title, expanded }: { title: string; expanded: boolean })
   return (
     <div className="relative h-7 shrink-0" aria-hidden="true">
       <span
-        className={`absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center transition-opacity duration-150 ${
-          expanded ? 'opacity-0' : 'opacity-100 delay-100'
+        className={`absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center transition-opacity motion-reduce:transition-none ${
+          expanded ? 'opacity-0 duration-100' : 'opacity-100 delay-150 duration-200'
         }`}
       >
         <span className="h-px w-6 rounded-full bg-border-base" />
       </span>
       <span
-        className={`absolute left-3.5 top-1/2 -translate-y-1/2 whitespace-nowrap font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted transition-opacity duration-200 ${
-          expanded ? 'opacity-100 delay-100' : 'opacity-0'
+        className={`absolute left-3.5 top-1/2 -translate-y-1/2 whitespace-nowrap font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted transition-opacity motion-reduce:transition-none ${
+          expanded ? 'opacity-100 delay-100 duration-300' : 'opacity-0 duration-100'
         }`}
       >
         {title}
@@ -443,28 +460,31 @@ function DesktopSidebar({ activeHref }: { activeHref: string }) {
         aria-label="প্রধান মেনু"
         onMouseEnter={open}
         onMouseLeave={close}
-        onFocusCapture={open}
+        onFocusCapture={(e) => {
+          // মাউস ক্লিকের ফোকাসে নয়, শুধু কীবোর্ড ফোকাসে খুলবে (নইলে ক্লিকের পর আটকে থাকত)
+          if ((e.target as HTMLElement).matches(':focus-visible')) open();
+        }}
         onBlurCapture={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) close();
         }}
-        className={`fixed bottom-3 left-3 top-3 z-50 flex flex-col overflow-hidden rounded-[26px] border border-white/80 backdrop-blur-2xl transition-[width,box-shadow,background-color] duration-[380ms] ease-[cubic-bezier(.22,1,.36,1)] will-change-[width] ${
+        className={`desktop-glass-rail fixed bottom-3 left-3 top-3 z-50 flex flex-col overflow-hidden rounded-[26px] border border-white/80 backdrop-blur-xl backdrop-saturate-150 transition-[width,box-shadow,background-color] duration-[440ms] ease-[cubic-bezier(.32,.72,0,1)] will-change-[width] [contain:layout_style] motion-reduce:transition-none ${
           expanded
-            ? 'w-[260px] bg-white/95 shadow-[0_14px_45px_rgba(68,167,252,0.20)]'
-            : 'w-[72px] bg-white/80 shadow-[0_8px_32px_rgba(68,167,252,0.12)]'
+            ? 'w-[260px] bg-white/95 shadow-[0_16px_48px_rgba(68,167,252,0.22)]'
+            : 'w-[72px] bg-white/80 shadow-[0_8px_28px_rgba(68,167,252,0.12)]'
         }`}
       >
         {/* লোগো: সরু অবস্থায় V মার্ক, চওড়া অবস্থায় পুরো লোগো — একই বক্সে ক্রস-ফেড */}
         <div className="relative h-[76px] shrink-0">
           <span
-            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-[opacity,transform] duration-200 ease-out ${
-              expanded ? 'scale-90 opacity-0' : 'scale-100 opacity-100 delay-100'
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-[opacity,transform] ease-out motion-reduce:transition-none ${
+              expanded ? 'scale-90 opacity-0 duration-100' : 'scale-100 opacity-100 delay-150 duration-200'
             }`}
           >
             <BrandMark className="h-[30px] w-auto" />
           </span>
           <span
-            className={`absolute left-[22px] top-1/2 -translate-y-1/2 transition-[opacity,transform] duration-200 ease-out ${
-              expanded ? 'translate-x-0 opacity-100 delay-100' : 'pointer-events-none -translate-x-2 opacity-0'
+            className={`absolute left-[22px] top-1/2 -translate-y-1/2 transition-[opacity,transform] ease-out motion-reduce:transition-none ${
+              expanded ? 'translate-x-0 opacity-100 delay-100 duration-300' : 'pointer-events-none -translate-x-2 opacity-0 duration-100'
             }`}
           >
             <BrandLogo className="h-[38px] w-auto" priority />
@@ -500,7 +520,9 @@ function DesktopSidebar({ activeHref }: { activeHref: string }) {
                   <LogoutIcon />
                 </NavIcon>
               </span>
-              <span className={labelCls(expanded)}>লগআউট</span>
+              <span className={labelCls(expanded)} style={staggerStyle(expanded, ALL_HREFS.length)}>
+                লগআউট
+              </span>
             </button>
           </form>
         </div>
@@ -512,9 +534,10 @@ function DesktopSidebar({ activeHref }: { activeHref: string }) {
 /* ══════════════════════════════════════════════════════════════════════
    মোবাইল লিকুইড গ্লাস ডক বার (<768px)
    ──────────────────────────────────────────────────────────────────────
-   - ৫টা সমান কলাম; সক্রিয় ট্যাবের নিচে স্কাই-ব্লু "লেন্স" ফোঁটা স্প্রিং-এর মতো সরে যায়।
-   - মাঝের "+" = কাঁচের অর্ব (AI Planner); সক্রিয় হলে সলিড স্কাই।
-   - মেনু ড্রয়ার খোলা থাকলে লেন্স "মেনু"-তে যায়।
+   - ভাসমান কাঁচের ক্যাপসুল: ঝাপসা পেছন + গ্রেডিয়েন্ট রিম + উপরে স্পেকুলার শিন (globals.css)।
+   - সক্রিয় ট্যাবের নিচে স্কাই-ব্লু কাঁচের "লেন্স" স্প্রিং-এ সরে; সরার সময় টানা-চ্যাপ্টা (squash & stretch)।
+   - ট্যাবে চাপ দেওয়ার সাথে সাথেই লেন্স সরে যায় (পেজ লোডের অপেক্ষা করে না)।
+   - মাঝের "+" = একটু উঁচুতে ভাসা কাঁচের গোলক (AI Planner)।
    ══════════════════════════════════════════════════════════════════════ */
 function MobileDock({
   activeHref,
@@ -526,34 +549,62 @@ function MobileDock({
   onOpenMenu: () => void;
 }) {
   const routeSlot = DOCK_SLOTS.findIndex((s) => s.kind !== 'menu' && s.href === activeHref);
-  const activeSlot = menuOpen ? MENU_SLOT : routeSlot;
+
+  // ট্যাপ করার মুহূর্তেই লেন্স সরানোর জন্য "আশাবাদী" স্লট; রুট বদলালে বা ১.৫ সেকেন্ড পর মুছে যায়
+  const [pending, setPending] = useState<number | null>(null);
+  useEffect(() => {
+    setPending(null);
+  }, [routeSlot]);
+  useEffect(() => {
+    if (pending === null) return;
+    const t = setTimeout(() => setPending(null), 1500);
+    return () => clearTimeout(t);
+  }, [pending]);
+
+  const activeSlot = menuOpen ? MENU_SLOT : pending ?? routeSlot;
   const lensVisible = activeSlot >= 0 && activeSlot !== ORB_SLOT;
 
   // লেন্স শেষ দৃশ্যমান অবস্থানে থাকে — লুকানো অবস্থায় বাম কোণে ছুটে যায় না
   const [lens, setLens] = useState(() => (lensVisible ? activeSlot : 0));
+  const [moves, setMoves] = useState(0);
+  const lensRef = useRef(lens);
   useEffect(() => {
-    if (activeSlot >= 0 && activeSlot !== ORB_SLOT) setLens(activeSlot);
+    if (activeSlot >= 0 && activeSlot !== ORB_SLOT && activeSlot !== lensRef.current) {
+      lensRef.current = activeSlot;
+      setLens(activeSlot);
+      setMoves((m) => m + 1);
+    }
   }, [activeSlot]);
 
   const tabCls = (active: boolean) =>
-    `relative z-10 flex h-[54px] flex-col items-center justify-center gap-[3px] rounded-full transition-[color,transform] duration-300 active:scale-90 ${
-      active ? 'text-white' : 'text-ink/70'
+    `relative z-10 flex h-[54px] flex-col items-center justify-center gap-[3px] rounded-full transition-[color,transform] duration-300 active:scale-90 motion-reduce:transition-none ${
+      active ? 'text-white' : 'text-ink/60'
     }`;
+
+  const iconCls = (active: boolean) =>
+    `h-[22px] w-[22px] transition-transform duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${active ? '-translate-y-px scale-105' : ''}`;
 
   return (
     <nav
       aria-label="নিচের মেনু"
       className="liquid-glass-bar fixed left-1/2 z-40 w-[calc(100%-24px)] max-w-[420px] -translate-x-1/2 rounded-full p-1.5 md:hidden"
-      style={{ bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}
+      style={{ bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}
     >
-      <div className="relative grid grid-cols-5 items-center">
+      <div className="relative z-10 grid grid-cols-5 items-center">
+        {/* লেন্স: বাইরের স্তর সরে (স্প্রিং), ভেতরের স্তর সরার সময় টানা-চ্যাপ্টা হয় */}
         <span
           aria-hidden="true"
-          className={`liquid-glass-lens pointer-events-none inset-y-0 left-0 rounded-full transition-[transform,opacity] duration-[520ms] ease-[cubic-bezier(.34,1.45,.5,1)] ${
+          className={`pointer-events-none absolute inset-y-0 left-0 transition-[transform,opacity] duration-[560ms] ease-[cubic-bezier(.34,1.4,.5,1)] motion-reduce:transition-none ${
             lensVisible ? 'opacity-100' : 'opacity-0'
           }`}
           style={{ width: 'calc(100% / 5)', transform: `translateX(${lens * 100}%)` }}
-        />
+        >
+          <span
+            key={moves}
+            data-moved={moves > 0}
+            className="liquid-glass-lens absolute inset-y-0 inset-x-[3px] rounded-full"
+          />
+        </span>
 
         {DOCK_SLOTS.map((slot, i) => {
           if (slot.kind === 'menu') {
@@ -567,13 +618,13 @@ function MobileDock({
                 aria-expanded={menuOpen}
                 className={tabCls(menuOpen)}
               >
-                <NavIcon className="h-[22px] w-[22px]">{slot.icon}</NavIcon>
+                <NavIcon className={iconCls(menuOpen)}>{slot.icon}</NavIcon>
                 <span className="font-body text-[10px] font-extrabold leading-none">{slot.label}</span>
               </button>
             );
           }
 
-          const active = i === routeSlot && !menuOpen;
+          const active = i === (pending ?? routeSlot) && !menuOpen;
 
           if (slot.kind === 'orb') {
             return (
@@ -581,14 +632,15 @@ function MobileDock({
                 key="orb"
                 href={slot.href as string}
                 aria-label={slot.label}
-                aria-current={active ? 'page' : undefined}
-                className="relative z-10 flex h-[54px] items-center justify-center transition-transform duration-200 active:scale-90"
+                aria-current={i === routeSlot ? 'page' : undefined}
+                onClick={() => i !== routeSlot && setPending(i)}
+                className="relative z-10 flex h-[54px] items-center justify-center"
               >
                 <span
                   data-active={active}
-                  className="liquid-glass-orb flex h-[48px] w-[48px] items-center justify-center rounded-full transition-all duration-300"
+                  className="liquid-glass-orb flex h-[54px] w-[54px] -translate-y-[11px] items-center justify-center rounded-full transition-[transform,background,box-shadow] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] active:-translate-y-[8px] active:scale-90 motion-reduce:transition-none"
                 >
-                  <NavIcon className={`h-[22px] w-[22px] ${active ? 'text-white' : 'text-brand-light'}`}>{slot.icon}</NavIcon>
+                  <NavIcon className={`h-[24px] w-[24px] ${active ? 'text-white' : 'text-brand-light'}`}>{slot.icon}</NavIcon>
                 </span>
               </Link>
             );
@@ -598,10 +650,11 @@ function MobileDock({
             <Link
               key={slot.href}
               href={slot.href as string}
-              aria-current={active ? 'page' : undefined}
+              aria-current={i === routeSlot ? 'page' : undefined}
+              onClick={() => i !== routeSlot && setPending(i)}
               className={tabCls(active)}
             >
-              <NavIcon className="h-[22px] w-[22px]">{slot.icon}</NavIcon>
+              <NavIcon className={iconCls(active)}>{slot.icon}</NavIcon>
               <span className="font-body text-[10px] font-extrabold leading-none">{slot.label}</span>
             </Link>
           );
@@ -615,6 +668,9 @@ function MobileDock({
    মোবাইল মেনু ড্রয়ার — লিকুইড গ্লাস বটম শীট (z-[550]/[560])
    ══════════════════════════════════════════════════════════════════════ */
 function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: () => void; activeHref: string }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ startY: number; dy: number } | null>(null);
+
   // খোলা থাকলে পেছনের পেজ স্ক্রল লক + Esc দিয়ে বন্ধ
   useEffect(() => {
     if (!open) return;
@@ -630,6 +686,38 @@ function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: (
     };
   }, [open, onClose]);
 
+  // হ্যান্ডেল ধরে নিচে টেনে শিট বন্ধ (আঙুলের সাথে সাথে নামে; ১১০px পেরোলে বন্ধ, নইলে স্প্রিং-এ ফেরত)
+  function onDragStart(e: React.PointerEvent<HTMLDivElement>) {
+    const el = sheetRef.current;
+    if (!el) return;
+    drag.current = { startY: e.clientY, dy: 0 };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    el.style.transition = 'none';
+  }
+  function onDragMove(e: React.PointerEvent<HTMLDivElement>) {
+    const el = sheetRef.current;
+    if (!drag.current || !el) return;
+    const dy = Math.max(0, e.clientY - drag.current.startY);
+    drag.current.dy = dy;
+    el.style.transform = `translateY(${dy}px)`;
+  }
+  function onDragEnd() {
+    const el = sheetRef.current;
+    if (!drag.current || !el) return;
+    const { dy } = drag.current;
+    drag.current = null;
+    el.style.transition = '';
+    if (dy > 110) {
+      el.style.transform = 'translateY(100%)';
+      onClose();
+      setTimeout(() => {
+        if (sheetRef.current) sheetRef.current.style.transform = '';
+      }, 480);
+    } else {
+      el.style.transform = '';
+    }
+  }
+
   return (
     <>
       <div
@@ -641,6 +729,7 @@ function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: (
       />
 
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-label="মেনু"
@@ -650,7 +739,16 @@ function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: (
         }`}
         style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="mx-auto mb-3 h-1.5 w-12 shrink-0 rounded-full bg-ink/15" />
+        <div
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
+          className="-mt-3 flex h-8 shrink-0 cursor-grab touch-none items-center justify-center"
+          aria-hidden="true"
+        >
+          <div className="h-1.5 w-12 rounded-full bg-ink/20" />
+        </div>
 
         <div className="mb-2 flex shrink-0 items-center justify-between border-b border-border-base/50 px-1.5 pb-3">
           <div>
