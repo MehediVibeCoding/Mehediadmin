@@ -69,21 +69,6 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
 
   return (
     <div>
-      {/* ══ ১. তথ্য-স্ট্রিপ ══ */}
-      <div className="mb-4 flex items-center gap-3 rounded-[24px] border border-brand-light/30 bg-brand-light/[0.07] p-3.5 sm:p-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light/15 text-brand-light">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
-          </svg>
-        </span>
-        <div className="min-w-0">
-          <div className="font-body text-[13.5px] font-black text-ink">Smart Parser — কোনো API লাগে না, সম্পূর্ণ বিনামূল্যে</div>
-          <div className="mt-0.5 font-body text-[11.5px] font-medium leading-snug text-muted">
-            তথ্য পেস্ট করলেই সব ফিল্ড নিজে পূরণ হয়ে প্রোডাক্ট ফর্ম খুলবে। ইন্টারনেট ছাড়াও কাজ করে।
-          </div>
-        </div>
-      </div>
-
       {/* ══ ২. মূল ফর্ম ══ */}
       <div className="rounded-[24px] border border-white/90 bg-white p-4 shadow-sh1 sm:p-5">
         <div className="space-y-8">

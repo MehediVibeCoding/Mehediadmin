@@ -41,6 +41,15 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Next 15-এ ডিফল্ট staleTimes ০ — তাই আগের পেজে ফিরলেই সার্ভার থেকে নতুন করে আনত ও স্কেলেটন দেখাত।
+  // এখন ভিজিট করা পেজ ক্লায়েন্টে ক্যাশ থাকে: ফিরলে সাথে সাথে খোলে, স্কেলেটন আসে না।
+  // কোনো সার্ভার অ্যাকশন (সেভ/ডিলিট/স্ট্যাটাস বদল) revalidatePath চালালে এই ক্যাশ নিজে থেকেই মুছে যায়।
+  experimental: {
+    staleTimes: {
+      dynamic: 180,
+      static: 300,
+    },
+  },
   images: {
     remotePatterns: [
       {

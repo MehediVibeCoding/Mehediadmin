@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
 // অডিট §২.১ ফিক্স ────────────────────────────────────────────────
@@ -19,7 +20,9 @@ export class UnauthorizedError extends Error {
   }
 }
 
-export async function requireAdmin(): Promise<{ email: string }> {
+// React cache(): একই রিকোয়েস্টে (পেজ + তার ভেতরের একাধিক অ্যাকশন) requireAdmin বহুবার কল হলেও
+// Supabase Auth-এ নেটওয়ার্ক কল হয় একবারই — আগে প্রতিবার আলাদা কল যেত, যা পেজ ধীর করত।
+export const requireAdmin = cache(async (): Promise<{ email: string }> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,4 +33,4 @@ export async function requireAdmin(): Promise<{ email: string }> {
   }
 
   return { email: user.email };
-}
+});

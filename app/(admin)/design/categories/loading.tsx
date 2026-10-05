@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/admin/PageSkeleton';
+import { CategoriesSkeleton } from '@/components/admin/skeletons';
 
 export default function Loading() {
-  return <PageSkeleton />;
+  return <CategoriesSkeleton />;
 }

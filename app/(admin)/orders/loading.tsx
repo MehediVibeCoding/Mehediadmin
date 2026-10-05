@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/admin/PageSkeleton';
+import { OrdersSkeleton } from '@/components/admin/skeletons';
 
 export default function Loading() {
-  return <PageSkeleton />;
+  return <OrdersSkeleton />;
 }

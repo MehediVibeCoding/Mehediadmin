@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import PendingOrdersBadge from '@/components/admin/PendingOrdersBadge';
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo';
 
@@ -429,7 +430,7 @@ function SectionLabel({ title, expanded }: { title: string; expanded: boolean })
   );
 }
 
-function DesktopSidebar({ activeHref }: { activeHref: string }) {
+function DesktopSidebar({ activeHref, onLogout }: { activeHref: string; onLogout: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -506,12 +507,11 @@ function DesktopSidebar({ activeHref }: { activeHref: string }) {
               </div>
             </div>
           ))}
-        </nav>
-
-        <div className="shrink-0 border-t border-border-base/60 p-[9px]">
-          <form action={logout}>
+          {/* লগআউট: আলাদা হাইলাইট ছাড়া মেনুর একদম শেষে — লাল রঙেই; ক্লিক করলে কনফার্মেশন আসে */}
+          <div className="mt-1 pb-1">
             <button
-              type="submit"
+              type="button"
+              onClick={onLogout}
               aria-label="লগআউট"
               className="group flex h-[44px] w-full items-center overflow-hidden rounded-[14px] text-danger/80 transition-colors duration-200 hover:bg-red-50 hover:text-danger"
             >
@@ -524,8 +524,8 @@ function DesktopSidebar({ activeHref }: { activeHref: string }) {
                 লগআউট
               </span>
             </button>
-          </form>
-        </div>
+          </div>
+        </nav>
       </aside>
     </div>
   );
@@ -667,7 +667,17 @@ function MobileDock({
 /* ══════════════════════════════════════════════════════════════════════
    মোবাইল মেনু ড্রয়ার — লিকুইড গ্লাস বটম শীট (z-[550]/[560])
    ══════════════════════════════════════════════════════════════════════ */
-function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: () => void; activeHref: string }) {
+function MobileDrawer({
+  open,
+  onClose,
+  activeHref,
+  onLogout,
+}: {
+  open: boolean;
+  onClose: () => void;
+  activeHref: string;
+  onLogout: () => void;
+}) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startY: number; dy: number } | null>(null);
 
@@ -814,21 +824,25 @@ function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: (
               </div>
             </div>
           ))}
-        </nav>
 
-        <div className="shrink-0 border-t border-border-base/50 pt-3">
-          <form action={logout}>
-            <button
-              type="submit"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-red-200/80 bg-red-50 font-body text-[13.5px] font-extrabold text-danger transition-all duration-brand active:scale-[0.98]"
-            >
-              <NavIcon className="h-[18px] w-[18px]">
+          {/* লগআউট: আলাদা পিল নয়, মেনুর শেষে সাধারণ সারির মতো — লাল রঙে; ক্লিকে কনফার্মেশন */}
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onLogout();
+            }}
+            className="mb-1 flex min-h-[48px] w-full items-center gap-3 rounded-2xl px-2.5 py-1.5 text-left font-body text-[13.5px] font-bold text-danger transition-all duration-brand hover:bg-red-50 active:scale-[0.98]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-danger">
+              <NavIcon className="h-[19px] w-[19px]">
                 <LogoutIcon />
               </NavIcon>
-              লগআউট
-            </button>
-          </form>
-        </div>
+            </span>
+            <span className="flex-1">লগআউট</span>
+          </button>
+        </nav>
+
       </div>
     </>
   );
@@ -839,6 +853,10 @@ export default function Sidebar() {
   const activeHref = useActiveHref();
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logoutFormRef = useRef<HTMLFormElement>(null);
+  const askLogout = useCallback(() => setConfirmLogout(true), []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -846,9 +864,27 @@ export default function Sidebar() {
 
   return (
     <>
-      <DesktopSidebar activeHref={activeHref} />
+      <DesktopSidebar activeHref={activeHref} onLogout={askLogout} />
       <MobileDock activeHref={activeHref} menuOpen={mobileOpen} onOpenMenu={() => setMobileOpen(true)} />
-      <MobileDrawer open={mobileOpen} onClose={closeMobile} activeHref={activeHref} />
+      <MobileDrawer open={mobileOpen} onClose={closeMobile} activeHref={activeHref} onLogout={askLogout} />
+
+      {/* লুকানো ফর্ম — কনফার্ম করলে সার্ভার অ্যাকশন logout চলে */}
+      <form ref={logoutFormRef} action={logout} className="hidden" />
+      {confirmLogout && (
+        <ConfirmDialog
+          title="লগআউট করবেন?"
+          message="আপনি এডমিন প্যানেল থেকে বেরিয়ে যাবেন। আবার ঢুকতে ইমেইল ও পাসওয়ার্ড লাগবে।"
+          confirmLabel="হ্যাঁ, লগআউট"
+          busyLabel="লগআউট হচ্ছে..."
+          busy={loggingOut}
+          tone="danger"
+          onConfirm={() => {
+            setLoggingOut(true);
+            logoutFormRef.current?.requestSubmit();
+          }}
+          onCancel={() => setConfirmLogout(false)}
+        />
+      )}
     </>
   );
 }

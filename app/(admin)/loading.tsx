@@ -3,7 +3,7 @@
 // ওয়েলকাম + তারিখ + আবহাওয়া হিরো কার্ড → স্ট্যাট গ্রিড → চার্ট → সর্বশেষ অর্ডার → কম স্টক।
 // পেজের উপরে আলাদা টাইটেল নেই (শুভেচ্ছা লেখা এখন ওয়েদার কার্ডের ভেতরে), তাই টাইটেল আঁকা হয় না।
 function Skeleton({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-brand bg-black/[.06] ${className}`} />;
+  return <div className={`sk rounded-brand ${className}`} />;
 }
 
 export default function DashboardLoading() {
