@@ -13,6 +13,7 @@ import {
 import { useToast } from '@/components/admin/Toast';
 import StatusPill from '@/components/admin/StatusPill';
 import SectionHeading from '@/components/common/SectionHeading';
+import { RISK_META } from '@/components/orders/RiskBadge';
 
 interface Props {
   order: Order;
@@ -165,6 +166,71 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
                 <p className="mt-1.5 font-body text-[12px] font-medium text-muted">এই অর্ডারের ডায়মন্ড সুবিধা দেওয়ার সময় পার হয়ে গেছে।</p>
               )}
             </div>
+          )}
+
+          {/* ── ট্রাস্ট স্কোর (পুরনো অর্ডার বা এখনো হিসাব না হওয়া অর্ডারে দেখায় না) ── */}
+          {order.risk && (
+            <section>
+              <SectionHeading>ট্রাস্ট স্কোর</SectionHeading>
+              <div className="rounded-2xl border border-border-base bg-white p-3.5 shadow-sh1">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className={`flex items-center gap-2 font-body text-[15px] font-black ${RISK_META[order.risk.level].text}`}>
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${RISK_META[order.risk.level].dot}`} />
+                      {RISK_META[order.risk.level].label}
+                    </div>
+                    <p className="mt-1 font-body text-[12px] font-semibold leading-snug text-muted">
+                      {RISK_META[order.risk.level].hint}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right font-body">
+                    <span className="text-[26px] font-black leading-none tracking-tight text-ink">{order.risk.score}</span>
+                    <span className="text-[12px] font-bold text-muted">/100</span>
+                  </div>
+                </div>
+
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                  <div
+                    className={`h-full rounded-full ${RISK_META[order.risk.level].bar}`}
+                    style={{ width: `${Math.max(2, Math.min(100, order.risk.score))}%` }}
+                  />
+                </div>
+
+                {order.risk.hard_limit && (
+                  <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 font-body text-[12px] font-bold leading-snug text-red-700">
+                    লিমিট ভাঙার রেকর্ড আছে — স্কোর যাই হোক, এই অর্ডার সরাসরি লাল ধরা হয়েছে।
+                  </div>
+                )}
+
+                {order.risk.breakdown.length > 0 && (
+                  <ul className="mt-3 divide-y divide-border-base/50">
+                    {order.risk.breakdown.map((f) => (
+                      <li key={f.key} className="flex items-start gap-2.5 py-2">
+                        <span
+                          className={`mt-[5px] h-2 w-2 shrink-0 rounded-full ${
+                            f.tone === 'good' ? 'bg-success' : f.tone === 'warn' ? 'bg-warn' : 'bg-danger'
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-body text-[12.5px] font-extrabold text-ink">{f.label}</div>
+                          <div className="font-body text-[11.5px] font-medium leading-snug text-muted">{f.note}</div>
+                        </div>
+                        <span className="shrink-0 font-body text-[12px] font-black text-ink/80">
+                          {f.points}/{f.max}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {(order.ip || order.risk.ip_city) && (
+                  <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-border-base/50 pt-2.5 font-body text-[11.5px] font-semibold text-muted">
+                    {order.ip && <span>আইপি: {order.ip}</span>}
+                    {order.risk.ip_city && <span>আইপি লোকেশন: {order.risk.ip_city}</span>}
+                  </div>
+                )}
+              </div>
+            </section>
           )}
 
           {/* ── গ্রাহকের তথ্য ── */}

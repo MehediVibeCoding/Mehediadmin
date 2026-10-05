@@ -75,6 +75,31 @@ export interface Order {
   // রানটাইমে বসানো হয় (৫-৯টা ডেলিভার্ড অর্ডার হলে 'diamond')। তাই ঐচ্ছিক —
   // সব জায়গায় (যেমন createOrder-এর রিটার্নে) এটা বসে না।
   member_tier?: 'diamond';
+  // ডাটাবেজ কলাম না — `order_risk` টেবিল (শুধু service-role পড়তে পারে) থেকে আলাদা কুয়েরিতে বসানো হয়।
+  // নতুন অর্ডারে স্কোর ব্যাকগ্রাউন্ডে হিসাব হয় বলে কয়েক সেকেন্ড পর্যন্ত এবং ফিচার চালুর আগের
+  // পুরনো অর্ডারে এটা undefined। কাস্টমার-সাইডে কখনোই পাঠানো/দেখানো চলবে না।
+  risk?: OrderRisk;
+}
+
+export type OrderRiskLevel = 'green' | 'yellow' | 'red';
+
+export interface OrderRiskFactor {
+  key: string;
+  label: string;
+  points: number;
+  max: number;
+  tone: 'good' | 'warn' | 'bad';
+  note: string;
+}
+
+export interface OrderRisk {
+  score: number;
+  level: OrderRiskLevel;
+  hard_limit: boolean;
+  reasons: string[];
+  breakdown: OrderRiskFactor[];
+  ip_city: string | null;
+  scored_at: string;
 }
 
 // ✅ VERIFIED (Module ৩ — Products): Supabase টেবিল `custom_products`।

@@ -171,6 +171,8 @@ legacy `admin.html`-এ পাওয়া প্রতিটা module, priorit
 | B-১৬ | ~~Header Copy~~ | ⏸️ **আপাতত স্কিপ** — owner সিদ্ধান্ত (এই সেশনে), ভবিষ্যতে চাইলে আবার শুরু করা যাবে |
 | B-১৭ | ~~Settings (General + Shipping)~~ | ❌ **স্কোপ থেকে বাদ** — owner সিদ্ধান্ত |
 | B-১৮ | ~~Info Pages~~ | ⏸️ **আপাতত স্কিপ** — owner সিদ্ধান্ত (এই সেশনে), ভবিষ্যতে চাইলে আবার শুরু করা যাবে |
+| B-১৯ | বিকাশ লেনদেন (`/bkash-transactions`) — legacy-তে ছিল না, নতুন ফিচার | ✅ সম্পূর্ণ (৩টা সামারি কার্ড — আজকের মোট পেমেন্ট/ব্যবহৃত/অব্যবহৃত, কার্ডে ক্লিকে ফিল্টার; সার্চ (ফোন/TrxID/অর্ডার নং) + ৩ ট্যাব; সার্ভার-সাইড পেজিনেশন; সারিতে তারিখ-সময় (ঢাকা সময়), প্রেরক নম্বর ও TrxID (কপি বাটন), টাকা, স্ট্যাটাস ব্যাজ, লিংকড অর্ডার (ক্লিকে পূর্ণ মেমো মোডাল), আসল SMS পপআপ; ট্যাব খোলা থাকলে প্রতি ৩০ সেকেন্ডে নীরব রিফ্রেশ; সাইডবারে "অর্ডার"-এর নিচে) |
+| B-২০ | অর্ডার ট্রাস্ট স্কোর (🟢 High / 🟡 Medium / 🔴 Low ব্যাজ) — নতুন ফিচার | ✅ সম্পূর্ণ (অর্ডার তালিকায় স্কোরসহ ছোট ব্যাজ, অর্ডার মোডালে ফ্যাক্টর-ভিত্তিক বিশ্লেষণ; স্কোর হিসাব হয় Vangcur-এ, এখানে শুধু `order_risk` টেবিল থেকে পড়া) |
 | C | Server Actions & API routes | 🔵 চলছে — Orders "confirmed" sync-sheet ✅ সম্পূর্ণ (নিচে সেশন নোট), বাকি item গুলো (image upload আগেই B-৮/B-১৪-এ হয়ে গেছে) মূলত সম্পূর্ণ |
 | D | Documentation (ARCHITECTURE.md, MIGRATION_NOTES.md) | ⏳ বাকি |
 
@@ -275,6 +277,24 @@ owner রিপোর্ট করেছিলেন Dashboard-এর "দ্র
 - **[REPLACE]** `components/admin/Sidebar.tsx` — `/traffic` ও `/profit` নেভ আইটেম যোগ করা হলো (`enabled: true`), legacy priority ক্রম অনুযায়ী কাস্টমারের ঠিক পরে।
 - সব route (`find app/(admin) -name page.tsx`) বনাম Sidebar `NAV_ITEMS`-এর href ক্রস-চেক করা হয়েছে — এখন প্রতিটা তৈরি হওয়া রুটের একটা enabled নেভ আইটেম আছে, কোনো orphaned/অগম্য পেজ নেই। `/header-copy` (B-১৬) ইচ্ছাকৃতভাবেই `enabled: false` আছে যেহেতু owner সিদ্ধান্তে এখনো পজ করা।
 - `npx tsc --noEmit` ও `next build` — ক্লিন, ১২টা route-ই সফলভাবে বিল্ড হয়েছে।
+
+### সেশন নোট — Module ১৯ (বিকাশ লেনদেন) ও ২০ (অর্ডার ট্রাস্ট স্কোর)
+
+**বিকাশ লেনদেন:** `bkash_inbox` টেবিল (Vangcur webhook ভরে) এখন অ্যাডমিন থেকে দেখা যায়। এই টেবিলে কোনো পরিবর্তন লাগেনি।
+- **[NEW FILE]** `app/actions/bkash.ts`, `app/(admin)/bkash-transactions/{page,loading,BkashPageClient}.tsx`, `components/bkash/{BkashStatCards,BkashToolbar,BkashTable,RawSmsModal}.tsx`
+- **[REPLACE]** `components/admin/Sidebar.tsx` — `/orders`-এর নিচে নেভ আইটেম
+- "অব্যবহৃত" কার্ডের সংখ্যা **সব সময়ের** (বেওয়ারিশ টাকা যেন না হারায়); "আজকের মোট"/"ব্যবহৃত" আজকের (UTC+6)। লিংকড অর্ডারে ক্লিক করলে একই পেজে `OrderDetailModal` খোলে। Realtime নেই (publication নিশ্চিত না) — তাই ৩০ সেকেন্ডে নীরব রিফ্রেশ।
+
+**অর্ডার ট্রাস্ট স্কোর:** ১০০ নম্বরের হিসাব **Vangcur repo-তে** (`lib/riskEngine.ts`), অর্ডার তৈরির পর ব্যাকগ্রাউন্ডে (`after()`) চলে। অ্যাডমিন শুধু ফলাফল দেখায়।
+- **ডাটাবেজ:** `orders` টেবিলে **কোনো কলাম যোগ করা হয়নি** — ইচ্ছাকৃত। `authenticated` রোলের `orders`-এ টেবিল-লেভেল SELECT আছে (RLS শুধু "নিজের সারি" আটকায়), তাই `orders`-এ কলাম যোগ করলে লগইন কাস্টমার নিজের অর্ডারের স্কোর API দিয়ে পড়তে পারত। এর বদলে আলাদা `order_risk` ও `limit_events` টেবিল: RLS চালু, কোনো policy নেই, `anon`/`authenticated`-এর সব গ্রান্ট বাতিল — শুধু service-role পড়ে/লেখে।
+- **[NEW FILE]** `lib/orderRisk.ts` (`attachOrderRisk` — কখনো throw করে না, টেবিল না থাকলেও অর্ডার তালিকা আগের মতো লোড হয়), `components/orders/RiskBadge.tsx`
+- **[REPLACE]** `types/index.ts` (`OrderRisk`, `Order.risk?`), `app/actions/orders.ts` (`listOrdersPage`-এ `attachOrderRisk`), `components/orders/OrdersTable.tsx` (ডেস্কটপ ও মোবাইল কার্ডে ব্যাজ), `components/orders/OrderDetailModal.tsx` (ট্রাস্ট স্কোর সেকশন), `lib/orders.ts`
+- **বাগ ফিক্স:** `mapOrderRow` আইপি পড়ত `o.ip` থেকে, অথচ DB কলাম `client_ip` — তাই অ্যাডমিনে আইপি সবসময় খালি ছিল। এখন `o.client_ip || o.ip`। (Google Sheet sync ও CSV-তেও এখন আইপি যাবে।)
+- পুরনো অর্ডারে (ফিচারের আগের) ব্যাজ নেই; নতুন অর্ডারে কয়েক সেকেন্ড পর রিফ্রেশে আসে।
+
+**স্কোরের ফর্মুলা (সর্বোচ্চ ১০০):** আগের অর্ডার ১৫ · ফোন ১৫ (লগইন নম্বরের সাথে মিললে ১৫, নাহলে ৮ — এখানে লাল নেই) · ইমেইল ১০ · ঠিকানা ১৫ · আইপি বনাম জেলা ১০ (না মিললে ৫, লাল নয়) · একই পণ্যের পরিমাণ ১০ (১–২ → ১০, ৩ → ৫, ৪+ → ০) · অর্ডার এমাউন্ট ১৫ (<৫০০০ → ১৫, ≤১০০০০ → ৮, তার উপরে → ০, লাল নয়) · লিমিট ১০।
+**লেভেল:** ≥৭৫ সবুজ (High) · ৪৫–৭৪ হলুদ (Medium) · <৪৫ লাল (Low) · "হার্ড" লিমিট ছুঁলে (এবং ফোন/ডিভাইস/লগইনের সাথে মিললে) সরাসরি লাল, স্কোর −৫০।
+
 
 ---
 

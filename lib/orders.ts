@@ -109,7 +109,8 @@ export function mapOrderRow(o: any): Order {
     payment_txn: o.payment_txn || '',
     payment_last4: o.payment_last4 || '',
     fingerprint_id: o.fingerprint_id || null,
-    ip: o.ip || '',
+    // DB কলামের নাম `client_ip` (Vangcur checkout এটাতে লেখে) — `ip` পুরনো legacy নাম, ফলব্যাক হিসেবে রাখা
+    ip: o.client_ip || o.ip || '',
     user_id: o.user_id || null,
     payment_verified: !!o.payment_verified,
     verification_method: o.verification_method || null,

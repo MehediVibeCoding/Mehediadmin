@@ -6,6 +6,7 @@ import Checkbox from '@/components/common/Checkbox';
 import { useToast } from '@/components/admin/Toast';
 import { getOrderAdvance, getOrderDueCOD, isAdvanceTier2, needsDiamondAction } from '@/lib/orders';
 import { formatDateBn } from '@/lib/dateFormat';
+import RiskBadge from '@/components/orders/RiskBadge';
 
 interface Props {
   orders: Order[];
@@ -163,6 +164,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                     </svg>
                     {fmtDate(o.created_at)}
                   </span>
+                  <RiskBadge risk={o.risk} />
                   {diamondAction && <DiamondBadge />}
                   {hasCoupon && <CouponBadge code={o.coupon_code} amount={o.discount_amount || 0} />}
                   {(o.overpaid_amount || 0) > 0 && (
@@ -273,6 +275,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                         >
                           {o.order_num}
                         </button>
+                        <RiskBadge risk={o.risk} />
                         {diamondAction && <DiamondBadge />}
                         {hasCoupon && <CouponBadge code={o.coupon_code} amount={o.discount_amount || 0} />}
                       </div>

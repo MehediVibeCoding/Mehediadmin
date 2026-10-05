@@ -7,6 +7,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { mapOrderRow, isDiamondByDeliveredCount, ORDER_STATUS_ORDER } from '@/lib/orders';
 import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
+import { attachOrderRisk } from '@/lib/orderRisk';
 import type { Order, OrderItem, OrderStatus } from '@/types';
 
 // ══════════════════════════════════════════════════════════════
@@ -139,6 +140,7 @@ export async function listOrdersPage(params: OrdersPageParams): Promise<OrdersPa
     if (isDiamondByDeliveredCount(delivered)) order.member_tier = 'diamond';
     return order;
   });
+  await attachOrderRisk(supabase, rows);
 
   return {
     rows,
