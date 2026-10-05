@@ -13,6 +13,7 @@ export default async function DashboardPage() {
   try {
     const data = await getDashboardData();
     const today = new Date().toLocaleDateString('bn-BD', {
+      timeZone: 'Asia/Dhaka',
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -21,27 +22,8 @@ export default async function DashboardPage() {
 
     return (
       <div className="pb-4">
-        {/* সেন্টার্ড ওয়েলকাম হেডার + নিচে অ্যাকসেন্ট-কালার ডেট পিল */}
-        <div className="mb-6 flex flex-col items-center gap-2.5 text-center">
-          <h1 className="font-body text-[21px] font-black tracking-tight text-ink sm:text-[26px]">
-            Hi Mehedi, Welcome to Vangcur Dashboard
-          </h1>
-
-          <div className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-brand-light to-brand-primary px-4 py-1.5 shadow-sh2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            <span className="font-body text-[12px] font-bold text-white">
-              {today}
-            </span>
-          </div>
-        </div>
-
-        {/* ১. লাইভ আবহাওয়া উইজেট (ব্র্যান্ড স্কাই-ব্লু গ্লাস) */}
-        <WeatherWidget />
+        {/* ১. ওয়েলকাম + তারিখ + লাইভ আবহাওয়া — একটাই কার্ডে */}
+        <WeatherWidget dateLabel={today} />
 
         {/* ২. কালারফুল প্যাস্টেল গ্লাস স্ট্যাটাস গ্রিড — একটা হিরো কার্ড + কমপ্যাক্ট টাইলস */}
         <StatGrid stats={data.stats} />

@@ -2,16 +2,19 @@
 
 import { useEffect, useRef } from 'react';
 import type { TrendSeries } from '@/lib/traffic';
+import SectionHeading from '@/components/common/SectionHeading';
 
 interface Props {
   series: TrendSeries;
 }
 
-// legacy drawTrafficTrendChart() — canvas-ভিত্তিক, RevenueChart.tsx-এর মতোই
-// HiDPI-শার্প রেন্ডারিং। legacy-তে গ্রেডিয়েন্ট লাইন ছিল ইন্ডিগো→পার্পল→পিংক
-// (নতুন hex), DESIGN_SYSTEM.md-এর "Chart colors: primary series brand-primary,
-// secondary brand-accent/brand-light, gridline border-base — কোনো নতুন hex না"
-// নিয়ম অনুযায়ী brand-primary/brand-light দিয়ে বদলানো হয়েছে।
+// ক্যানভাস লাইন চার্ট — HiDPI-শার্প রেন্ডারিং। অ্যাডমিন UI-তে শুধু স্কাই-ব্লু
+// (DESIGN_SYSTEM v2): লাইন/ফিল #44A7FC, ছোট লেখা গাঢ়-স্কাই #0F6FC6 (কনট্রাস্টের জন্য),
+// গ্রিড border-base। গাঢ় নীল (#0058C7) আর ব্যবহার হয় না।
+const BRAND = '#44A7FC';
+const BRAND_DEEP = '#3C93DE';
+const BRAND_TEXT = '#0F6FC6';
+
 export default function TrafficTrendChart({ series }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -75,10 +78,10 @@ export default function TrafficTrendChart({ series }: Props) {
     const pts = values.map((v, i) => ({ x: pad.l + stepX * i, y: pad.t + chartH - (v / maxVal) * chartH }));
 
     if (pts.length) {
-      // Gradient fill under line — brand-primary (#0058C7)
+      // লাইনের নিচের গ্রেডিয়েন্ট ফিল — স্কাই-ব্লু
       const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
-      grad.addColorStop(0, 'rgba(0,88,199,.30)');
-      grad.addColorStop(1, 'rgba(0,88,199,0)');
+      grad.addColorStop(0, 'rgba(68,167,252,.30)');
+      grad.addColorStop(1, 'rgba(68,167,252,0)');
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pad.t + chartH);
       pts.forEach((p) => ctx.lineTo(p.x, p.y));
@@ -87,10 +90,10 @@ export default function TrafficTrendChart({ series }: Props) {
       ctx.fillStyle = grad;
       ctx.fill();
 
-      // Line — brand-primary → brand-light gradient (secondary series token)
+      // লাইন — স্কাই-ব্লু গ্রেডিয়েন্ট
       const lineGrad = ctx.createLinearGradient(pad.l, 0, W - pad.r, 0);
-      lineGrad.addColorStop(0, '#0058C7');
-      lineGrad.addColorStop(1, '#44A4FB');
+      lineGrad.addColorStop(0, BRAND);
+      lineGrad.addColorStop(1, BRAND_DEEP);
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) {
@@ -109,10 +112,10 @@ export default function TrafficTrendChart({ series }: Props) {
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = '#0058C7';
+        ctx.strokeStyle = BRAND;
         ctx.stroke();
         if (values[i] > 0) {
-          ctx.fillStyle = '#0058C7';
+          ctx.fillStyle = BRAND_TEXT;
           ctx.font = 'bold 10px sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText(String(values[i]), p.x, p.y - 8);
@@ -130,18 +133,28 @@ export default function TrafficTrendChart({ series }: Props) {
     });
   }
 
+  const maxVal = series.values.length ? Math.max(...series.values) : 0;
+  const peakLabel = maxVal > 0 ? series.labels[series.values.indexOf(maxVal)] : '';
+
   return (
-    <div className="mt-4 rounded-brand bg-brand-surface p-5 shadow-sh1">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-sm font-bold text-ink">📈 ভিজিটর ট্রেন্ড</span>
-        <span className="text-[11px] text-muted">{series.subtitle}</span>
-      </div>
-      <div ref={wrapRef} className="overflow-x-auto py-2">
+    <div className="mt-4 rounded-[24px] border border-white/90 bg-white p-4 shadow-sh1 sm:p-5">
+      <SectionHeading hint={series.subtitle}>ভিজিটর ট্রেন্ড</SectionHeading>
+      <div ref={wrapRef} className="sleek-scrollbar overflow-x-auto">
         <canvas ref={canvasRef} height={180} className="block w-full max-w-full" />
       </div>
-      <div className="flex flex-wrap gap-4 px-1 pt-1.5 text-[11px] text-muted">
-        <span className="font-semibold text-brand-primary">● ইউনিক ভিজিটর</span>
-        <span>মোট: {series.total}</span>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="min-w-0 rounded-xl border border-border-base/70 px-3 py-2">
+          <div className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted">মোট</div>
+          <div className="font-body text-[15px] font-black text-ink">{series.total.toLocaleString('en-US')}</div>
+        </div>
+        <div className="min-w-0 rounded-xl border border-border-base/70 px-3 py-2">
+          <div className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted">সর্বোচ্চ</div>
+          <div className="font-body text-[15px] font-black text-ink">{maxVal.toLocaleString('en-US')}</div>
+        </div>
+        <div className="min-w-0 rounded-xl border border-border-base/70 px-3 py-2">
+          <div className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted">সেরা সময়</div>
+          <div className="truncate font-body text-[15px] font-black text-ink">{peakLabel || '—'}</div>
+        </div>
       </div>
     </div>
   );

@@ -2,15 +2,7 @@ import type { TrafficSummary } from '@/lib/traffic';
 
 function Icon({ children }: { children: React.ReactNode }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
       {children}
     </svg>
   );
@@ -19,21 +11,20 @@ function Icon({ children }: { children: React.ReactNode }) {
 interface CardProps {
   label: string;
   value: string;
-  accentBg: string;
-  accentText: string;
+  sub?: string;
+  chip: string; // আইকন-চিপের bg + text ক্লাস
   icon: React.ReactNode;
 }
 
-function StatCard({ label, value, accentBg, accentText, icon }: CardProps) {
+function StatTile({ label, value, sub, chip, icon }: CardProps) {
   return (
-    <div className="flex min-h-[148px] flex-col items-center justify-center rounded-2xl border border-border-base bg-brand-surface p-5 text-center shadow-sh1 transition-brand hover:-translate-y-0.5 hover:shadow-sh2">
-      <div className={`mb-2.5 flex h-[42px] w-[42px] items-center justify-center rounded-full ${accentBg} ${accentText}`}>
-        {icon}
+    <div className="min-w-0 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1">
+      <div className="flex items-center gap-2.5">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${chip}`}>{icon}</span>
+        <span className="font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted">{label}</span>
       </div>
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tracking-tight text-ink">
-        {value}
-      </div>
+      <div className="mt-2.5 truncate font-body text-[22px] font-black tracking-tight text-ink">{value}</div>
+      {sub && <div className="mt-0.5 font-body text-[11px] font-semibold text-muted">{sub}</div>}
     </div>
   );
 }
@@ -43,24 +34,17 @@ interface Props {
   peakHourShort: string;
 }
 
-// legacy stat-card-visitors/orders/revenue/cust চারটার ট্রাফিক-পেজ ভ্যারিয়েন্ট।
-// icon accent রঙ — legacy hex ঠিক এই টোকেনগুলোর সাথেই মেলে: পিক-আওয়ার card
-// warn (#F59E0B, exact), পেজভিউ card info (#3B82F6 family, Dashboard-এর
-// "কাস্টমার" card-এও একই ব্যবহার)। কিন্তু legacy-র ভিজিটর (violet #7C3AED)
-// আর গড়-ভিউ (teal #0D9488) রঙের কোনো নাম করা token DESIGN_SYSTEM.md-এ নেই —
-// এই দুটোর hex ঠিক Tailwind-এর built-in violet-600/teal-600-এর সাথে exact
-// মিলে যাওয়ায় নতুন hardcoded hex না বসিয়ে সেই built-in utility ক্লাস ব্যবহার
-// করা হয়েছে। এটা DESIGN_SYSTEM.md-এর ঘোষিত token তালিকার বাইরে একটা ছোট
-// সিদ্ধান্ত — owner-কে জানানো হয়েছে, চাইলে tailwind.config.ts-এ নতুন
-// named token (যেমন brand-violet/brand-teal) হিসেবে formalize করা যায়।
+// নিট প্রফিট পেজের ProfitStatCards-এর মতো একই টাইল প্যাটার্ন (মোবাইলে ২×২, ডেস্কটপে ৪ কলাম)।
+// রং: স্কাই-ব্লু চিপ; শুধু "পিক সময়" অ্যাম্বার (সতর্কতা/হাইলাইট টোকেন)।
+// আগের violet/teal/info রং বাদ — অ্যাডমিন UI-তে শুধু স্কাই-ব্লু ব্র্যান্ড।
 export default function TrafficStatCards({ summary, peakHourShort }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <StatCard
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <StatTile
         label="ইউনিক ভিজিটর"
-        value={String(summary.uniqueVisitors)}
-        accentBg="bg-violet-600/10"
-        accentText="text-violet-600"
+        value={summary.uniqueVisitors.toLocaleString('en-US')}
+        sub="নির্বাচিত সময়"
+        chip="bg-brand-light/15 text-brand-light"
         icon={
           <Icon>
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
@@ -68,11 +52,11 @@ export default function TrafficStatCards({ summary, peakHourShort }: Props) {
           </Icon>
         }
       />
-      <StatCard
+      <StatTile
         label="মোট পেজভিউ"
-        value={String(summary.totalViews)}
-        accentBg="bg-info/10"
-        accentText="text-info"
+        value={summary.totalViews.toLocaleString('en-US')}
+        sub="সব ভিজিট মিলিয়ে"
+        chip="bg-brand-light/15 text-brand-light"
         icon={
           <Icon>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
@@ -80,11 +64,11 @@ export default function TrafficStatCards({ summary, peakHourShort }: Props) {
           </Icon>
         }
       />
-      <StatCard
+      <StatTile
         label="পিক সময়"
         value={peakHourShort}
-        accentBg="bg-warn/10"
-        accentText="text-warn"
+        sub="সবচেয়ে বেশি ভিজিটর"
+        chip="bg-amber-50 text-[#92400E]"
         icon={
           <Icon>
             <circle cx="12" cy="12" r="9" />
@@ -92,11 +76,11 @@ export default function TrafficStatCards({ summary, peakHourShort }: Props) {
           </Icon>
         }
       />
-      <StatCard
+      <StatTile
         label="গড় ভিউ"
         value={summary.avgViews}
-        accentBg="bg-teal-600/10"
-        accentText="text-teal-600"
+        sub="প্রতি ভিজিটরে"
+        chip="bg-surface-muted text-ink"
         icon={
           <Icon>
             <path d="M3 17l6-6 4 4 8-8" />

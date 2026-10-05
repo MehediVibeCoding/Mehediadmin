@@ -27,7 +27,7 @@ export default function RecentOrders({ orders }: Props) {
 
         <Link
           href="/orders"
-          className="group inline-flex items-center gap-1.5 rounded-full border border-border-base/80 bg-white px-3.5 py-1.5 font-body text-[11.5px] font-bold text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-light active:scale-95"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-border-base/80 bg-white h-9 px-3.5 font-body text-[11.5px] font-bold text-ink transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-light active:scale-95"
         >
           <span>সব দেখুন</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-brand group-hover:translate-x-0.5">
@@ -74,7 +74,7 @@ export default function RecentOrders({ orders }: Props) {
                   </td>
                   <td className="py-3 pr-4">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-bg/60 font-body text-[11px] font-black text-brand-primary">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-light/15 font-body text-[11px] font-black text-[#0F6FC6]">
                         {(o.customer_name || '?').trim().charAt(0).toUpperCase()}
                       </span>
                       <span className="truncate max-w-[150px] font-bold text-ink">{o.customer_name || '—'}</span>

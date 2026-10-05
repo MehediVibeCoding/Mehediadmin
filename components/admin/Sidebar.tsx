@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
 import PendingOrdersBadge from '@/components/admin/PendingOrdersBadge';
+import { BrandLogo, BrandMark } from '@/components/common/BrandLogo';
 
 interface NavItem {
   href: string;
@@ -203,8 +204,17 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-const TAB_ITEMS = [
+// মোবাইল নিচের ডকের ৫টা স্লট (বাম → ডান)। index ২ = মাঝের "+" অর্ব (AI Planner), index ৪ = মেনু ড্রয়ার।
+interface DockSlot {
+  kind: 'tab' | 'orb' | 'menu';
+  href?: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const DOCK_SLOTS: DockSlot[] = [
   {
+    kind: 'tab',
     href: '/orders',
     label: 'অর্ডার',
     icon: (
@@ -215,6 +225,7 @@ const TAB_ITEMS = [
     ),
   },
   {
+    kind: 'tab',
     href: '/products',
     label: 'প্রোডাক্ট',
     icon: (
@@ -225,6 +236,18 @@ const TAB_ITEMS = [
     ),
   },
   {
+    kind: 'orb',
+    href: '/products/parser',
+    label: 'AI Planner',
+    icon: (
+      <>
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </>
+    ),
+  },
+  {
+    kind: 'tab',
     href: '/customers',
     label: 'কাস্টমার',
     icon: (
@@ -234,7 +257,21 @@ const TAB_ITEMS = [
       </>
     ),
   },
+  {
+    kind: 'menu',
+    label: 'মেনু',
+    icon: (
+      <>
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </>
+    ),
+  },
 ];
+
+const ORB_SLOT = 2;
+const MENU_SLOT = 4;
 
 function NavIcon({ children, className = 'h-[18px] w-[18px]' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -252,260 +289,381 @@ function NavIcon({ children, className = 'h-[18px] w-[18px]' }: { children: Reac
   );
 }
 
-function LogoMark({ isExpanded }: { isExpanded: boolean }) {
+// সবচেয়ে নির্দিষ্ট (লম্বা) href-ই সক্রিয় — নইলে /products/parser-এ "প্রোডাক্ট" ও "AI Planner" দুটোই জ্বলত।
+const ENABLED_HREFS = NAV_SECTIONS.flatMap((s) => s.items.filter((i) => i.enabled).map((i) => i.href));
+
+function useActiveHref() {
+  const pathname = usePathname();
+  let best = '';
+  for (const href of ENABLED_HREFS) {
+    const match = href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
+    if (match && href.length > best.length) best = href;
+  }
+  return best;
+}
+
+function LogoutIcon() {
   return (
-    <div className="flex items-center gap-3 overflow-hidden">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.38)]">
-        <span className="font-body text-[20px] font-black tracking-tight">V</span>
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ডেস্কটপ সাইডবার (≥768px)
+   ──────────────────────────────────────────────────────────────────────
+   "ঝাঁকুনি-মুক্ত" নিয়ম: হোভারে কোনো আইটেমের জ্যামিতি (উচ্চতা, আইকনের অবস্থান) বদলায় না।
+   শুধু ১) সাইডবারের প্রস্থ বাড়ে, ২) লেখা ফেড-ইন হয়।
+   - আইকন সবসময় ৫২px-এর বক্সে (সরু অবস্থায় ঠিক মাঝে), তাই কখনো নড়ে না।
+   - লেবেল সবসময় DOM-এ; opacity/translate দিয়ে লুকানো (width/height 0→auto নয়)।
+   - সেকশন টাইটেলের সারির উচ্চতা স্থির; সরু অবস্থায় ছোট দাগ, বড় অবস্থায় লেখা (ক্রস-ফেড)।
+   - লোগো দুটো একই বক্সে ক্রস-ফেড (V মার্ক ↔ পুরো লোগো)।
+   ══════════════════════════════════════════════════════════════════════ */
+const ICON_BOX = 'flex w-[52px] shrink-0 items-center justify-center';
+const ITEM_BASE =
+  'group relative flex h-[44px] w-full items-center overflow-hidden rounded-[14px] transition-[background-color,color,box-shadow] duration-200';
+
+function labelCls(expanded: boolean) {
+  return `shrink-0 whitespace-nowrap font-body text-[13px] font-bold tracking-tight transition-[opacity,transform] ease-out ${
+    expanded ? 'translate-x-0 opacity-100 delay-100 duration-200' : '-translate-x-2 opacity-0 duration-100'
+  }`;
+}
+
+function fadeCls(expanded: boolean) {
+  return `transition-opacity duration-150 ${expanded ? 'opacity-100 delay-100' : 'opacity-0'}`;
+}
+
+function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boolean; expanded: boolean }) {
+  if (!item.enabled) {
+    return (
+      <div aria-disabled="true" className={`${ITEM_BASE} cursor-not-allowed text-muted/45`}>
+        <span className={ICON_BOX}>
+          <NavIcon className="h-5 w-5">{item.icon}</NavIcon>
+        </span>
+        <span className={labelCls(expanded)}>{item.label}</span>
+        <span
+          className={`ml-auto mr-3 shrink-0 rounded-full bg-surface-muted px-1.5 py-0.5 font-body text-[9px] font-semibold text-muted ${fadeCls(expanded)}`}
+        >
+          শীঘ্রই
+        </span>
       </div>
-      <div
-        className={`min-w-0 transition-all duration-300 ${
-          isExpanded ? 'opacity-100 translate-x-0 w-auto' : 'opacity-0 -translate-x-3 w-0 pointer-events-none'
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      aria-label={item.label}
+      aria-current={active ? 'page' : undefined}
+      className={`${ITEM_BASE} ${
+        active
+          ? 'bg-brand-light text-white shadow-[0_4px_16px_rgba(68,167,252,0.35)]'
+          : 'text-ink/75 hover:bg-brand-light/10 hover:text-ink'
+      }`}
+    >
+      <span className={ICON_BOX}>
+        <NavIcon className={`h-5 w-5 group-hover:scale-110 ${active ? '' : 'group-hover:text-brand-light'}`}>
+          {item.icon}
+        </NavIcon>
+      </span>
+
+      <span className={labelCls(expanded)}>{item.label}</span>
+
+      {item.badge && (
+        <span
+          className={`ml-auto mr-3 shrink-0 rounded-full px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white ${fadeCls(expanded)}`}
+          style={{ background: item.badge.bg }}
+        >
+          {item.badge.text}
+        </span>
+      )}
+
+      {/* পেন্ডিং ব্যাজ সবসময় আইকনের কোণায় — হোভারে জায়গা বদলায় না */}
+      {item.href === '/orders' && (
+        <span className="absolute left-[29px] top-[3px]">
+          <PendingOrdersBadge active={false} className="ring-2 ring-white" />
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function SectionLabel({ title, expanded }: { title: string; expanded: boolean }) {
+  return (
+    <div className="relative h-7 shrink-0" aria-hidden="true">
+      <span
+        className={`absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center transition-opacity duration-150 ${
+          expanded ? 'opacity-0' : 'opacity-100 delay-100'
         }`}
       >
-        <span className="block font-body text-[16px] font-black tracking-tight text-ink leading-tight">
-          Vangcur
-        </span>
-        <span className="block font-body text-[9px] font-bold uppercase tracking-[1.8px] text-brand-light">
-          Admin Suite
-        </span>
-      </div>
+        <span className="h-px w-6 rounded-full bg-border-base" />
+      </span>
+      <span
+        className={`absolute left-3.5 top-1/2 -translate-y-1/2 whitespace-nowrap font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted transition-opacity duration-200 ${
+          expanded ? 'opacity-100 delay-100' : 'opacity-0'
+        }`}
+      >
+        {title}
+      </span>
     </div>
   );
 }
 
-function useIsActive() {
-  const pathname = usePathname();
-  return (href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/'));
+function DesktopSidebar({ activeHref }: { activeHref: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const open = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setExpanded(true);
+  }, []);
+
+  // মাউস কিনারায় দ্রুত ঢুকে-বেরোলে ঝিরঝির না করতে বন্ধ হওয়ায় সামান্য দেরি
+  const close = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setExpanded(false), 140);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    []
+  );
+
+  return (
+    <div className="relative hidden md:block md:w-[76px] md:shrink-0">
+      <aside
+        aria-label="প্রধান মেনু"
+        onMouseEnter={open}
+        onMouseLeave={close}
+        onFocusCapture={open}
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) close();
+        }}
+        className={`fixed bottom-3 left-3 top-3 z-50 flex flex-col overflow-hidden rounded-[26px] border border-white/80 backdrop-blur-2xl transition-[width,box-shadow,background-color] duration-[380ms] ease-[cubic-bezier(.22,1,.36,1)] will-change-[width] ${
+          expanded
+            ? 'w-[260px] bg-white/95 shadow-[0_14px_45px_rgba(68,167,252,0.20)]'
+            : 'w-[72px] bg-white/80 shadow-[0_8px_32px_rgba(68,167,252,0.12)]'
+        }`}
+      >
+        {/* লোগো: সরু অবস্থায় V মার্ক, চওড়া অবস্থায় পুরো লোগো — একই বক্সে ক্রস-ফেড */}
+        <div className="relative h-[76px] shrink-0">
+          <span
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-[opacity,transform] duration-200 ease-out ${
+              expanded ? 'scale-90 opacity-0' : 'scale-100 opacity-100 delay-100'
+            }`}
+          >
+            <BrandMark className="h-[30px] w-auto" />
+          </span>
+          <span
+            className={`absolute left-[22px] top-1/2 -translate-y-1/2 transition-[opacity,transform] duration-200 ease-out ${
+              expanded ? 'translate-x-0 opacity-100 delay-100' : 'pointer-events-none -translate-x-2 opacity-0'
+            }`}
+          >
+            <BrandLogo className="h-[38px] w-auto" priority />
+            <span className="mt-0.5 block pl-0.5 font-body text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#0F6FC6]">
+              Admin Suite
+            </span>
+          </span>
+        </div>
+
+        {/* স্ক্রলবার লুকানো — নইলে সরু অবস্থায় ৪px জায়গা নিয়ে আইকন সরিয়ে দেয় */}
+        <nav className="no-scrollbar flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[9px] pb-2">
+          {NAV_SECTIONS.map((section, si) => (
+            <div key={section.title} className={si > 0 ? 'mt-1' : ''}>
+              <SectionLabel title={section.title} expanded={expanded} />
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <DesktopNavItem key={item.href} item={item} active={item.href === activeHref} expanded={expanded} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="shrink-0 border-t border-border-base/60 p-[9px]">
+          <form action={logout}>
+            <button
+              type="submit"
+              aria-label="লগআউট"
+              className="group flex h-[44px] w-full items-center overflow-hidden rounded-[14px] text-danger/80 transition-colors duration-200 hover:bg-red-50 hover:text-danger"
+            >
+              <span className={ICON_BOX}>
+                <NavIcon className="h-5 w-5 group-hover:scale-110">
+                  <LogoutIcon />
+                </NavIcon>
+              </span>
+              <span className={labelCls(expanded)}>লগআউট</span>
+            </button>
+          </form>
+        </div>
+      </aside>
+    </div>
+  );
 }
 
-export default function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const pathname = usePathname();
-  const isActive = useIsActive();
+/* ══════════════════════════════════════════════════════════════════════
+   মোবাইল লিকুইড গ্লাস ডক বার (<768px)
+   ──────────────────────────────────────────────────────────────────────
+   - ৫টা সমান কলাম; সক্রিয় ট্যাবের নিচে স্কাই-ব্লু "লেন্স" ফোঁটা স্প্রিং-এর মতো সরে যায়।
+   - মাঝের "+" = কাঁচের অর্ব (AI Planner); সক্রিয় হলে সলিড স্কাই।
+   - মেনু ড্রয়ার খোলা থাকলে লেন্স "মেনু"-তে যায়।
+   ══════════════════════════════════════════════════════════════════════ */
+function MobileDock({
+  activeHref,
+  menuOpen,
+  onOpenMenu,
+}: {
+  activeHref: string;
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+}) {
+  const routeSlot = DOCK_SLOTS.findIndex((s) => s.kind !== 'menu' && s.href === activeHref);
+  const activeSlot = menuOpen ? MENU_SLOT : routeSlot;
+  const lensVisible = activeSlot >= 0 && activeSlot !== ORB_SLOT;
 
+  // লেন্স শেষ দৃশ্যমান অবস্থানে থাকে — লুকানো অবস্থায় বাম কোণে ছুটে যায় না
+  const [lens, setLens] = useState(() => (lensVisible ? activeSlot : 0));
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (activeSlot >= 0 && activeSlot !== ORB_SLOT) setLens(activeSlot);
+  }, [activeSlot]);
+
+  const tabCls = (active: boolean) =>
+    `relative z-10 flex h-[54px] flex-col items-center justify-center gap-[3px] rounded-full transition-[color,transform] duration-300 active:scale-90 ${
+      active ? 'text-white' : 'text-ink/70'
+    }`;
+
+  return (
+    <nav
+      aria-label="নিচের মেনু"
+      className="liquid-glass-bar fixed left-1/2 z-40 w-[calc(100%-24px)] max-w-[420px] -translate-x-1/2 rounded-full p-1.5 md:hidden"
+      style={{ bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}
+    >
+      <div className="relative grid grid-cols-5 items-center">
+        <span
+          aria-hidden="true"
+          className={`liquid-glass-lens pointer-events-none inset-y-0 left-0 rounded-full transition-[transform,opacity] duration-[520ms] ease-[cubic-bezier(.34,1.45,.5,1)] ${
+            lensVisible ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ width: 'calc(100% / 5)', transform: `translateX(${lens * 100}%)` }}
+        />
+
+        {DOCK_SLOTS.map((slot, i) => {
+          if (slot.kind === 'menu') {
+            return (
+              <button
+                key="menu"
+                type="button"
+                onClick={onOpenMenu}
+                aria-label="মেনু খুলুন"
+                aria-haspopup="dialog"
+                aria-expanded={menuOpen}
+                className={tabCls(menuOpen)}
+              >
+                <NavIcon className="h-[22px] w-[22px]">{slot.icon}</NavIcon>
+                <span className="font-body text-[10px] font-extrabold leading-none">{slot.label}</span>
+              </button>
+            );
+          }
+
+          const active = i === routeSlot && !menuOpen;
+
+          if (slot.kind === 'orb') {
+            return (
+              <Link
+                key="orb"
+                href={slot.href as string}
+                aria-label={slot.label}
+                aria-current={active ? 'page' : undefined}
+                className="relative z-10 flex h-[54px] items-center justify-center transition-transform duration-200 active:scale-90"
+              >
+                <span
+                  data-active={active}
+                  className="liquid-glass-orb flex h-[48px] w-[48px] items-center justify-center rounded-full transition-all duration-300"
+                >
+                  <NavIcon className={`h-[22px] w-[22px] ${active ? 'text-white' : 'text-brand-light'}`}>{slot.icon}</NavIcon>
+                </span>
+              </Link>
+            );
+          }
+
+          return (
+            <Link
+              key={slot.href}
+              href={slot.href as string}
+              aria-current={active ? 'page' : undefined}
+              className={tabCls(active)}
+            >
+              <NavIcon className="h-[22px] w-[22px]">{slot.icon}</NavIcon>
+              <span className="font-body text-[10px] font-extrabold leading-none">{slot.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   মোবাইল মেনু ড্রয়ার — লিকুইড গ্লাস বটম শীট (z-[550]/[560])
+   ══════════════════════════════════════════════════════════════════════ */
+function MobileDrawer({ open, onClose, activeHref }: { open: boolean; onClose: () => void; activeHref: string }) {
+  // খোলা থাকলে পেছনের পেজ স্ক্রল লক + Esc দিয়ে বন্ধ
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose]);
 
   return (
     <>
-      {/* ══ ডেস্কটপ এক্সপ্যান্ডেবল গ্লাস সাইডবার (≥768px) ══ */}
-      <div className="relative hidden md:block md:w-[76px] md:shrink-0">
-        <aside
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className={`fixed left-3 top-3 bottom-3 z-50 flex flex-col overflow-hidden rounded-[26px] border border-white/80 bg-white/80 shadow-[0_8px_32px_rgba(68,167,252,0.12)] backdrop-blur-2xl transition-[width,box-shadow] duration-300 ease-[cubic-bezier(.4,0,.2,1)] ${
-            isHovered
-              ? 'w-[260px] shadow-[0_14px_45px_rgba(68,167,252,0.18)] bg-white/95'
-              : 'w-[72px]'
-          }`}
-        >
-          {/* লোগো ও হেডার */}
-          <div className="flex h-16 items-center px-4 pt-1">
-            <LogoMark isExpanded={isHovered} />
-          </div>
-
-          {/* মেনু লিস্ট */}
-          <nav className="sleek-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3">
-            {NAV_SECTIONS.map((section) => (
-              <div key={section.title} className="mb-2">
-                <div
-                  className={`px-3 py-1 font-body text-[9.5px] font-extrabold uppercase tracking-wider text-muted/70 transition-all duration-200 ${
-                    isHovered ? 'opacity-100 h-auto' : 'opacity-0 h-0 overflow-hidden py-0'
-                  }`}
-                >
-                  {section.title}
-                </div>
-
-                <div className="space-y-1">
-                  {section.items.map((item) => {
-                    if (!item.enabled) {
-                      return (
-                        <div
-                          key={item.href}
-                          className={`flex h-[44px] items-center rounded-[14px] px-3 font-body text-[13px] font-medium text-muted/40 cursor-not-allowed ${
-                            isHovered ? 'justify-start gap-3' : 'justify-center'
-                          }`}
-                          title={item.label}
-                        >
-                          <NavIcon className="h-5 w-5">{item.icon}</NavIcon>
-                          {isHovered && (
-                            <>
-                              <span className="truncate flex-1">{item.label}</span>
-                              <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted">
-                                শীঘ্রই
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    const active = isActive(item.href);
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        title={!isHovered ? item.label : undefined}
-                        className={`group relative flex h-[44px] items-center rounded-[14px] transition-all duration-brand ${
-                          isHovered ? 'justify-start gap-3 px-3.5' : 'justify-center px-0'
-                        } ${
-                          active
-                            ? 'bg-brand-light text-white shadow-[0_4px_16px_rgba(68,167,252,0.35)]'
-                            : 'text-ink/75 hover:bg-brand-bg/35 hover:text-brand-light'
-                        }`}
-                      >
-                        <NavIcon className={`h-5 w-5 ${active ? 'text-white' : 'text-ink/70 group-hover:text-brand-light'}`}>
-                          {item.icon}
-                        </NavIcon>
-
-                        <span
-                          className={`whitespace-nowrap font-body text-[13px] font-bold tracking-tight transition-all duration-200 ${
-                            isHovered ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden pointer-events-none'
-                          }`}
-                        >
-                          {item.label}
-                        </span>
-
-                        {isHovered && item.badge && (
-                          <span
-                            className="ml-auto rounded-full px-2 py-0.5 font-body text-[9.5px] font-extrabold text-white shadow-xs"
-                            style={{ background: item.badge.bg }}
-                          >
-                            {item.badge.text}
-                          </span>
-                        )}
-
-                        {item.href === '/orders' && (
-                          <div className={isHovered ? 'ml-auto' : 'absolute right-2 top-2'}>
-                            <PendingOrdersBadge active={active} />
-                          </div>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </nav>
-
-          {/* লগআউট বাটন */}
-          <div className="border-t border-border-base/60 p-2.5">
-            <form action={logout}>
-              <button
-                type="submit"
-                className={`group flex h-[42px] w-full items-center rounded-[14px] font-body text-[12.5px] font-bold text-danger/80 transition-all duration-brand hover:bg-red-50 hover:text-danger ${
-                  isHovered ? 'justify-start gap-3 px-3.5' : 'justify-center px-0'
-                }`}
-                title={!isHovered ? 'লগআউট' : undefined}
-              >
-                <NavIcon className="h-5 w-5 text-danger/70 group-hover:text-danger">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </NavIcon>
-                <span
-                  className={`whitespace-nowrap transition-all duration-200 ${
-                    isHovered ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden pointer-events-none'
-                  }`}
-                >
-                  লগআউট
-                </span>
-              </button>
-            </form>
-          </div>
-        </aside>
-      </div>
-
-      {/* ══ মোবাইল ফ্রস্টেড বটম ক্যাপসুল বার — অ্যাপল লিকুইড স্কাই-ব্লু লুক ══ */}
       <div
-        className="fixed bottom-3 left-1/2 z-40 flex w-[calc(100%-20px)] max-w-[420px] -translate-x-1/2 items-center justify-between rounded-full border border-white/80 bg-white/90 p-1.5 shadow-[0_8px_32px_rgba(68,167,252,0.18)] backdrop-blur-2xl md:hidden"
-        style={{ bottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}
-      >
-        {TAB_ITEMS.slice(0, 2).map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 transition-all duration-brand ${
-                active ? 'bg-brand-light text-white shadow-xs' : 'text-ink/65 hover:text-brand-light'
-              }`}
-            >
-              <NavIcon className="h-[19px] w-[19px]">{item.icon}</NavIcon>
-              <span className="font-body text-[9px] font-bold">{item.label}</span>
-            </Link>
-          );
-        })}
-
-        {/* অ্যাপল স্টাইল লিকুইড ট্রান্সপারেন্ট স্কাই-ব্লু সেন্ট্রাল বাটন (Flush Level, No -mt-5) */}
-        <Link
-          href="/products/parser"
-          aria-label="AI Planner"
-          className="relative mx-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/20 text-brand-light shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.85),0_3px_12px_rgba(68,167,252,0.22)] backdrop-blur-md transition-all duration-brand active:scale-95 hover:bg-brand-light/30"
-        >
-          <NavIcon className="h-5 w-5 text-brand-light">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </NavIcon>
-        </Link>
-
-        {TAB_ITEMS.slice(2).map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 transition-all duration-brand ${
-                active ? 'bg-brand-light text-white shadow-xs' : 'text-ink/65 hover:text-brand-light'
-              }`}
-            >
-              <NavIcon className="h-[19px] w-[19px]">{item.icon}</NavIcon>
-              <span className="font-body text-[9px] font-bold">{item.label}</span>
-            </Link>
-          );
-        })}
-
-        {/* মেনু ড্রয়ার ট্রিগার বাটন */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-ink/65 transition-all duration-brand hover:text-brand-light"
-        >
-          <NavIcon className="h-[19px] w-[19px]">
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </NavIcon>
-          <span className="font-body text-[9px] font-bold">মেনু</span>
-        </button>
-      </div>
-
-      {/* ══ মোবাইল ফ্রস্টেড স্লাইড-আপ ড্রয়ার ══ */}
-      <div
-        className={`fixed inset-0 z-[550] bg-ink/40 backdrop-blur-[3px] transition-opacity duration-300 md:hidden ${
-          mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        aria-hidden="true"
+        className={`fixed inset-0 z-[550] bg-ink/35 backdrop-blur-[3px] transition-opacity duration-300 md:hidden ${
+          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         }`}
-        onClick={() => setMobileOpen(false)}
+        onClick={onClose}
       />
 
       <div
-        className={`fixed inset-x-0 bottom-0 z-[560] flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[32px] border-t border-white/80 bg-white/95 px-4 pt-3 pb-6 shadow-[0_-14px_45px_rgba(68,167,252,0.18)] backdrop-blur-2xl transition-transform duration-[380ms] ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
-          mobileOpen ? 'translate-y-0' : 'translate-y-full'
+        role="dialog"
+        aria-modal="true"
+        aria-label="মেনু"
+        inert={!open}
+        className={`liquid-glass-sheet fixed inset-x-0 bottom-0 z-[560] flex max-h-[86dvh] flex-col overflow-hidden rounded-t-[32px] px-4 pt-3 transition-transform duration-[420ms] ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
+          open ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="mx-auto mb-3 h-1.5 w-12 shrink-0 rounded-full bg-muted/20" />
+        <div className="mx-auto mb-3 h-1.5 w-12 shrink-0 rounded-full bg-ink/15" />
 
-        <div className="mb-3 flex items-center justify-between px-2 pb-2 border-b border-border-base/50">
-          <LogoMark isExpanded={true} />
+        <div className="mb-2 flex shrink-0 items-center justify-between border-b border-border-base/50 px-1.5 pb-3">
+          <div>
+            <BrandLogo className="h-9 w-auto" />
+            <span className="mt-0.5 block pl-0.5 font-body text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#0F6FC6]">
+              Admin Suite
+            </span>
+          </div>
           <button
             type="button"
-            onClick={() => setMobileOpen(false)}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted text-ink/70 hover:bg-border-base"
+            onClick={onClose}
+            aria-label="মেনু বন্ধ করুন"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 text-ink/70 shadow-sh1 transition-all duration-brand active:scale-90"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -513,30 +671,35 @@ export default function Sidebar() {
           </button>
         </div>
 
-        <nav className="sleek-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-1 pb-4">
+        <nav className="sleek-scrollbar flex-1 overflow-y-auto overscroll-contain pb-3">
           {NAV_SECTIONS.map((section) => (
             <div key={section.title} className="mb-3">
-              <div className="mb-1.5 px-3 font-body text-[10px] font-extrabold uppercase tracking-wider text-muted">
+              <div className="mb-1.5 px-2.5 font-body text-[11px] font-extrabold uppercase tracking-wider text-muted">
                 {section.title}
               </div>
               <div className="space-y-1">
                 {section.items.map((item) => {
                   if (!item.enabled) return null;
-                  const active = isActive(item.href);
+                  const active = item.href === activeHref;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-body text-[13px] font-bold transition-all duration-brand ${
+                      onClick={onClose}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex min-h-[48px] items-center gap-3 rounded-2xl px-2.5 py-1.5 font-body text-[13.5px] font-bold transition-all duration-brand active:scale-[0.98] ${
                         active
-                          ? 'bg-brand-light text-white shadow-xs'
-                          : 'text-ink/80 hover:bg-surface-muted hover:text-brand-light'
+                          ? 'bg-brand-light text-white shadow-[0_6px_18px_rgba(68,167,252,0.38)]'
+                          : 'text-ink/85 hover:bg-brand-light/10'
                       }`}
                     >
-                      <NavIcon className={`h-5 w-5 ${active ? 'text-white' : 'text-ink/65'}`}>
-                        {item.icon}
-                      </NavIcon>
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                          active ? 'bg-white/25 text-white' : 'bg-brand-light/10 text-brand-light'
+                        }`}
+                      >
+                        <NavIcon className="h-[19px] w-[19px]">{item.icon}</NavIcon>
+                      </span>
                       <span className="flex-1">{item.label}</span>
                       {item.badge && (
                         <span
@@ -555,22 +718,39 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        <div className="border-t border-border-base/60 pt-2">
-          <form action={logout} onClick={() => setMobileOpen(false)}>
+        <div className="shrink-0 border-t border-border-base/50 pt-3">
+          <form action={logout}>
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 py-2.5 font-body text-[13px] font-bold text-danger transition-colors hover:bg-red-100"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-red-200/80 bg-red-50 font-body text-[13.5px] font-extrabold text-danger transition-all duration-brand active:scale-[0.98]"
             >
-              <NavIcon className="h-4 w-4">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
+              <NavIcon className="h-[18px] w-[18px]">
+                <LogoutIcon />
               </NavIcon>
               লগআউট
             </button>
           </form>
         </div>
       </div>
+    </>
+  );
+}
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const activeHref = useActiveHref();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  return (
+    <>
+      <DesktopSidebar activeHref={activeHref} />
+      <MobileDock activeHref={activeHref} menuOpen={mobileOpen} onOpenMenu={() => setMobileOpen(true)} />
+      <MobileDrawer open={mobileOpen} onClose={closeMobile} activeHref={activeHref} />
     </>
   );
 }

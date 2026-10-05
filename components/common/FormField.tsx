@@ -24,12 +24,14 @@ interface FieldProps {
   className?: string;
   /** ইনপুটের নিচে ছোট ব্যাখ্যা */
   help?: React.ReactNode;
+  /** ইনপুটের id — দিলে লেবেল ক্লিক করলে ইনপুটে ফোকাস যায় (স্ক্রিন-রিডারেও সংযুক্ত) */
+  htmlFor?: string;
 }
 
-export function Field({ label, hint, required, children, className = '', help }: FieldProps) {
+export function Field({ label, hint, required, children, className = '', help, htmlFor }: FieldProps) {
   return (
     <div className={className}>
-      <label className="mb-1.5 flex flex-wrap items-baseline gap-x-1.5 font-body text-[12.5px] font-extrabold text-ink">
+      <label htmlFor={htmlFor} className="mb-1.5 flex flex-wrap items-baseline gap-x-1.5 font-body text-[12.5px] font-extrabold text-ink">
         <span>
           {label}
           {required && <span className="ml-0.5 text-danger">*</span>}

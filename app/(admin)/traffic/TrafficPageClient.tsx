@@ -41,9 +41,9 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString();
 }
 
-// legacy .trf-head-এর মতো কলাম-ভিত্তিক, center-aligned হেড + নিচে
-// date picker/রিফ্রেশ — orchestrator, ডেরাইভড ডাটা সব lib/traffic.ts-এর
-// pure helper দিয়ে useMemo-তে কম্পিউট করা হয় (OrdersPageClient.tsx-এর মতোই)।
+// নতুন ডিজাইন: পেজ সরাসরি টুলবার কার্ড দিয়ে শুরু (নিট প্রফিট পেজের মতো) —
+// orchestrator, ডেরাইভড ডাটা সব lib/traffic.ts-এর pure helper দিয়ে useMemo-তে
+// কম্পিউট করা হয় (OrdersPageClient.tsx-এর মতোই)।
 export default function TrafficPageClient({ initialData }: Props) {
   const [trafficData, setTrafficData] = useState<TrafficData>(initialData);
   // trf namespace-এ 'সব তারিখ দেখাও' ক্লিয়ার অপশন নেই (allowClear={false}
@@ -89,31 +89,52 @@ export default function TrafficPageClient({ initialData }: Props) {
 
   return (
     <div>
-      <div className="mb-5 flex flex-col items-center text-center">
-        <h1 className="font-bold text-xl text-ink">ট্রাফিক অ্যানালিটিক্স</h1>
-        <p className="mt-0.5 text-sm text-muted">ভিজিটর, পিক আওয়ার ও প্রোডাক্ট ভিউ — বিস্তারিত পরিসংখ্যান</p>
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <DateRangePicker active={true} range={dateRange} onApply={setDateRange} minDaysBack={89} allowClear={false} />
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="রিফ্রেশ করুন"
-            className="flex h-9 w-9 items-center justify-center rounded-brand border border-border-base bg-brand-surface text-ink transition-brand hover:bg-surface-muted disabled:opacity-50"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+      {/* ══ ১. টুলবার কার্ড: তারিখ রেঞ্জ + রিফ্রেশ ══ */}
+      <div className="mb-4 rounded-[24px] border border-white/90 bg-white p-3.5 shadow-sh1 sm:p-4">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/15 text-brand-light sm:h-10 sm:w-10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <div className="font-body text-[14px] font-black text-ink">কত ভিজিটর, কখন বেশি আসে</div>
+              <div className="font-body text-[11px] font-semibold text-muted">ভিজিটর, পিক আওয়ার ও প্রোডাক্ট ভিউ</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <DateRangePicker
+              active={true}
+              range={dateRange}
+              onApply={setDateRange}
+              minDaysBack={89}
+              allowClear={false}
+              className="min-w-0 flex-1 sm:flex-none"
+            />
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="রিফ্রেশ করুন"
+              aria-label="রিফ্রেশ করুন"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-base/80 bg-white text-ink transition-all duration-brand hover:border-brand-light hover:text-brand-light active:scale-90 disabled:opacity-50 lg:h-10 lg:w-10"
             >
-              <path d="M21 12a9 9 0 1 1-2.6-6.4" />
-              <path d="M21 3v6h-6" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-[18px] w-[18px] ${refreshing ? 'animate-spin' : ''}`}
+              >
+                <path d="M21 12a9 9 0 1 1-2.6-6.4" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 

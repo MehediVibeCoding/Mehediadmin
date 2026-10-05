@@ -48,7 +48,7 @@ export default function LowStockAlert({ items }: { items: LowStockItem[] }) {
 
         <Link
           href="/products"
-          className="group inline-flex items-center gap-1.5 rounded-full border border-border-base/80 bg-white px-3.5 py-1.5 font-body text-[11.5px] font-bold text-ink shadow-xs transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-primary active:scale-95"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-border-base/80 bg-white h-9 px-3.5 font-body text-[11.5px] font-bold text-ink transition-all duration-brand hover:border-brand-light hover:bg-brand-bg/30 hover:text-brand-light active:scale-95"
         >
           <span>স্টক আপডেট</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-brand group-hover:translate-x-0.5">

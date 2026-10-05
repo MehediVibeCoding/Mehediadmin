@@ -249,6 +249,86 @@ html {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   অ্যাপল-স্টাইল লিকুইড গ্লাস (মোবাইল নিচের ডক বার ও মেনু ড্রয়ার)
+   ──────────────────────────────────────────────────────────────────────
+   স্তর: ঝাপসা পেছন (blur + saturate) → হালকা সাদা গ্রেডিয়েন্ট → উপরে স্পেকুলার হাইলাইট
+   → নিচে স্কাই-ব্লু প্রতিফলন → বাইরে নরম স্কাই শ্যাডো। শুধু স্কাই-ব্লু (#44A7FC) টোন।
+   ══════════════════════════════════════════════════════════════════════ */
+.liquid-glass-bar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.70) 0%, rgba(235, 246, 255, 0.52) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9);
+  backdrop-filter: blur(24px) saturate(1.9);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 12px 36px rgba(68, 167, 252, 0.24),
+    0 2px 8px rgba(26, 26, 26, 0.06),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(68, 167, 252, 0.18),
+    inset 0 0 20px rgba(255, 255, 255, 0.35);
+}
+
+.liquid-glass-sheet {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(240, 248, 255, 0.78) 100%);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 -16px 50px rgba(68, 167, 252, 0.22),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* সক্রিয় ট্যাবের "লেন্স" — স্কাই-ব্লু ফোঁটা, উপরে চকচকে হাইলাইট */
+.liquid-glass-lens {
+  position: absolute;
+  background: #44A7FC;
+  box-shadow:
+    0 8px 20px rgba(68, 167, 252, 0.46),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -3px 6px rgba(60, 147, 222, 0.55);
+  will-change: transform;
+}
+.liquid-glass-lens::before {
+  content: '';
+  position: absolute;
+  inset: 2px 8px auto 8px;
+  height: 46%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+/* মাঝের "+" অর্ব — কাঁচের গোলক */
+.liquid-glass-orb {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, rgba(68, 167, 252, 0.34), rgba(68, 167, 252, 0.18));
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  backdrop-filter: blur(10px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 6px 16px rgba(68, 167, 252, 0.34),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 5px rgba(68, 167, 252, 0.28);
+}
+.liquid-glass-orb[data-active='true'] {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 55%),
+    #44A7FC;
+  box-shadow:
+    0 8px 20px rgba(68, 167, 252, 0.5),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -3px 6px rgba(60, 147, 222, 0.55);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid-glass-bar { background: rgba(255, 255, 255, 0.96); }
+  .liquid-glass-sheet { background: rgba(255, 255, 255, 0.98); }
+  .liquid-glass-orb { background: rgba(214, 235, 254, 0.95); }
+}
+
 /* নেটিভ <select> তীর globals-এ appearance:none দিয়ে লুকানো — তাই স্কাই-ব্লু চেভ্রন ব্যাকগ্রাউন্ড হিসেবে আঁকা */
 .select-chevron {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2344A7FC' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");

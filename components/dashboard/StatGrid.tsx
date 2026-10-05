@@ -141,8 +141,13 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
       {/* হিরো কার্ড — সবচেয়ে গুরুত্বপূর্ণ মেট্রিক (নিট প্রফিট), গ্র্যাডিয়েন্ট সলিড ব্যাকগ্রাউন্ড */}
       <Link
         href={hero.href}
-        className="group relative flex min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-brand-light to-brand-primary p-5 shadow-sh2 transition-all duration-brand hover:-translate-y-0.5"
+        className="group relative flex min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-brand-light to-brand-light-hover p-5 shadow-[0_10px_28px_rgba(68,167,252,0.38)] transition-all duration-brand hover:-translate-y-0.5 active:scale-[0.99]"
       >
+        {/* নরম আলোর ছটা — স্থির গ্রেডিয়েন্ট (ব্লার/অ্যানিমেশন নেই) */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.34),transparent_55%)]"
+        />
         {/* ডেকোরেটিভ ওয়াটারমার্ক আইকন — খালি জায়গা এলিগেন্টভাবে পূরণ করে */}
         <svg
           aria-hidden="true"
@@ -193,7 +198,7 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
             )}
 
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] shadow-xs transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
             >
               {card.icon}
             </div>
