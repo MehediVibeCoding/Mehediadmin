@@ -5,42 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { Field, FIELD_CLS } from '@/components/common/FormField';
-
-// ব্র্যান্ড কভারের মতো নরম সাদা ঢেউ — দুই কোণায়, স্থির (অ্যানিমেশন নেই)
-function Waves({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 560 320"
-      fill="none"
-      stroke="#fff"
-      strokeLinecap="round"
-      className={`pointer-events-none absolute w-[78vw] max-w-[620px] ${className}`}
-    >
-      <path d="M-10 190C120 215 250 130 350 30S520-20 580-50" strokeWidth="1.8" opacity="0.9" />
-      <path d="M-10 255C150 280 280 175 400 70S540 0 600-30" strokeWidth="1.4" opacity="0.65" />
-      <path d="M-10 320C175 345 320 225 450 105S590 25 640-5" strokeWidth="1.1" opacity="0.45" />
-    </svg>
-  );
-}
-
-// ব্র্যান্ড কভারের গ্যাজেট আইকন — অতি হালকা স্কাই-ব্লু রেখা, শুধু বড় স্ক্রিনে
-function GadgetIcon({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`pointer-events-none absolute hidden text-brand-light opacity-[0.30] md:block ${className}`}
-    >
-      {children}
-    </svg>
-  );
-}
+import { AuthBackdrop } from '@/components/common/AuthBackdrop';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -77,30 +42,8 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10">
-      {/* ── পটভূমির সাজ ── */}
-      <Waves className="left-0 top-0" />
-      <Waves className="bottom-0 right-0 rotate-180" />
-      <GadgetIcon className="left-[9%] top-[46%] h-24 w-24 -rotate-12">
-        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-      </GadgetIcon>
-      <GadgetIcon className="right-[10%] top-[14%] h-20 w-20 rotate-12">
-        <circle cx="12" cy="12" r="7" />
-        <polyline points="12 9 12 12 13.5 13.5" />
-        <path d="M16.51 17.35l-.35 3.83a2 2 0 0 1-2 1.82H9.83a2 2 0 0 1-2-1.82l-.35-3.83m.01-10.7l.35-3.83A2 2 0 0 1 9.83 1h4.35a2 2 0 0 1 2 1.82l.35 3.83" />
-      </GadgetIcon>
-      <GadgetIcon className="right-[7%] top-[52%] h-24 w-24 rotate-6">
-        <rect x="4" y="2" width="16" height="20" rx="2" />
-        <circle cx="12" cy="14" r="4" />
-        <line x1="12" y1="6" x2="12.01" y2="6" />
-      </GadgetIcon>
-      <GadgetIcon className="bottom-[10%] left-[14%] h-20 w-20 rotate-12">
-        <rect x="5" y="2" width="14" height="20" rx="2" />
-        <circle cx="12" cy="10" r="2.5" />
-        <line x1="9" y1="18" x2="9.01" y2="18" />
-        <line x1="12" y1="18" x2="12.01" y2="18" />
-        <line x1="15" y1="18" x2="15.01" y2="18" />
-      </GadgetIcon>
+      {/* ── প্রিমিয়াম ফিক্সড পটভূমি (ঢেউ + গ্যাজেট টাইল + ডট-গ্রিড) ── */}
+      <AuthBackdrop className="z-0" iconClass="hidden md:flex" />
 
       {/* ── লগইন কার্ড ── */}
       <div className="relative z-10 w-full max-w-[420px]">
