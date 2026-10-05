@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
+import { validateImageUpload } from '@/lib/uploadValidation';
 import { requireAdmin } from '@/lib/auth-guard';
 import type { Product, ProductFaq, ProductInfoBox, ProductSpecs } from '@/types';
 import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
@@ -496,11 +497,14 @@ export async function uploadProductImage(
 ): Promise<{ ok: boolean; url?: string; message?: string }> {
   await requireAdmin();
   const file = formData.get('file');
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof File)) {
     return { ok: false, message: 'কোনো ফাইল পাওয়া যায়নি' };
   }
+  // 🛡️ অডিট ফিক্স: ফাইলের নাম না, আসল MIME টাইপ চেক করে ext বসানো হচ্ছে
+  const validated = validateImageUpload(file);
+  if (!validated.ok) return { ok: false, message: validated.message };
   const supabase = createServiceRoleClient();
-  const ext = file.name.split('.').pop() || 'jpg';
+  const ext = validated.ext;
   const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
 
   const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {

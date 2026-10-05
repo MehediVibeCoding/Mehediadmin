@@ -227,27 +227,65 @@ async function restoreStockForItems(
   return { ok: true };
 }
 
+// 🛡️ অডিট ফিক্স — "রি-কনফার্ম" স্টক বাগ ─────────────────────────────
+// আগে শুধু rejected/cancelled-এ যাওয়ার সময় স্টক ফেরত যেত, কিন্তু কেউ যদি
+// ভুল করে বা ইচ্ছা করে সেই cancelled/rejected অর্ডারকে আবার pending/
+// confirmed-এ ফিরিয়ে আনত, তখন স্টক দ্বিতীয়বার কমানোর কোনো লজিক ছিল না —
+// ফলে ডাটাবেজের stock সংখ্যা বাস্তবের চেয়ে বেশি দেখাতো। এখন বিপরীত
+// দিকের ট্রানজিশনেও (rejected/cancelled → যেকোনো সক্রিয় স্ট্যাটাস)
+// `decrement_product_stock` RPC কল হয় (checkout.ts-এ যেটা ব্যবহার হয়
+// সেই একই ফাংশন) — এবং স্টক অপর্যাপ্ত হলে status change-টাই ব্যর্থ হয়
+// (fail-closed), যাতে স্টক নেগেটিভ না হয়ে যায়।
+async function decrementStockForItems(
+  supabase: SupabaseClient,
+  items: OrderItem[]
+): Promise<{ ok: boolean; message?: string }> {
+  const decrementable = (items || []).filter((it) => it && it.id !== undefined && it.id !== null && it.qty > 0);
+  if (!decrementable.length) return { ok: true };
+
+  const { error } = await supabase.rpc('decrement_product_stock', {
+    p_items: decrementable.map((it) => ({ id: it.id, qty: it.qty })),
+  });
+
+  if (error) {
+    const insufficient = error.message?.includes('INSUFFICIENT_STOCK');
+    return {
+      ok: false,
+      message: insufficient
+        ? 'স্টক অপর্যাপ্ত — এই অর্ডার আবার কনফার্ম করার মতো পর্যাপ্ত স্টক নেই। আগে স্টক বাড়িয়ে নিন।'
+        : 'স্টক কমাতে ব্যর্থ (' + error.message + ')। স্ট্যাটাস পরিবর্তন হয়নি।',
+    };
+  }
+  return { ok: true };
+}
+
 // legacy setOrderStatus() — শুধু Supabase আপডেট অংশ। sound legacy-তেও
 // client-side, তাই OrdersPageClient.tsx-এই আছে (এখানে না)।
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<OrderActionResult> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
 
-  // 'rejected' বা 'cancelled'-এ change হওয়ার সময় স্টক রিস্টোর করতে হবে —
-  // কিন্তু আগে বর্তমান status/items জেনে নিতে হবে (আগে থেকেই এই দুই
-  // স্ট্যাটাসের একটায় থাকলে আবার restore না করার জন্য — double-credit ঠেকাতে)
-  if (STOCK_RESTORED_STATUSES.includes(status)) {
-    const { data: current, error: fetchErr } = await supabase
-      .from('orders')
-      .select('status, items')
-      .eq('id', id)
-      .single();
-    if (fetchErr) return { status: 'error', message: 'অর্ডার খুঁজে পাওয়া যায়নি: ' + fetchErr.message };
+  // সবসময় আগে বর্তমান status/items জেনে নেওয়া হয় — দুই দিকের ট্রানজিশনই
+  // (স্টক-রিস্টোরড স্ট্যাটাসে ঢোকা বা সেখান থেকে বের হওয়া) idempotent-ভাবে
+  // হ্যান্ডল করার জন্য।
+  const enteringRestored = STOCK_RESTORED_STATUSES.includes(status);
+  const { data: current, error: fetchErr } = await supabase
+    .from('orders')
+    .select('status, items')
+    .eq('id', id)
+    .single();
+  if (fetchErr) return { status: 'error', message: 'অর্ডার খুঁজে পাওয়া যায়নি: ' + fetchErr.message };
 
-    if (!STOCK_RESTORED_STATUSES.includes(current.status)) {
-      const restore = await restoreStockForItems(supabase, current.items as OrderItem[]);
-      if (!restore.ok) return { status: 'error', message: restore.message };
-    }
+  const wasRestored = STOCK_RESTORED_STATUSES.includes(current.status);
+
+  if (enteringRestored && !wasRestored) {
+    // active → rejected/cancelled: স্টক ফেরত
+    const restore = await restoreStockForItems(supabase, current.items as OrderItem[]);
+    if (!restore.ok) return { status: 'error', message: restore.message };
+  } else if (!enteringRestored && wasRestored) {
+    // rejected/cancelled → active (রি-কনফার্ম): স্টক আবার কমানো, অপর্যাপ্ত হলে ব্লক
+    const decrement = await decrementStockForItems(supabase, current.items as OrderItem[]);
+    if (!decrement.ok) return { status: 'error', message: decrement.message };
   }
 
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
@@ -293,12 +331,14 @@ export async function bulkUpdateOrderStatus(
   const supabase = createServiceRoleClient();
 
   let targetIds = ids;
+  const enteringRestored = STOCK_RESTORED_STATUSES.includes(status);
 
-  // বাল্ক-এ reject/cancel করার সময়ও একই স্টক-রিস্টোর নিয়ম — প্রতিটা অর্ডারের
-  // জন্য আলাদা করে (যেগুলো আগে থেকেই rejected/cancelled না, শুধু সেগুলোর জন্য)।
-  // কোনো একটার restore ব্যর্থ হলে সেটাকে বাদ দিয়ে বাকিগুলো আপডেট হয়,
-  // যাতে একটা fail হওয়ার কারণে পুরো বাল্ক অ্যাকশন আটকে না যায়।
-  if (STOCK_RESTORED_STATUSES.includes(status)) {
+  // বাল্ক-এ reject/cancel বা রি-কনফার্ম করার সময়ও একই স্টক নিয়ম — প্রতিটা
+  // অর্ডারের জন্য আলাদা করে (শুধু যাদের বর্তমান স্ট্যাটাস আসলেই বদলাচ্ছে,
+  // তাদের জন্যই)। কোনো একটার restore/decrement ব্যর্থ হলে সেটাকে বাদ দিয়ে
+  // বাকিগুলো আপডেট হয়, যাতে একটা fail হওয়ার কারণে পুরো বাল্ক অ্যাকশন
+  // আটকে না যায়।
+  {
     const { data: rows, error: fetchErr } = await supabase
       .from('orders')
       .select('id, status, items')
@@ -307,14 +347,27 @@ export async function bulkUpdateOrderStatus(
 
     const failedIds: string[] = [];
     for (const row of rows || []) {
-      if (STOCK_RESTORED_STATUSES.includes(row.status)) continue; // idempotent — আগেই rejected/cancelled
-      const restore = await restoreStockForItems(supabase, row.items as OrderItem[]);
-      if (!restore.ok) failedIds.push(row.id);
+      const wasRestored = STOCK_RESTORED_STATUSES.includes(row.status);
+      if (enteringRestored && !wasRestored) {
+        const restore = await restoreStockForItems(supabase, row.items as OrderItem[]);
+        if (!restore.ok) failedIds.push(row.id);
+      } else if (!enteringRestored && wasRestored) {
+        // 🛡️ অডিট ফিক্স: বাল্কে রি-কনফার্ম করলেও স্টক আবার কমাতে হবে, নাহলে
+        // একই "রি-কনফার্ম" বাগ বাল্ক-পাথ দিয়েও ঘটত
+        const decrement = await decrementStockForItems(supabase, row.items as OrderItem[]);
+        if (!decrement.ok) failedIds.push(row.id);
+      }
     }
     targetIds = ids.filter((id) => !failedIds.includes(id));
 
-    if (!targetIds.length) {
-      return { status: 'error', changed: 0, message: 'কোনো অর্ডারেরই স্টক রিস্টোর করা যায়নি — restore_product_stock ফাংশন চেক করো।' };
+    if (!targetIds.length && failedIds.length) {
+      return {
+        status: 'error',
+        changed: 0,
+        message: enteringRestored
+          ? 'কোনো অর্ডারেরই স্টক রিস্টোর করা যায়নি — restore_product_stock ফাংশন চেক করো।'
+          : 'কোনো অর্ডারেই পর্যাপ্ত স্টক নেই — রি-কনফার্ম করা যায়নি।',
+      };
     }
   }
 
@@ -324,13 +377,15 @@ export async function bulkUpdateOrderStatus(
     .in('id', targetIds);
   if (error) return { status: 'error', changed: 0, message: error.message };
 
-  if (STOCK_RESTORED_STATUSES.includes(status) && targetIds.length < ids.length) {
+  if (targetIds.length < ids.length) {
     revalidatePath('/orders');
     revalidatePath('/');
     return {
       status: 'ok',
       changed: count ?? targetIds.length,
-      message: `${ids.length - targetIds.length}টি অর্ডারের স্টক রিস্টোর ব্যর্থ হওয়ায় সেগুলো reject হয়নি`,
+      message: enteringRestored
+        ? `${ids.length - targetIds.length}টি অর্ডারের স্টক রিস্টোর ব্যর্থ হওয়ায় সেগুলো reject হয়নি`
+        : `${ids.length - targetIds.length}টি অর্ডারে পর্যাপ্ত স্টক না থাকায় সেগুলো রি-কনফার্ম হয়নি`,
     };
   }
 

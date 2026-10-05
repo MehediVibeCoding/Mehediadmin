@@ -115,6 +115,7 @@ export function mapOrderRow(o: any): Order {
     verification_method: o.verification_method || null,
     verified_sender: o.verified_sender || null,
     overpaid_amount: Number(o.overpaid_amount) || 0,
+    item_profit_snapshot: Array.isArray(o.item_profit_snapshot) ? o.item_profit_snapshot : undefined,
   };
 }
 

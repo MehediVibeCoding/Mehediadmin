@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
+import { ALLOWED_IMAGE_MIME } from '@/lib/uploadValidation';
 import type { Review } from '@/types';
 
 const TABLE = 'customer_reviews';
@@ -91,8 +92,12 @@ export async function uploadReviewImage(
   if (file.size > 3 * 1024 * 1024) {
     return { ok: false, message: '⚠️ ছবির সাইজ ৩MB এর বেশি — ছোট করে দিন' };
   }
+  // 🛡️ অডিট ফিক্স: ফাইলের নাম না, আসল MIME টাইপ চেক করে ext বসানো হচ্ছে
+  const ext = ALLOWED_IMAGE_MIME[file.type];
+  if (!ext) {
+    return { ok: false, message: 'শুধুমাত্র JPG, PNG বা WebP ছবি আপলোড করা যাবে' };
+  }
   const supabase = createServiceRoleClient();
-  const ext = file.name.split('.').pop() || 'jpg';
   const path = `reviews/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
 
   const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {

@@ -67,6 +67,10 @@ export interface Order {
   verified_sender?: string | null;
   // অগ্রিমের চেয়ে কাস্টমার যত টাকা বেশি পাঠিয়েছে — শুধু তথ্য, COD হিসাবে কোনো প্রভাব নেই
   overpaid_amount?: number;
+  // 🛡️ অডিট ফিক্স — অর্ডার বসার মুহূর্তের unit_profit স্ন্যাপশট (admin-only,
+  // কখনোই কাস্টমারকে দেখানো চলবে না)। পুরনো (মাইগ্রেশনের আগের) অর্ডারে undefined
+  // হতে পারে — তখন lib/profit.ts নাম-ম্যাচ ফলব্যাকে চলে যায়।
+  item_profit_snapshot?: { id: string | number; unit_profit: number }[];
   // ডাটাবেজ কলাম না — listOrders()-এ fetch করার পরে ডেলিভার্ড-অর্ডার গুনে
   // রানটাইমে বসানো হয় (৫-৯টা ডেলিভার্ড অর্ডার হলে 'diamond')। তাই ঐচ্ছিক —
   // সব জায়গায় (যেমন createOrder-এর রিটার্নে) এটা বসে না।
