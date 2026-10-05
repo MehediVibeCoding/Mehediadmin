@@ -437,6 +437,11 @@
 | ক্যাটাগরি | `components/design/CategoriesPageClient.tsx` |
 | রিভিউ ও প্রশ্নোত্তর | `components/reviews/{ProductReviewsQnAPageClient,ReviewsPanel,QnAPanel}.tsx` |
 | রিভিউ গ্যালারি | `components/reviews/ReviewGalleryPageClient.tsx` |
+| নিট প্রফিট | `app/(admin)/profit/ProfitPageClient.tsx`, `components/profit/{ProfitStatCards,ProfitChart,ProfitDayTable}.tsx` |
+| হিরো ক্যাটাগরি কার্ড | `components/design/HeroCardsPageClient.tsx` |
+| গাইড টেমপ্লেট | `components/design/GuideTemplatesPageClient.tsx` (+ `GuideBlockListEditor`-এ `ConfirmDialog`) |
+| AI প্ল্যানার | `app/(admin)/products/parser/ParserPageClient.tsx` |
+| স্কেলিটন | `components/admin/PageSkeleton.tsx` (টুলবার কার্ড + কার্ড তালিকার কাঠামো) |
 
 ### ⏳ বাকি (এখনও পুরনো টোকেন/প্যাটার্ন আছে)
 
@@ -444,13 +449,8 @@
 |---|---|---|
 | ড্যাশবোর্ড | `app/(admin)/page.tsx`, `components/dashboard/*` | `brand-primary`, `shadow-xs`; কার্ডে ব্লার; §৫ রেসিপিতে আনা |
 | ট্রাফিক | `components/traffic/*` | `brand-primary`/`brand-accent` (চার্ট ও টেবিল) |
-| প্রফিট | `components/profit/*` | `brand-primary` |
-| হিরো কার্ড | `components/design/HeroCardsPageClient.tsx` | `brand-primary` |
-| গাইড টেমপ্লেট | `components/design/GuideTemplatesPageClient.tsx` | `brand-primary` |
-| AI প্ল্যানার | `app/(admin)/products/parser/ParserPageClient.tsx` | `brand-primary` |
 | লগইন | `app/login/page.tsx` | `brand-primary` |
 | সাইডবার | `components/admin/Sidebar.tsx` | `shadow-xs` (নিষ্ক্রিয় ক্লাস) |
-| স্কেলিটন | `components/admin/PageSkeleton.tsx` | এখনও উপরের টাইটেল-বার আঁকে; আসল পেজের কাঠামো (টুলবার কার্ড + তালিকা) মেলাতে হবে (লেআউট শিফট এড়াতে) |
 | অব্যবহৃত | `components/coupons/DeleteConfirmDialog.tsx`, `components/admin/PageHeader.tsx` | কেউ ব্যবহার করে না; নিরাপদে মোছা যায় |
 
 ### ⚠️ পরিচিত ঋণ (জানা আছে, আলাদা সেশনে ঠিক হবে)

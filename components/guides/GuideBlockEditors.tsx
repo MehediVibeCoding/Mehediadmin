@@ -6,6 +6,7 @@
 'use client';
 
 import { useState } from 'react';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import type {
   GuideBlock,
   HeroBlock,
@@ -435,6 +436,7 @@ export function BlockEditorSwitch({ block, onChange }: { block: GuideBlock; onCh
 export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[]; onChange: (b: GuideBlock[]) => void }) {
   const [openBlockId, setOpenBlockId] = useState<string | null>(blocks[0]?.id ?? null);
   const [addType, setAddType] = useState<GuideBlock['type']>('richText');
+  const [removeId, setRemoveId] = useState<string | null>(null);
   const allTypes = Object.keys(BLOCK_TYPE_LABELS) as GuideBlock['type'][];
 
   function moveBlock(i: number, dir: -1 | 1) {
@@ -446,8 +448,8 @@ export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[
   }
 
   function removeBlock(id: string) {
-    if (!confirm('এই ব্লকটা মুছে দেবেন?')) return;
     onChange(blocks.filter((b) => b.id !== id));
+    setRemoveId(null);
   }
 
   function updateBlock(id: string, next: GuideBlock) {
@@ -472,9 +474,9 @@ export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[
                   {i + 1}. {BLOCK_TYPE_LABELS[b.type]}
                 </button>
                 <div className="flex shrink-0 gap-1">
-                  <button type="button" disabled={i === 0} onClick={() => moveBlock(i, -1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border-base/80 bg-white text-[11px] font-bold disabled:opacity-30">↑</button>
-                  <button type="button" disabled={i === blocks.length - 1} onClick={() => moveBlock(i, 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border-base/80 bg-white text-[11px] font-bold disabled:opacity-30">↓</button>
-                  <button type="button" onClick={() => removeBlock(b.id)} className="rounded-full border border-red-200/80 bg-red-50 px-2.5 py-1 text-[10.5px] font-extrabold text-danger">মুছুন</button>
+                  <button type="button" disabled={i === 0} onClick={() => moveBlock(i, -1)} aria-label="উপরে সরান" className="flex h-9 w-9 items-center justify-center rounded-full border border-border-base/80 bg-white text-[12px] font-bold transition-all duration-brand active:scale-90 disabled:opacity-30">↑</button>
+                  <button type="button" disabled={i === blocks.length - 1} onClick={() => moveBlock(i, 1)} aria-label="নিচে সরান" className="flex h-9 w-9 items-center justify-center rounded-full border border-border-base/80 bg-white text-[12px] font-bold transition-all duration-brand active:scale-90 disabled:opacity-30">↓</button>
+                  <button type="button" onClick={() => setRemoveId(b.id)} className="h-9 rounded-full border border-red-200/80 bg-red-50 px-3 text-[11px] font-extrabold text-danger transition-all duration-brand active:scale-95">মুছুন</button>
                 </div>
               </div>
               {open && (
@@ -498,6 +500,16 @@ export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[
           + ব্লক যোগ করুন
         </button>
       </div>
+
+      {removeId && (
+        <ConfirmDialog
+          title="ব্লকটা মুছে দেবেন?"
+          message="এই ব্লকের সব লেখা ও সেটিং মুছে যাবে।"
+          confirmLabel="হ্যাঁ, মুছুন"
+          onConfirm={() => removeBlock(removeId)}
+          onCancel={() => setRemoveId(null)}
+        />
+      )}
     </div>
   );
 }

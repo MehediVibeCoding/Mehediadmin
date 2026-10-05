@@ -2,15 +2,7 @@ import type { ProfitSummary } from '@/lib/profit';
 
 function Icon({ children }: { children: React.ReactNode }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
       {children}
     </svg>
   );
@@ -19,47 +11,47 @@ function Icon({ children }: { children: React.ReactNode }) {
 interface CardProps {
   label: string;
   value: string;
-  accentBg: string;
-  accentText: string;
+  sub?: string;
+  chip: string; // আইকন-চিপের bg + text ক্লাস
+  valueCls?: string;
   icon: React.ReactNode;
+  className?: string;
 }
 
-function StatCard({ label, value, accentBg, accentText, icon }: CardProps) {
+function StatTile({ label, value, sub, chip, valueCls = 'text-ink', icon, className = '' }: CardProps) {
   return (
-    <div className="flex min-h-[148px] flex-col items-center justify-center rounded-2xl border border-border-base bg-brand-surface p-5 text-center shadow-sh1 transition-brand hover:-translate-y-0.5 hover:shadow-sh2">
-      <div className={`mb-2.5 flex h-[42px] w-[42px] items-center justify-center rounded-full ${accentBg} ${accentText}`}>
-        {icon}
+    <div className={`min-w-0 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1 ${className}`}>
+      <div className="flex items-center gap-2.5">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${chip}`}>{icon}</span>
+        <span className="font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted">{label}</span>
       </div>
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tracking-tight text-ink">
-        {value}
-      </div>
+      <div className={`mt-2.5 truncate font-body text-[22px] font-black tracking-tight ${valueCls}`}>{value}</div>
+      {sub && <div className="mt-0.5 font-body text-[11px] font-semibold text-muted">{sub}</div>}
     </div>
   );
 }
+
+const fmt = (n: number) => '৳' + Math.round(n).toLocaleString('en-US');
 
 interface Props {
   summary: ProfitSummary;
 }
 
-// legacy stat-card চারটার profit-পেজ ভ্যারিয়েন্ট (prfTotal/prfRevenue/prfOrders/prfAvg)।
-// accent রঙ — legacy hex থেকে: নিট প্রফিট #059669 ও রেভিনিউ #2563EB দুটোই
-// এই অ্যাপে আগে থেকেই named token আছে এমন hue-এর কাছাকাছি (green→success,
-// blue→info) — Dashboard-এর StatGrid.tsx-এ ঠিক এই একই দুটো concept
-// (netProfit/customers card) আগেই success/info token দিয়ে ম্যাপ করা হয়েছে,
-// তাই এখানেও সেই সিদ্ধান্তের ধারাবাহিকতা রাখা হলো (একই অ্যাপে একই concept-এর
-// জন্য দুই রকম রঙ না)। অর্ডার-সংখ্যা #B45309(amber) → warn token
-// (Dashboard-এর "মোট অর্ডার" কার্ডেও warn ব্যবহৃত)। গড়-প্রফিট #7C3AED —
-// এই hue-এর কোনো named token নেই (TrafficStatCards.tsx-এর ভিজিটর কার্ডের
-// একই সিদ্ধান্ত), তাই Tailwind built-in violet-600 (hex হুবহু মিলে যায়)।
+// নিট প্রফিট কার্ডটা মোবাইলে পুরো প্রস্থ নেয় (মূল সংখ্যা) — বাকি তিনটা ছোট টাইল।
+// মার্জিন = প্রফিট ÷ রেভিনিউ (শুধু প্রদর্শন; হিসাবের লজিক lib/profit.ts-এ অপরিবর্তিত)।
 export default function ProfitStatCards({ summary }: Props) {
+  const margin = summary.totalRevenue > 0 ? (summary.totalProfit / summary.totalRevenue) * 100 : null;
+  const isLoss = summary.totalProfit < 0;
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <StatCard
-        label="নিট প্রফিট (নির্বাচিত সময়)"
-        value={`৳${Math.round(summary.totalProfit).toLocaleString()}`}
-        accentBg="bg-success/10"
-        accentText="text-success"
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <StatTile
+        className="col-span-2 md:col-span-1"
+        label="নিট প্রফিট"
+        value={fmt(summary.totalProfit)}
+        sub={margin === null ? 'নির্বাচিত সময়' : `মার্জিন ${margin.toFixed(1)}% · নির্বাচিত সময়`}
+        chip={isLoss ? 'bg-red-50 text-danger' : 'bg-success/15 text-success'}
+        valueCls={isLoss ? 'text-danger' : 'text-success'}
         icon={
           <Icon>
             <path d="M3 17l6-6 4 4 8-8" />
@@ -67,11 +59,10 @@ export default function ProfitStatCards({ summary }: Props) {
           </Icon>
         }
       />
-      <StatCard
-        label="টোটাল রেভিনিউ"
-        value={`৳${Math.round(summary.totalRevenue).toLocaleString()}`}
-        accentBg="bg-info/10"
-        accentText="text-info"
+      <StatTile
+        label="রেভিনিউ"
+        value={fmt(summary.totalRevenue)}
+        chip="bg-brand-light/15 text-brand-light"
         icon={
           <Icon>
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
@@ -79,27 +70,26 @@ export default function ProfitStatCards({ summary }: Props) {
           </Icon>
         }
       />
-      <StatCard
-        label="অর্ডার সংখ্যা"
-        value={String(summary.totalOrders)}
-        accentBg="bg-warn/10"
-        accentText="text-warn"
+      <StatTile
+        label="অর্ডার"
+        value={summary.totalOrders.toLocaleString('en-US')}
+        chip="bg-amber-50 text-[#92400E]"
         icon={
           <Icon>
-            <path d="M9 14 4 9l5-5" />
-            <path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5v0A5.5 5.5 0 0 1 14.5 20H11" />
+            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+            <path d="m3.3 7 8.7 5 8.7-5M12 22V12" />
           </Icon>
         }
       />
-      <StatCard
-        label="গড় প্রফিট/অর্ডার"
-        value={`৳${Math.round(summary.avgProfit).toLocaleString()}`}
-        accentBg="bg-violet-600/10"
-        accentText="text-violet-600"
+      <StatTile
+        label="গড়/অর্ডার"
+        value={fmt(summary.avgProfit)}
+        sub="প্রতি অর্ডারে প্রফিট"
+        chip="bg-surface-muted text-ink"
         icon={
           <Icon>
-            <path d="M3 17l6-6 4 4 8-8" />
-            <path d="M15 7h6v6" />
+            <circle cx="12" cy="12" r="10" />
+            <path d="M8 12h8M12 8v8" />
           </Icon>
         }
       />

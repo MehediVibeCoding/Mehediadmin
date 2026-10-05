@@ -74,37 +74,52 @@ export default function ProfitPageClient({ initialData }: Props) {
 
   return (
     <div>
-      <div className="mb-5 flex flex-col items-center text-center">
-        <h1 className="font-bold text-xl text-ink">নিট প্রফিট</h1>
-        <p className="mt-0.5 text-sm text-muted">কোন দিন কত টাকা আসল প্রফিট হয়েছে — বিস্তারিত পরিসংখ্যান</p>
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <DateRangePicker
-            active={true}
-            range={dateRange}
-            onApply={setDateRange}
-            minDaysBack={MIN_DAYS_BACK}
-            allowClear={false}
-          />
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="রিফ্রেশ করুন"
-            className="flex h-9 w-9 items-center justify-center rounded-brand border border-border-base bg-brand-surface text-ink transition-brand hover:bg-surface-muted disabled:opacity-50"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+      {/* ══ ১. টুলবার কার্ড: তারিখ রেঞ্জ + রিফ্রেশ ══ */}
+      <div className="mb-4 rounded-[24px] border border-white/90 bg-white p-3.5 shadow-sh1 sm:p-4">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success sm:h-10 sm:w-10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M3 17l6-6 4 4 8-8" />
+                <path d="M15 7h6v6" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <div className="font-body text-[14px] font-black text-ink">কোন দিন কত আসল প্রফিট</div>
+              <div className="font-body text-[11px] font-semibold text-muted">শুধু নিশ্চিত অর্ডারের হিসাব</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <DateRangePicker
+              active={true}
+              range={dateRange}
+              onApply={setDateRange}
+              minDaysBack={MIN_DAYS_BACK}
+              allowClear={false}
+              className="min-w-0 flex-1 sm:flex-none"
+            />
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="রিফ্রেশ করুন"
+              aria-label="রিফ্রেশ করুন"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-base/80 bg-white text-ink transition-all duration-brand hover:border-brand-light hover:text-brand-light active:scale-90 disabled:opacity-50 lg:h-10 lg:w-10"
             >
-              <path d="M21 12a9 9 0 1 1-2.6-6.4" />
-              <path d="M21 3v6h-6" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-[18px] w-[18px] ${refreshing ? 'animate-spin' : ''}`}
+              >
+                <path d="M21 12a9 9 0 1 1-2.6-6.4" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
