@@ -9,6 +9,7 @@ import { mapOrderRow, isDiamondByDeliveredCount, ORDER_STATUS_ORDER } from '@/li
 import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import { attachOrderRisk } from '@/lib/orderRisk';
 import { attachProfitSnapshots } from '@/lib/orderPrivate';
+import { adminCached, invalidateOrdersData, ORDERS_TAG } from '@/lib/adminCache';
 import type { Order, OrderItem, OrderStatus } from '@/types';
 
 // ══════════════════════════════════════════════════════════════
@@ -80,8 +81,9 @@ export interface OrdersPageResult {
 // PostgREST .or() ফিল্টারে কমা/বন্ধনী/ওয়াইল্ডকার্ড ভেঙে যায় — সেগুলো বাদ দেওয়া হয়
 const SEARCH_UNSAFE = /[%_*\\,()"]/g;
 
-export async function listOrdersPage(params: OrdersPageParams): Promise<OrdersPageResult> {
-  await requireAdmin();
+// ভেতরের আসল কুয়েরি — cookies/requireAdmin ছাড়া (ক্যাশ-করা ফাংশনে সেগুলো চলে না)।
+// এক্সপোর্টেড listOrdersPage আগে requireAdmin() ডেকে তবেই এটা ডাকে।
+async function fetchOrdersPage(params: OrdersPageParams): Promise<OrdersPageResult> {
   const supabase = createServiceRoleClient();
 
   const pageSize = Math.min(Math.max(1, Math.floor(Number(params.pageSize)) || 14), 100);
@@ -151,6 +153,24 @@ export async function listOrdersPage(params: OrdersPageParams): Promise<OrdersPa
     grandTotal: grandRes.count || 0,
     statusCounts,
   };
+}
+
+// 🚀 ফিল্টার/পেজ অনুযায়ী ফলাফল সার্ভারে ক্যাশ হয় (ট্যাগ: অর্ডার বদলালে মুছে যায়, সর্বোচ্চ ২ মিনিট)।
+// সার্চ-টার্ম যা-খুশি হতে পারে বলে সার্চসহ কুয়েরি ক্যাশ করা হয় না — ক্যাশ ফুলে যাওয়া ঠেকাতে।
+const fetchOrdersPageCached = adminCached(fetchOrdersPage, ['admin-orders-page'], [ORDERS_TAG]);
+
+export async function listOrdersPage(params: OrdersPageParams): Promise<OrdersPageResult> {
+  await requireAdmin();
+  const normalized: OrdersPageParams = {
+    page: Math.max(1, Math.floor(Number(params.page)) || 1),
+    pageSize: Math.min(Math.max(1, Math.floor(Number(params.pageSize)) || 14), 100),
+    status: params.status,
+    search: String(params.search ?? ''),
+    fromIso: params.fromIso ?? null,
+    toIso: params.toIso ?? null,
+  };
+  if (normalized.search.trim()) return fetchOrdersPage(normalized);
+  return fetchOrdersPageCached(normalized);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -308,6 +328,8 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
     });
   }
 
+  invalidateOrdersData();
+
   revalidatePath('/orders');
   revalidatePath('/');
   return { status: 'ok' };
@@ -383,6 +405,7 @@ export async function bulkUpdateOrderStatus(
   if (error) return { status: 'error', changed: 0, message: error.message };
 
   if (targetIds.length < ids.length) {
+    invalidateOrdersData();
     revalidatePath('/orders');
     revalidatePath('/');
     return {
@@ -393,6 +416,8 @@ export async function bulkUpdateOrderStatus(
         : `${ids.length - targetIds.length}টি অর্ডারে পর্যাপ্ত স্টক না থাকায় সেগুলো রি-কনফার্ম হয়নি`,
     };
   }
+
+  invalidateOrdersData();
 
   revalidatePath('/orders');
   revalidatePath('/');

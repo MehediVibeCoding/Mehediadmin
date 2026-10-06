@@ -1,23 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type { Customer } from '@/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getCustomersPage, type CustomersPageResult } from '@/app/actions/customers';
+import { useToast } from '@/components/admin/Toast';
+import { useOrdersRealtime } from '@/components/admin/OrdersRealtimeProvider';
 import CustomersTable from '@/components/customers/CustomersTable';
 import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 
 interface Props {
-  initialCustomers: Customer[];
-}
-
-function matches(c: Customer, rawQuery: string): boolean {
-  const q = rawQuery.toLowerCase().trim();
-  if (!q) return true;
-  const digitsQ = q.replace(/\D/g, '');
-  return (
-    (c.name || '').toLowerCase().includes(q) ||
-    (c.email || '').toLowerCase().includes(q) ||
-    (digitsQ.length > 0 && (c.phone || '').replace(/\D/g, '').includes(digitsQ))
-  );
+  initialPage: CustomersPageResult;
 }
 
 function StatTile({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
@@ -37,26 +28,71 @@ function StatTile({ label, value, icon }: { label: string; value: string; icon: 
 }
 
 // legacy #page-customers — orders টেবিল থেকে গ্রুপ করা কাস্টমার তালিকা (পেজ-ভিত্তিক, ১৪টি/পেজ)।
-// রিডিজাইনে যোগ: সামারি টাইল + হালকা সার্চ (শুধু ক্লায়েন্ট-সাইড ফিল্টার, ডাটা লজিক অপরিবর্তিত)।
-export default function CustomersPageClient({ initialCustomers }: Props) {
+// 🚀 এখন সার্চ ও পেজ ভাগ সার্ভারে (ডাটাবেজের ফাংশনে) হয় — ব্রাউজারে সব কাস্টমার আসে না।
+export default function CustomersPageClient({ initialPage }: Props) {
+  const [data, setData] = useState<CustomersPageResult>(initialPage);
+  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  const filtered = useMemo(() => initialCustomers.filter((c) => matches(c, query)), [initialCustomers, query]);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { showToast } = useToast();
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
+  const { ordersVersion } = useOrdersRealtime();
 
+  const paramsRef = useRef({ page, debouncedQuery });
+  paramsRef.current = { page, debouncedQuery };
+
+  // দেরিতে আসা পুরনো রেসপন্স যেন নতুনটাকে না ঢেকে দেয়
+  const reqIdRef = useRef(0);
+
+  const load = useCallback(async (p: { page: number; debouncedQuery: string }) => {
+    const id = ++reqIdRef.current;
+    setLoading(true);
+    try {
+      const res = await getCustomersPage({ search: p.debouncedQuery, page: p.page, pageSize: PAGE_SIZE });
+      if (id !== reqIdRef.current) return;
+      setData(res);
+      // পেজ শেষ হয়ে গেলে সর্বশেষ বৈধ পেজে নামানো
+      const maxPage = Math.max(1, Math.ceil(res.total / PAGE_SIZE));
+      if (p.page > maxPage) setPage(maxPage);
+    } catch {
+      if (id === reqIdRef.current) showToastRef.current('❌ কাস্টমার লোড ব্যর্থ হয়েছে');
+    } finally {
+      if (id === reqIdRef.current) setLoading(false);
+    }
+  }, []);
+
+  // সার্চ টাইপ করার সময় প্রতি অক্ষরে সার্ভার কল না করে ৩০০ms পরে
   useEffect(() => {
-    setPage(1);
+    const t = setTimeout(() => {
+      setDebouncedQuery(query);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
   }, [query]);
 
-  const totals = useMemo(
-    () => ({
-      customers: initialCustomers.length,
-      orders: initialCustomers.reduce((sum, c) => sum + (c.order_count || 0), 0),
-      spent: initialCustomers.reduce((sum, c) => sum + (c.total_spent || 0), 0),
-    }),
-    [initialCustomers]
-  );
+  // পেজ/সার্চ বদলালে সার্ভার থেকে নতুন পেজ। প্রথম মাউন্টে initialPage থাকায় স্কিপ।
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    load({ page, debouncedQuery });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedQuery]);
+
+  // নতুন অর্ডার/আপডেটের রিয়েলটাইম ইভেন্ট এলে (সার্ভার-ক্যাশ মোছার পর) বর্তমান পেজ নীরবে নতুন
+  useEffect(() => {
+    if (ordersVersion === 0) return;
+    load(paramsRef.current);
+  }, [ordersVersion, load]);
+
+  const paginated = data.rows;
+  const totalFiltered = data.total;
+  const totals = data.totals;
 
   return (
     <div>
@@ -117,10 +153,12 @@ export default function CustomersPageClient({ initialCustomers }: Props) {
 
       {/* মোবাইলে কার্ড সরাসরি ক্যানভাসে; ডেস্কটপে (≥1024px) একটাই সাদা কার্ডে টেবিল + পেজিনেশন */}
       <div className="lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-white/90 lg:bg-white lg:shadow-sh1">
-        <CustomersTable customers={paginated} />
-        {filtered.length > 0 && (
+        <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+          <CustomersTable customers={paginated} />
+        </div>
+        {totalFiltered > 0 && (
           <div className="mt-3 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1 lg:mt-0 lg:rounded-none lg:border-0 lg:border-t lg:border-border-base/60 lg:px-5 lg:shadow-none">
-            <Pagination page={page} total={filtered.length} onPageChange={setPage} bare />
+            <Pagination page={page} total={totalFiltered} onPageChange={setPage} bare />
           </div>
         )}
       </div>

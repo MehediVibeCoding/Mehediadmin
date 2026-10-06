@@ -2,14 +2,9 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { listProducts } from '@/app/actions/products';
+import { adminCached, ORDERS_TAG, PRODUCTS_TAG } from '@/lib/adminCache';
 import { mapOrderRow } from '@/lib/orders';
-import { attachProfitSnapshots } from '@/lib/orderPrivate';
-import { computeOrderProfit, PROFIT_STATUSES } from '@/lib/profit';
 import type { Order } from '@/types';
-
-// অডিট §৭.২: প্রফিট লজিক lib/profit.ts-এ একটাই উৎস। CONFIRMED_STATUSES = PROFIT_STATUSES
-const CONFIRMED_STATUSES = PROFIT_STATUSES;
 
 export interface DashboardStats {
   totalOrders: number;
@@ -38,72 +33,104 @@ export interface DashboardData {
   lowStock: LowStockItem[];
 }
 
+// কম স্টকের সীমা (আগের মতোই: ৫ বা কম)
+const LOW_STOCK_LIMIT = 5;
+const PRODUCT_ORDER_KEY = 'vc_prod_order';
+
+interface SummaryRpc {
+  totalOrders?: number;
+  pendingCount?: number;
+  confirmedCount?: number;
+  deliveredCount?: number;
+  confirmedRevenue?: number;
+  netProfit?: number;
+  uniqueCustomers?: number;
+  revenueByDate?: Record<string, number>;
+}
+
+// প্রোডাক্ট তালিকার কাস্টম সাজানো ক্রম (ড্র্যাগ-সর্ট) — products.ts-এর applyOrder-এর সাথে একই নিয়ম,
+// যাতে স্টক সমান হলে আগের মতোই একই ক্রমে দেখায়
+async function readProductOrder(): Promise<Map<number, number>> {
+  const supabase = createServiceRoleClient();
+  const map = new Map<number, number>();
+  const { data } = await supabase
+    .from('store_settings')
+    .select('setting_value')
+    .eq('setting_key', PRODUCT_ORDER_KEY)
+    .maybeSingle();
+  if (!data?.setting_value) return map;
+  try {
+    const raw = data.setting_value;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (Array.isArray(parsed)) parsed.forEach((id: number, i: number) => map.set(Number(id), i));
+  } catch {
+    // নষ্ট মান হলে ক্রম ছাড়াই চলবে
+  }
+  return map;
+}
+
+// 🚀 আগে: সব অর্ডার + সব প্রোডাক্ট টেনে এনে এখানে গুনত। এখন ডাটাবেজের admin_dashboard_summary()
+// ফাংশন স্ট্যাট/প্রফিট/রেভিনিউ-চার্ট হিসাব করে দেয়; শুধু সর্বশেষ ৫টি অর্ডার ও কম-স্টক প্রোডাক্ট আলাদা আসে।
+// ফলাফল সার্ভারে ক্যাশ থাকে (ট্যাগ: অর্ডার/প্রোডাক্ট বদলালে মুছে যায়, সর্বোচ্চ ২ মিনিট)।
+const loadDashboardCached = adminCached(
+  async (): Promise<DashboardData> => {
+    const supabase = createServiceRoleClient();
+
+    const [summaryRes, recentRes, lowRes, order] = await Promise.all([
+      supabase.rpc('admin_dashboard_summary'),
+      supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
+      supabase
+        .from('custom_products')
+        .select('id, name, stock, imgs')
+        .or(`stock.is.null,stock.lte.${LOW_STOCK_LIMIT}`)
+        .order('id', { ascending: true }),
+      readProductOrder(),
+    ]);
+
+    if (summaryRes.error) throw new Error('ড্যাশবোর্ড হিসাব ব্যর্থ: ' + summaryRes.error.message);
+    if (recentRes.error) throw new Error('অর্ডার লোড ব্যর্থ: ' + recentRes.error.message);
+    if (lowRes.error) throw new Error('প্রোডাক্ট লোড ব্যর্থ: ' + lowRes.error.message);
+
+    const s = (summaryRes.data || {}) as SummaryRpc;
+
+    // ── কম স্টক: কাস্টম ক্রম আগে, তারপর স্টক কম থেকে বেশি (সমান হলে ওই ক্রমই থাকে) ──
+    const lowStock: LowStockItem[] = (lowRes.data || [])
+      .map((p) => ({
+        id: p.id as number,
+        name: (p.name as string) || '',
+        stock: (p.stock as number | null) ?? 0,
+        thumb: ((p.imgs as string[] | null) || [])[0] || '📦',
+      }))
+      .sort((a, b) => {
+        const ia = order.has(a.id) ? order.get(a.id)! : 99999;
+        const ib = order.has(b.id) ? order.get(b.id)! : 99999;
+        if (ia !== ib) return ia - ib;
+        return a.id - b.id;
+      })
+      .sort((a, b) => a.stock - b.stock); // Array.sort স্থিতিশীল — আগের ক্রম সমান স্টকে বজায় থাকে
+
+    return {
+      stats: {
+        totalOrders: Number(s.totalOrders) || 0,
+        pendingCount: Number(s.pendingCount) || 0,
+        netProfit: Number(s.netProfit) || 0,
+        confirmedRevenue: Number(s.confirmedRevenue) || 0,
+        uniqueCustomers: Number(s.uniqueCustomers) || 0,
+        todayVisitors: null,
+        totalVisitors: null,
+        deliveredCount: Number(s.deliveredCount) || 0,
+        confirmedCount: Number(s.confirmedCount) || 0,
+      },
+      recentOrders: (recentRes.data || []).map(mapOrderRow),
+      revenueByDate: s.revenueByDate || {},
+      lowStock,
+    };
+  },
+  ['admin-dashboard'],
+  [ORDERS_TAG, PRODUCTS_TAG]
+);
+
 export async function getDashboardData(): Promise<DashboardData> {
   await requireAdmin();
-  const supabase = createServiceRoleClient();
-
-  const [ordersRes, products] = await Promise.all([
-    supabase.from('orders').select('*').order('created_at', { ascending: false }),
-    listProducts(),
-  ]);
-
-  if (ordersRes.error) {
-    throw new Error('অর্ডার লোড ব্যর্থ: ' + ordersRes.error.message);
-  }
-
-  const orderRows = ordersRes.data || [];
-  // 🔒 প্রফিট স্ন্যাপশট গোপন `order_private` টেবিল থেকে
-  await attachProfitSnapshots(supabase, orderRows);
-  const orders: Order[] = orderRows.map(mapOrderRow);
-
-  // ── স্ট্যাট গ্রিড ──
-  const pendingCount = orders.filter((o) => o.status === 'pending').length;
-  const confirmedOrders = orders.filter((o) => CONFIRMED_STATUSES.includes(o.status));
-  const confirmedRevenue = confirmedOrders.reduce((s, o) => s + (o.total || 0), 0);
-  const netProfit = confirmedOrders.reduce((s, o) => s + computeOrderProfit(o, products), 0);
-
-  const uniqueCustomers = new Set<string>();
-  orders.forEach((o) => {
-    const key = (o.customer_phone || o.customer_name || '').trim();
-    if (key) uniqueCustomers.add(key);
-  });
-
-  const deliveredCount = orders.filter((o) => o.status === 'delivered').length;
-  const confirmedCount = orders.filter((o) => o.status === 'confirmed').length;
-
-  // ── রেভিনিউ চার্ট ডাটা (confirmed/shipped/delivered, তারিখ অনুযায়ী গ্রুপ করা) ──
-  const revenueByDate: Record<string, number> = {};
-  confirmedOrders.forEach((o) => {
-    const key = (o.created_at || '').slice(0, 10);
-    if (!key) return;
-    revenueByDate[key] = (revenueByDate[key] || 0) + (o.total || 0);
-  });
-
-  // ── কম স্টক (custom_products, stock ৫ বা কম) ──
-  const lowStock: LowStockItem[] = products
-    .filter((p) => (p.stock ?? 0) <= 5)
-    .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0))
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      stock: p.stock ?? 0,
-      thumb: p.imgs?.[0] || '📦',
-    }));
-
-  return {
-    stats: {
-      totalOrders: orders.length,
-      pendingCount,
-      netProfit,
-      confirmedRevenue,
-      uniqueCustomers: uniqueCustomers.size,
-      todayVisitors: null,
-      totalVisitors: null,
-      deliveredCount,
-      confirmedCount,
-    },
-    recentOrders: orders.slice(0, 5), // query আগেই created_at desc দিয়ে sort করা
-    revenueByDate,
-    lowStock,
-  };
+  return loadDashboardCached();
 }

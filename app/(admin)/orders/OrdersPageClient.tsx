@@ -10,6 +10,8 @@ import {
   bulkUpdateOrderStatus,
   type OrdersPageResult,
 } from '@/app/actions/orders';
+import { refreshAdminCaches } from '@/app/actions/cache';
+import { clearOrdersCache, getOrdersCache, getOrdersCacheEpoch, setOrdersCache } from '@/lib/clientOrdersCache';
 import { downloadCsvRows, ordersToCsvRows } from '@/lib/csv';
 import { playChaChing } from '@/lib/sound';
 import { useToast } from '@/components/admin/Toast';
@@ -81,12 +83,39 @@ export default function OrdersPageClient({ initialPage }: Props) {
   // দেরিতে আসা পুরনো রেসপন্স যেন নতুনটাকে না ঢেকে দেয়
   const reqIdRef = useRef(0);
 
+  // ব্রাউজারে মনে রাখা: একই ফিল্টার/পেজে ফিরলে ১৮০ সেকেন্ড পর্যন্ত আবার টানে না।
+  // force=true হলে (নিজের বদলের পর / রিফ্রেশ বোতাম) মনে-রাখা মান এড়িয়ে সরাসরি সার্ভারে যায়।
   const load = useCallback(
-    async (p: { page: number; filterStatus: StatusFilter; debouncedSearch: string; dateRange: DateRange | null }) => {
+    async (
+      p: { page: number; filterStatus: StatusFilter; debouncedSearch: string; dateRange: DateRange | null },
+      force = false
+    ) => {
       const id = ++reqIdRef.current;
+      const iso = p.dateRange ? rangeToIso(p.dateRange) : null;
+      const key = JSON.stringify([p.page, p.filterStatus, p.debouncedSearch, iso?.from ?? null, iso?.to ?? null]);
+
+      const applyResult = (res: OrdersPageResult) => {
+        setRows(res.rows);
+        setTotal(res.total);
+        setGrandTotal(res.grandTotal);
+        setStatusCounts(res.statusCounts);
+        // পেজ শেষ হয়ে গেলে (যেমন অর্ডার মুছে/বদলে) সর্বশেষ বৈধ পেজে নামানো
+        const maxPage = Math.max(1, Math.ceil(res.total / PAGE_SIZE));
+        if (p.page > maxPage) setPage(maxPage);
+      };
+
+      if (!force) {
+        const hit = getOrdersCache<OrdersPageResult>(key);
+        if (hit) {
+          applyResult(hit);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const startEpoch = getOrdersCacheEpoch();
       setLoading(true);
       try {
-        const iso = p.dateRange ? rangeToIso(p.dateRange) : null;
         const res = await listOrdersPage({
           page: p.page,
           pageSize: PAGE_SIZE,
@@ -95,14 +124,10 @@ export default function OrdersPageClient({ initialPage }: Props) {
           fromIso: iso?.from ?? null,
           toIso: iso?.to ?? null,
         });
+        // রিকোয়েস্ট চলাকালে ক্যাশ মুছে গেলে (নতুন অর্ডার এসে) এই মান জমা হয় না
+        setOrdersCache(key, res, startEpoch);
         if (id !== reqIdRef.current) return;
-        setRows(res.rows);
-        setTotal(res.total);
-        setGrandTotal(res.grandTotal);
-        setStatusCounts(res.statusCounts);
-        // পেজ শেষ হয়ে গেলে (যেমন অর্ডার মুছে/বদলে) সর্বশেষ বৈধ পেজে নামানো
-        const maxPage = Math.max(1, Math.ceil(res.total / PAGE_SIZE));
-        if (p.page > maxPage) setPage(maxPage);
+        applyResult(res);
       } catch {
         if (id === reqIdRef.current) showToastRef.current('❌ অর্ডার লোড ব্যর্থ হয়েছে');
       } finally {
@@ -252,8 +277,9 @@ export default function OrdersPageClient({ initialPage }: Props) {
       setRows((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
       if (status === 'confirmed') playChaChing();
       showToastRef.current('✅ স্ট্যাটাস আপডেট হয়েছে');
-      // কাউন্ট ও ফিল্টারের সাথে মিল রাখতে বর্তমান পেজ আবার আনি
-      load(paramsRef.current);
+      // কাউন্ট ও ফিল্টারের সাথে মিল রাখতে বর্তমান পেজ আবার আনি (মনে-রাখা ডাটা মুছে)
+      clearOrdersCache();
+      load(paramsRef.current, true);
     } else {
       showToastRef.current('❌ ' + (res.message || 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
     }
@@ -269,7 +295,8 @@ export default function OrdersPageClient({ initialPage }: Props) {
       showToastRef.current(`✅ ${res.changed}টি অর্ডার আপডেট হয়েছে`);
       setSelectedIds(new Set());
       setBulkPendingStatus(null);
-      load(paramsRef.current);
+      clearOrdersCache();
+      load(paramsRef.current, true);
     } else {
       showToastRef.current('❌ ' + (res.message || 'বাল্ক আপডেট ব্যর্থ হয়েছে'));
     }
@@ -283,7 +310,10 @@ export default function OrdersPageClient({ initialPage }: Props) {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await load(paramsRef.current);
+      // রিফ্রেশ বোতাম মানেই সত্যিকারের নতুন ডাটা — সার্ভার ও ব্রাউজার দুই ক্যাশই আগে মুছি
+      await refreshAdminCaches('orders').catch(() => {});
+      clearOrdersCache();
+      await load(paramsRef.current, true);
       showToastRef.current('🔄 রিফ্রেশ হয়েছে');
     } finally {
       setRefreshing(false);

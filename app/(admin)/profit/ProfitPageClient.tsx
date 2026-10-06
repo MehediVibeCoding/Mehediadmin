@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import { getProfitData, type ProfitData } from '@/app/actions/profit';
+import { refreshAdminCaches } from '@/app/actions/cache';
 import {
-  filterProfitOrders,
-  buildProfitDayMap,
-  computeProfitSummary,
+  filterProfitDays,
+  profitDaysToMap,
+  computeProfitSummaryFromDays,
   buildProfitDayTable,
   buildProfitChartSeries,
 } from '@/lib/profit';
@@ -47,12 +48,10 @@ export default function ProfitPageClient({ initialData }: Props) {
 
   const range = dateRange ?? defaultRange();
 
-  const filtered = useMemo(
-    () => filterProfitOrders(profitData.orders, range),
-    [profitData.orders, range]
-  );
-  const dayMap = useMemo(() => buildProfitDayMap(filtered, profitData.products), [filtered, profitData.products]);
-  const summary = useMemo(() => computeProfitSummary(filtered, profitData.products), [filtered, profitData.products]);
+  // দিনভিত্তিক সারাংশ থেকে রেঞ্জ ফিল্টার → স্ট্যাট/চার্ট/টেবিল (সব অর্ডার আর আসে না)
+  const filtered = useMemo(() => filterProfitDays(profitData.days, range), [profitData.days, range]);
+  const dayMap = useMemo(() => profitDaysToMap(filtered), [filtered]);
+  const summary = useMemo(() => computeProfitSummaryFromDays(filtered), [filtered]);
   const dayTable = useMemo(() => buildProfitDayTable(dayMap), [dayMap]);
   const chartSeries = useMemo(() => buildProfitChartSeries(dayMap, range), [dayMap, range]);
 
@@ -61,6 +60,8 @@ export default function ProfitPageClient({ initialData }: Props) {
   async function handleRefresh() {
     setRefreshing(true);
     try {
+      // রিফ্রেশ বোতামে সার্ভারের ক্যাশ আগে মুছে নিই, নইলে ২ মিনিটের পুরনো ডাটা ফিরে আসত
+      await refreshAdminCaches('all');
       const data = await getProfitData();
       setProfitData(data);
       setDateRange(defaultRange());

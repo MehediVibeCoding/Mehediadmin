@@ -13,6 +13,8 @@
 // আসলে সাইট সার্ভ করে, রিডাইরেক্ট হয় এমন ঠিকানা নয়) ও GUIDE_REVALIDATE_SECRET_KEY
 // (Vangcur-এর একই নামের env-এর সাথে হুবহু এক হতে হবে)।
 
+import { invalidateProductsData } from '@/lib/adminCache';
+
 const TIMEOUT_MS = 4000;
 
 async function attempt(url: string, secret: string): Promise<{ ok: boolean; status?: number; note?: string; retry: boolean }> {
@@ -57,6 +59,10 @@ async function attempt(url: string, secret: string): Promise<{ ok: boolean; stat
 }
 
 export async function revalidateVangcurCatalog(): Promise<void> {
+  // প্রোডাক্ট/স্টক/প্রফিট সেভের পর অ্যাডমিনের নিজের ক্যাশও (ড্যাশবোর্ডের কম-স্টক, প্রফিট) মুছে ফেলি —
+  // এটা প্রতিটা প্রোডাক্ট-রাইটের পরে ডাকা হয়, তাই এক জায়গাতেই সব কভার হয়
+  invalidateProductsData();
+
   const base = process.env.VANGCUR_SITE_URL;
   const secret = process.env.GUIDE_REVALIDATE_SECRET_KEY;
 

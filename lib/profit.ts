@@ -154,3 +154,49 @@ export function buildProfitChartSeries(dayMap: Map<string, DayAgg>, range: DateR
 
   return { labels, values, subtitle };
 }
+
+// ══════════════════════════════════════════════════════════════
+//  দিনভিত্তিক সারাংশ (ডাটাবেজের admin_profit_days() থেকে) — প্রফিট পেজ এখন
+//  সব অর্ডার না এনে শুধু এই ছোট দিন-তালিকা নেয়। প্রফিটের নিয়ম একই:
+//  অর্ডারের স্ন্যাপশট → না থাকলে নাম মিলিয়ে → না পেলে ২০০ (হিসাব ডাটাবেজে হয়)।
+// ══════════════════════════════════════════════════════════════
+export interface ProfitDay {
+  day: string; // YYYY-MM-DD (UTC, আগের created_at.slice(0,10)-এর মতোই)
+  orders: number;
+  revenue: number;
+  profit: number;
+}
+
+// রেঞ্জের মধ্যের দিনগুলো (filterProfitOrders-এর সাথে হুবহু একই তারিখ-তুলনা)
+export function filterProfitDays(days: ProfitDay[], range: DateRangeInput): ProfitDay[] {
+  const start = new Date(range.start);
+  start.setHours(0, 0, 0, 0);
+  const endExclusive = new Date(range.end);
+  endExclusive.setHours(0, 0, 0, 0);
+  endExclusive.setDate(endExclusive.getDate() + 1);
+  return days.filter((r) => {
+    if (!r.day) return false;
+    const d = new Date(r.day + 'T00:00:00');
+    return d >= start && d < endExclusive;
+  });
+}
+
+export function profitDaysToMap(days: ProfitDay[]): Map<string, DayAgg> {
+  const dayMap = new Map<string, DayAgg>();
+  days.forEach((r) => {
+    dayMap.set(r.day, {
+      revenue: Number(r.revenue) || 0,
+      profit: Number(r.profit) || 0,
+      orders: Number(r.orders) || 0,
+    });
+  });
+  return dayMap;
+}
+
+export function computeProfitSummaryFromDays(days: ProfitDay[]): ProfitSummary {
+  const totalProfit = days.reduce((s, r) => s + (Number(r.profit) || 0), 0);
+  const totalRevenue = days.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+  const totalOrders = days.reduce((s, r) => s + (Number(r.orders) || 0), 0);
+  const avgProfit = totalOrders ? totalProfit / totalOrders : 0;
+  return { totalProfit, totalRevenue, totalOrders, avgProfit };
+}

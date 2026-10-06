@@ -1,4 +1,5 @@
-import { listCustomers } from '@/app/actions/customers';
+import { getCustomersPage } from '@/app/actions/customers';
+import { PAGE_SIZE } from '@/lib/constants/pagination';
 import CustomersPageClient from './CustomersPageClient';
 import PageErrorBox from '@/components/common/PageErrorBox';
 
@@ -6,8 +7,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function CustomersPage() {
   try {
-    const customers = await listCustomers();
-    return <CustomersPageClient initialCustomers={customers} />;
+    const initial = await getCustomersPage({ search: '', page: 1, pageSize: PAGE_SIZE });
+    return <CustomersPageClient initialPage={initial} />;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return (
