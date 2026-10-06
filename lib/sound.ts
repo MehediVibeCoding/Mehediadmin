@@ -1,8 +1,43 @@
+// 🔇 সাউন্ড মিউট — এই ব্রাউজারে মনে রাখা হয় (localStorage), সব জায়গায় (অর্ডার পেজ,
+// বিকাশ পেজ, রিয়েলটাইম নোটিফিকেশন) একসাথে কাজ করে কারণ চেকটা playChaChing()-এর ভেতরেই।
+const MUTE_KEY = 'admin_sound_muted';
+const MUTE_EVENT = 'admin-sound-mute-change';
+
+export function isSoundMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(MUTE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setSoundMuted(muted: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+  } catch {
+    // storage বন্ধ থাকলে এই সেশনের জন্য কাজ করবে না — ক্র্যাশ নয়
+  }
+  window.dispatchEvent(new Event(MUTE_EVENT));
+}
+
+// useSyncExternalStore-এর জন্য: একই ট্যাবের ইভেন্ট + অন্য ট্যাবের 'storage' ইভেন্ট
+export function subscribeSoundMute(cb: () => void): () => void {
+  window.addEventListener(MUTE_EVENT, cb);
+  window.addEventListener('storage', cb);
+  return () => {
+    window.removeEventListener(MUTE_EVENT, cb);
+    window.removeEventListener('storage', cb);
+  };
+}
+
 // legacy playChaChing() হুবহু পোর্ট — Web Audio API দিয়ে "Cha-Ching!" ক্যাশ
 // রেজিস্টার সাউন্ড, কোনো audio file লাগে না। নতুন অর্ডার এলে ও অর্ডার
 // confirm করলে বাজে।
 export function playChaChing(): void {
   if (typeof window === 'undefined') return;
+  if (isSoundMuted()) return;
   try {
     const AudioCtx =
       window.AudioContext ||

@@ -138,6 +138,18 @@ export default function TrafficPageClient({ initialData }: Props) {
         </div>
       </div>
 
+      {!trafficData.connected && (
+        <div className="mb-4 flex items-start gap-3 rounded-[20px] border border-amber-200/80 bg-amber-50 p-3.5 sm:p-4">
+          <span className="mt-0.5 text-[18px] leading-none" aria-hidden="true">ℹ️</span>
+          <div className="min-w-0">
+            <div className="font-body text-[13px] font-black text-ink">ট্রাফিক ডাটা সোর্স এখনো সংযুক্ত নয়</div>
+            <div className="mt-0.5 font-body text-[12px] font-semibold leading-relaxed text-muted">
+              Cloudflare Web Analytics API যুক্ত হলে ভিজিটর, পিক আওয়ার ও প্রোডাক্ট ভিউ এখানে দেখা যাবে। এখন নিচের সব সংখ্যা শূন্য দেখানো স্বাভাবিক।
+            </div>
+          </div>
+        </div>
+      )}
+
       <TrafficStatCards summary={summary} peakHourShort={labels.short} />
 
       <TrafficTrendChart series={trendSeries} />

@@ -98,8 +98,13 @@ export default function StatGrid({ stats }: { stats: DashboardStats }) {
     {
       id: 'visitors',
       label: 'আজকের ভিজিটর',
-      value: String(stats.todayVisitors),
-      note: stats.totalVisitors > 0 ? `+ ${stats.totalVisitors}টি সর্বমোট` : undefined,
+      value: stats.todayVisitors === null ? '—' : String(stats.todayVisitors),
+      note:
+        stats.todayVisitors === null
+          ? 'অ্যানালিটিক্স সংযুক্ত নয়'
+          : (stats.totalVisitors ?? 0) > 0
+            ? `+ ${stats.totalVisitors}টি সর্বমোট`
+            : undefined,
       href: '/traffic',
       cardBg: 'bg-gradient-to-br from-[#FAF5FF] via-white to-white',
       borderColor: 'border-purple-200/70 hover:border-purple-300',

@@ -4,12 +4,12 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { listProducts } from '@/app/actions/products';
 import { mapOrderRow } from '@/lib/orders';
+import { attachProfitSnapshots } from '@/lib/orderPrivate';
 import { computeOrderProfit, PROFIT_STATUSES } from '@/lib/profit';
 import type { Order } from '@/types';
 
 // অডিট §৭.২: প্রফিট লজিক lib/profit.ts-এ একটাই উৎস। CONFIRMED_STATUSES = PROFIT_STATUSES
 const CONFIRMED_STATUSES = PROFIT_STATUSES;
-const PAGE_VIEWS_LOOKBACK_DAYS = 90;
 
 export interface DashboardStats {
   totalOrders: number;
@@ -17,8 +17,9 @@ export interface DashboardStats {
   netProfit: number;
   confirmedRevenue: number;
   uniqueCustomers: number;
-  todayVisitors: number;
-  totalVisitors: number;
+  // null = ভিজিটর ডাটার সোর্স সংযুক্ত নয় (Cloudflare Analytics ভবিষ্যতে যুক্ত হবে)
+  todayVisitors: number | null;
+  totalVisitors: number | null;
   deliveredCount: number;
   confirmedCount: number;
 }
@@ -41,23 +42,19 @@ export async function getDashboardData(): Promise<DashboardData> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
 
-  const pvCutoff = new Date();
-  pvCutoff.setDate(pvCutoff.getDate() - PAGE_VIEWS_LOOKBACK_DAYS);
-
-  const [ordersRes, products, pageViewsRes] = await Promise.all([
+  const [ordersRes, products] = await Promise.all([
     supabase.from('orders').select('*').order('created_at', { ascending: false }),
     listProducts(),
-    supabase
-      .from('page_views')
-      .select('visitor_id,created_at')
-      .gte('created_at', pvCutoff.toISOString()),
   ]);
 
   if (ordersRes.error) {
     throw new Error('অর্ডার লোড ব্যর্থ: ' + ordersRes.error.message);
   }
 
-  const orders: Order[] = (ordersRes.data || []).map(mapOrderRow);
+  const orderRows = ordersRes.data || [];
+  // 🔒 প্রফিট স্ন্যাপশট গোপন `order_private` টেবিল থেকে
+  await attachProfitSnapshots(supabase, orderRows);
+  const orders: Order[] = orderRows.map(mapOrderRow);
 
   // ── স্ট্যাট গ্রিড ──
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
@@ -70,19 +67,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     const key = (o.customer_phone || o.customer_name || '').trim();
     if (key) uniqueCustomers.add(key);
   });
-
-  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-  const todaySet = new Set<string>();
-  const totalSet = new Set<string>();
-  if (!pageViewsRes.error && pageViewsRes.data) {
-    pageViewsRes.data.forEach((row) => {
-      if (row.visitor_id) {
-        totalSet.add(row.visitor_id);
-        const rowDate = new Date(row.created_at).toLocaleDateString('en-CA');
-        if (rowDate === todayStr) todaySet.add(row.visitor_id);
-      }
-    });
-  }
 
   const deliveredCount = orders.filter((o) => o.status === 'delivered').length;
   const confirmedCount = orders.filter((o) => o.status === 'confirmed').length;
@@ -113,8 +97,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       netProfit,
       confirmedRevenue,
       uniqueCustomers: uniqueCustomers.size,
-      todayVisitors: todaySet.size,
-      totalVisitors: totalSet.size,
+      todayVisitors: null,
+      totalVisitors: null,
       deliveredCount,
       confirmedCount,
     },

@@ -82,6 +82,7 @@ export default function OrdersToolbar({
               <path d="m21 21-4.35-4.35" />
             </svg>
             <input
+              id="orders-search"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="অর্ডার নম্বর, নাম বা ফোন দিয়ে খুঁজুন..."

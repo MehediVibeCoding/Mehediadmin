@@ -18,10 +18,25 @@ export function getUnitProfitByName(name: string, products: Product[]): number {
   return DEFAULT_UNIT_PROFIT;
 }
 
+// অর্ডার বসার মুহূর্তের স্ন্যাপশট থেকে প্রতি ইউনিটের প্রফিট (item id দিয়ে)।
+// ⚠️ id কোথাও সংখ্যা (1), কোথাও স্ট্রিং ("1") হয়ে সেভ হয়েছে — তাই String() দিয়ে তুলনা।
+function getSnapshotUnitProfit(order: Order, itemId: Order['items'][number]['id']): number | null {
+  if (itemId === undefined || itemId === null) return null;
+  const snap = order.item_profit_snapshot;
+  if (!Array.isArray(snap) || !snap.length) return null;
+  const hit = snap.find((s) => s && String(s.id) === String(itemId));
+  if (!hit) return null;
+  const v = Number(hit.unit_profit);
+  return Number.isNaN(v) ? null : v;
+}
+
 // একটা অর্ডারের সব আইটেমের মোট নেট প্রফিট (legacy computeOrderProfit)
+// অগ্রাধিকার: ১) অর্ডারের নিজের স্ন্যাপশট (প্রোডাক্ট রিনেম/ডিলিট/প্রফিট বদলালেও অতীত অপরিবর্তিত)
+//            ২) স্ন্যাপশট না থাকলে (পুরনো অর্ডার) নাম-ম্যাচ ৩) তারপর ডিফল্ট
 export function computeOrderProfit(order: Order, products: Product[]): number {
   return (order.items || []).reduce((sum, it) => {
-    const unitProfit = getUnitProfitByName(it.name, products);
+    const unitProfit =
+      getSnapshotUnitProfit(order, it.id) ?? getUnitProfitByName(it.name, products);
     const qty = Number(it.qty) || 0;
     return sum + unitProfit * qty;
   }, 0);

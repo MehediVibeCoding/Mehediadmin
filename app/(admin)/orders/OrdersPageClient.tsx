@@ -65,6 +65,8 @@ export default function OrdersPageClient({ initialPage }: Props) {
   const [bulkPendingStatus, setBulkPendingStatus] = useState<OrderStatus | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  // কীবোর্ড (J/K) দিয়ে বেছে নেওয়া সারি
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const { showToast } = useToast();
@@ -148,6 +150,71 @@ export default function OrdersPageClient({ initialPage }: Props) {
   }, [ordersVersion, load]);
 
   const viewingOrder = viewingId ? rows.find((o) => o.id === viewingId) || null : null;
+
+  // ── কীবোর্ড শর্টকাট ──
+  // /  → সার্চে ফোকাস | J / K → পরের / আগের অর্ডার (মডাল খোলা থাকলে মডালই পাল্টে যায়)
+  // Enter → বাছাই করা অর্ডার খোলা | Esc ও Shift+C/X মডালের ভেতরে হ্যান্ডেল হয়
+  // টাইপ করার সময় (input/textarea/select) কিছুই চলে না; Ctrl/Cmd/Alt চাপা থাকলেও না।
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const viewingIdRef = useRef(viewingId);
+  viewingIdRef.current = viewingId;
+  const focusedIdRef = useRef(focusedId);
+  focusedIdRef.current = focusedId;
+
+  useEffect(() => {
+    function scrollRowIntoView(id: string) {
+      requestAnimationFrame(() => {
+        // মোবাইল কার্ড ও ডেস্কটপ টেবিল দুটোই DOM-এ থাকে (একটা CSS-এ লুকানো) — দৃশ্যমানটা বেছে নিই
+        const els = document.querySelectorAll<HTMLElement>(`[data-order-id="${id}"]`);
+        for (const el of Array.from(els)) {
+          if (el.offsetParent !== null) {
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            break;
+          }
+        }
+      });
+    }
+
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+
+      const list = rowsRef.current;
+      const modalOpen = !!viewingIdRef.current;
+
+      if (e.code === 'Slash' && !e.shiftKey && !modalOpen) {
+        e.preventDefault();
+        document.getElementById('orders-search')?.focus();
+        return;
+      }
+
+      if ((e.code === 'KeyJ' || e.code === 'KeyK') && !e.shiftKey) {
+        if (!list.length) return;
+        e.preventDefault();
+        const dir = e.code === 'KeyJ' ? 1 : -1;
+        const cur = viewingIdRef.current ?? focusedIdRef.current;
+        const idx = cur ? list.findIndex((o) => o.id === cur) : -1;
+        const nextIdx = idx === -1 ? (dir === 1 ? 0 : list.length - 1) : Math.min(list.length - 1, Math.max(0, idx + dir));
+        const id = list[nextIdx].id;
+        setFocusedId(id);
+        if (modalOpen) setViewingId(id);
+        else scrollRowIntoView(id);
+        return;
+      }
+
+      // Enter: শুধু যখন কোনো বোতাম/লিংকে ফোকাস নেই (নইলে সেই বোতামের নিজের Enter-এ হস্তক্ষেপ হতো)
+      if (e.key === 'Enter' && !modalOpen && focusedIdRef.current && (e.target === document.body || el === null)) {
+        if (list.some((o) => o.id === focusedIdRef.current)) {
+          e.preventDefault();
+          setViewingId(focusedIdRef.current);
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   // ফিল্টার বদলালে সবসময় ১ পেজে
   const selectFilter = useCallback((s: StatusFilter) => {
@@ -286,7 +353,11 @@ export default function OrdersPageClient({ initialPage }: Props) {
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onToggleSelectAll={toggleSelectAll}
-            onView={setViewingId}
+            onView={(id) => {
+              setViewingId(id);
+              setFocusedId(id);
+            }}
+            focusedId={focusedId}
           />
         </div>
         {total > 0 && (
@@ -300,7 +371,7 @@ export default function OrdersPageClient({ initialPage }: Props) {
       {selectedIds.size > 0 && <div className="h-28 lg:hidden" />}
 
       {viewingOrder && (
-        <OrderDetailModal order={viewingOrder} onClose={() => setViewingId(null)} onStatusChange={handleStatusChange} />
+        <OrderDetailModal key={viewingOrder.id} order={viewingOrder} onClose={() => setViewingId(null)} onStatusChange={handleStatusChange} />
       )}
     </div>
   );

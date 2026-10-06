@@ -1,4 +1,5 @@
 import Sidebar from '@/components/admin/Sidebar';
+import TopProgressBar from '@/components/admin/TopProgressBar';
 import { ToastProvider } from '@/components/admin/Toast';
 import { OrdersRealtimeProvider } from '@/components/admin/OrdersRealtimeProvider';
 
@@ -6,6 +7,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <ToastProvider>
       <OrdersRealtimeProvider>
+        <TopProgressBar />
         <div className="relative flex min-h-screen w-full flex-col md:flex-row">
           <Sidebar />
           <main

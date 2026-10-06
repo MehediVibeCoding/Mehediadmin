@@ -14,6 +14,7 @@ import { useToast } from '@/components/admin/Toast';
 import StatusPill from '@/components/admin/StatusPill';
 import SectionHeading from '@/components/common/SectionHeading';
 import { RISK_META } from '@/components/orders/RiskBadge';
+import OrderNotes from '@/components/orders/OrderNotes';
 
 interface Props {
   order: Order;
@@ -52,6 +53,8 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
   const [changingTo, setChangingTo] = useState<OrderStatus | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  // কীবোর্ড শর্টকাট সবসময় সর্বশেষ order/স্ট্যাটাস দিয়ে কাজ করে (effect-এর [] deps-এর stale closure এড়াতে)
+  const statusClickRef = useRef<(s: OrderStatus) => Promise<void>>(async () => {});
 
   const orderDate = new Date(order.created_at || Date.now());
   const payTxt = order.payment_txn
@@ -70,7 +73,28 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCloseRef.current();
+      if (e.key === 'Escape') {
+        // নোটের ঘরে লেখা অসেভ লেখা থাকলে Esc শুধু ঘর থেকে বেরোয়, মডাল বন্ধ করে না — লেখা হারানো ঠেকাতে
+        const t = e.target as HTMLElement | null;
+        if (t && t.tagName === 'TEXTAREA' && (t as HTMLTextAreaElement).value.trim()) {
+          (t as HTMLTextAreaElement).blur();
+          return;
+        }
+        onCloseRef.current();
+        return;
+      }
+      // Shift+C = কনফার্ম, Shift+X = রিজেক্ট (বাংলা কীবোর্ডেও কাজ করতে অক্ষর নয়, ফিজিক্যাল কী কোড)
+      if (!e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const el = e.target as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+      if (typing) return;
+      if (e.code === 'KeyC') {
+        e.preventDefault();
+        void statusClickRef.current('confirmed');
+      } else if (e.code === 'KeyX') {
+        e.preventDefault();
+        void statusClickRef.current('rejected');
+      }
     }
     document.addEventListener('keydown', onKey);
     return () => {
@@ -98,6 +122,8 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
       setChangingTo(null);
     }
   }
+
+  statusClickRef.current = handleStatusClick;
 
   return (
     // z-[60] > নিচের ট্যাব বার (z-40) — তাই বার আর কখনো মোডালের উপরে/বোতামের উপরে আসে না
@@ -308,9 +334,15 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
             </div>
           </section>
 
+          {/* ── অ্যাডমিন নোট (শুধু এখানেই দেখায়; অর্ডার বদলালে নতুন করে লোড হয়) ── */}
+          <OrderNotes key={order.id} orderId={order.id} />
+
           {/* ── স্ট্যাটাস পরিবর্তন ── */}
           <section>
             <SectionHeading>স্ট্যাটাস পরিবর্তন করুন</SectionHeading>
+            <p className="mb-2.5 hidden font-body text-[11px] font-semibold text-muted md:block">
+              ⌨️ Shift+C কনফার্ম · Shift+X রিজেক্ট · J / K পরের / আগের অর্ডার · Esc বন্ধ
+            </p>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {ORDER_STATUS_ORDER.map((s) => {
                 const m = ORDER_STATUS_META[s];

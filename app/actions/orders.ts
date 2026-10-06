@@ -8,6 +8,7 @@ import { requireAdmin } from '@/lib/auth-guard';
 import { mapOrderRow, isDiamondByDeliveredCount, ORDER_STATUS_ORDER } from '@/lib/orders';
 import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import { attachOrderRisk } from '@/lib/orderRisk';
+import { attachProfitSnapshots } from '@/lib/orderPrivate';
 import type { Order, OrderItem, OrderStatus } from '@/types';
 
 // ══════════════════════════════════════════════════════════════
@@ -27,6 +28,8 @@ export async function listOrders(): Promise<Order[]> {
   // প্রতিটা লগইন-ইউজারের ডেলিভার্ড অর্ডার গুনে ডায়মন্ড মেম্বার চিহ্নিত করা
   // (একই fetch থেকেই — আলাদা কোনো DB কল লাগে না)
   const rows = data || [];
+  // 🔒 প্রফিট স্ন্যাপশট এখন গোপন `order_private` টেবিলে — সারিগুলোতে বসিয়ে নেওয়া
+  await attachProfitSnapshots(supabase, rows);
   const deliveredByUser = new Map<string, number>();
   for (const r of rows) {
     if (r.user_id && r.status === 'delivered') {

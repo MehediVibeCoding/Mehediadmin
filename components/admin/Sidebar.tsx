@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSoundMuted } from '@/components/admin/useSoundMuted';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -314,6 +315,25 @@ function useActiveHref() {
   return best;
 }
 
+function SoundIcon({ muted }: { muted: boolean }) {
+  return (
+    <>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      {muted ? (
+        <>
+          <line x1="22" y1="9" x2="16" y2="15" />
+          <line x1="16" y1="9" x2="22" y2="15" />
+        </>
+      ) : (
+        <>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+        </>
+      )}
+    </>
+  );
+}
+
 function LogoutIcon() {
   return (
     <>
@@ -442,6 +462,7 @@ function SectionLabel({ title, expanded }: { title: string; expanded: boolean })
 }
 
 function DesktopSidebar({ activeHref, onLogout }: { activeHref: string; onLogout: () => void }) {
+  const [soundMuted, toggleSound] = useSoundMuted();
   const [expanded, setExpanded] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -518,6 +539,25 @@ function DesktopSidebar({ activeHref, onLogout }: { activeHref: string; onLogout
               </div>
             </div>
           ))}
+          {/* সাউন্ড মিউট/আনমিউট — নতুন অর্ডার ও কনফার্মের "ক্যাশ রেজিস্টার" সাউন্ড */}
+          <div className="mt-1">
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={soundMuted ? 'সাউন্ড চালু করুন' : 'সাউন্ড বন্ধ করুন'}
+              aria-pressed={soundMuted}
+              className="group flex h-[44px] w-full items-center overflow-hidden rounded-[14px] text-muted transition-colors duration-200 hover:bg-brand-bg/60 hover:text-ink"
+            >
+              <span className={ICON_BOX}>
+                <NavIcon className="h-5 w-5 group-hover:scale-110">
+                  <SoundIcon muted={soundMuted} />
+                </NavIcon>
+              </span>
+              <span className={labelCls(expanded)} style={staggerStyle(expanded, ALL_HREFS.length)}>
+                {soundMuted ? 'সাউন্ড বন্ধ' : 'সাউন্ড চালু'}
+              </span>
+            </button>
+          </div>
           {/* লগআউট: আলাদা হাইলাইট ছাড়া মেনুর একদম শেষে — লাল রঙেই; ক্লিক করলে কনফার্মেশন আসে */}
           <div className="mt-1 pb-1">
             <button
@@ -690,6 +730,7 @@ function MobileDrawer({
   onLogout: () => void;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [soundMuted, toggleSound] = useSoundMuted();
   const drag = useRef<{ startY: number; dy: number } | null>(null);
 
   // খোলা থাকলে পেছনের পেজ স্ক্রল লক + Esc দিয়ে বন্ধ
@@ -835,6 +876,20 @@ function MobileDrawer({
               </div>
             </div>
           ))}
+
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-pressed={soundMuted}
+            className="mb-1 flex min-h-[48px] w-full items-center gap-3 rounded-2xl px-2.5 py-1.5 text-left font-body text-[13.5px] font-bold text-ink transition-all duration-brand hover:bg-brand-bg/60 active:scale-[0.98]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-bg text-muted">
+              <NavIcon className="h-[19px] w-[19px]">
+                <SoundIcon muted={soundMuted} />
+              </NavIcon>
+            </span>
+            <span className="flex-1">{soundMuted ? 'সাউন্ড বন্ধ (চালু করুন)' : 'সাউন্ড চালু (বন্ধ করুন)'}</span>
+          </button>
 
           {/* লগআউট: আলাদা পিল নয়, মেনুর শেষে সাধারণ সারির মতো — লাল রঙে; ক্লিকে কনফার্মেশন */}
           <button

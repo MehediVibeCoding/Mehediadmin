@@ -14,6 +14,8 @@ interface Props {
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onView: (id: string) => void;
+  // কীবোর্ড (J/K) দিয়ে বেছে নেওয়া সারি — শুধু হাইলাইটের জন্য
+  focusedId?: string | null;
 }
 
 const TABLE_HEADERS: { label: string; align?: 'right' }[] = [
@@ -80,7 +82,7 @@ function CouponBadge({ code, amount }: { code: string | null; amount: number }) 
   );
 }
 
-export default function OrdersTable({ orders, selectedIds, onToggleSelect, onToggleSelectAll, onView }: Props) {
+export default function OrdersTable({ orders, selectedIds, onToggleSelect, onToggleSelectAll, onView, focusedId = null }: Props) {
   const { showToast } = useToast();
   const allChecked = orders.length > 0 && orders.every((o) => selectedIds.has(o.id));
 
@@ -134,9 +136,10 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
             return (
               <article
                 key={o.id}
+                data-order-id={o.id}
                 className={`flex flex-col rounded-[22px] border bg-white p-3.5 shadow-sh1 transition-all duration-brand ${
                   isSelected ? 'border-brand-light ring-2 ring-brand-light/25' : 'border-white/90'
-                }`}
+                } ${focusedId === o.id ? 'ring-2 ring-brand-light/60' : ''}`}
               >
                 {/* হেডার: চেকবক্স · অর্ডার নং · স্ট্যাটাস */}
                 <div className="flex items-center gap-1.5">
@@ -258,7 +261,10 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                 return (
                   <tr
                     key={o.id}
-                    className={`transition-colors duration-brand ${isSelected ? 'bg-brand-light/10' : 'hover:bg-brand-bg/25'}`}
+                    data-order-id={o.id}
+                    className={`transition-colors duration-brand ${
+                      focusedId === o.id ? 'bg-brand-light/20' : isSelected ? 'bg-brand-light/10' : 'hover:bg-brand-bg/25'
+                    }`}
                   >
                     <td className="py-2.5 pl-3">
                       <Checkbox checked={isSelected} onChange={() => onToggleSelect(o.id)} label={`${o.order_num} সিলেক্ট করুন`} />
