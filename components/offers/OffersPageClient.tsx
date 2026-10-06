@@ -13,6 +13,7 @@ import {
 import { useToast } from '@/components/admin/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { Field, FIELD_CLS, TEXTAREA_CLS, SelectBox } from '@/components/common/FormField';
+import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 interface Props {
   config: OfferConfig;
@@ -143,6 +144,7 @@ export default function OffersPageClient({ config, products }: Props) {
     } else {
       res = await saveOfferModel3({ product_id: editor.product_id, badge_text: editor.badge_text });
     }
+    notifyCatalogSyncCheck();
     setSaving(false);
 
     if (!res.ok) {

@@ -17,6 +17,7 @@ import { useToast } from '@/components/admin/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import SectionHeading from '@/components/common/SectionHeading';
 import { Field, SelectBox, FIELD_CLS } from '@/components/common/FormField';
+import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 interface Props {
   cards: HeroCard[];
@@ -124,6 +125,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
       productName: editor.productName,
     };
     const res = editor.index === -1 ? await addHeroCard(input) : await updateHeroCard(editor.index, input);
+    notifyCatalogSyncCheck();
     setSaving(false);
 
     if (!res.ok) {
@@ -142,6 +144,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
       if (confirm === 'delete') {
         if (!editor || editor.index === -1) return;
         const res = await deleteHeroCard(editor.index);
+        notifyCatalogSyncCheck();
         if (!res.ok) {
           showToast(res.message || '❌ ব্যর্থ হয়েছে');
           return;

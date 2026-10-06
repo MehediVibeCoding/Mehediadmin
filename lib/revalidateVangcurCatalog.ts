@@ -14,6 +14,16 @@
 // (Vangcur-এর একই নামের env-এর সাথে হুবহু এক হতে হবে)।
 
 import { invalidateProductsData } from '@/lib/adminCache';
+import { createServiceRoleClient } from '@/lib/supabase/server';
+
+// 🆕 শেষ রিফ্রেশের ফলাফল admin_sync_status টেবিলে (key='catalog') রাখা হয় — অ্যাডমিনের
+// CatalogSyncBanner এটা পড়ে ব্যর্থ হলে সতর্কবার্তা দেখায়। এটাও কখনো throw করে না।
+export const CATALOG_SYNC_KEY = 'catalog';
+
+export interface CatalogSyncResult {
+  ok: boolean;
+  message: string;
+}
 
 const TIMEOUT_MS = 4000;
 
@@ -58,7 +68,21 @@ async function attempt(url: string, secret: string): Promise<{ ok: boolean; stat
   }
 }
 
-export async function revalidateVangcurCatalog(): Promise<void> {
+async function recordStatus(ok: boolean, message: string): Promise<void> {
+  try {
+    const supabase = createServiceRoleClient();
+    await supabase
+      .from('admin_sync_status')
+      .upsert(
+        { key: CATALOG_SYNC_KEY, ok, message: message.slice(0, 300), updated_at: new Date().toISOString() },
+        { onConflict: 'key' },
+      );
+  } catch {
+    // স্ট্যাটাস লেখা ব্যর্থ হলেও সেভ বা রিভ্যালিডেশন আটকাবে না
+  }
+}
+
+export async function revalidateVangcurCatalog(): Promise<CatalogSyncResult> {
   // প্রোডাক্ট/স্টক/প্রফিট সেভের পর অ্যাডমিনের নিজের ক্যাশও (ড্যাশবোর্ডের কম-স্টক, প্রফিট) মুছে ফেলি —
   // এটা প্রতিটা প্রোডাক্ট-রাইটের পরে ডাকা হয়, তাই এক জায়গাতেই সব কভার হয়
   invalidateProductsData();
@@ -70,7 +94,9 @@ export async function revalidateVangcurCatalog(): Promise<void> {
     console.error(
       `[revalidate-catalog] ❌ স্কিপ: ${!base ? 'VANGCUR_SITE_URL' : ''}${!base && !secret ? ' ও ' : ''}${!secret ? 'GUIDE_REVALIDATE_SECRET_KEY' : ''} সেট করা নেই (Mehediadmin-এর Vercel env দেখুন)`,
     );
-    return;
+    const message = `${!base ? 'VANGCUR_SITE_URL' : ''}${!base && !secret ? ' ও ' : ''}${!secret ? 'GUIDE_REVALIDATE_SECRET_KEY' : ''} সেট করা নেই (Mehediadmin-এর Vercel env দেখুন)`;
+    await recordStatus(false, message);
+    return { ok: false, message };
   }
 
   const url = `${base.replace(/\/$/, '')}/api/revalidate-catalog`;
@@ -82,9 +108,14 @@ export async function revalidateVangcurCatalog(): Promise<void> {
 
   if (result.ok) {
     console.log(`[revalidate-catalog] ✅ লাইভ সাইটের ক্যাশ রিফ্রেশ হয়েছে (${url} → ${result.status})`);
-  } else {
-    console.error(
-      `[revalidate-catalog] ❌ ব্যর্থ (${url})${result.status ? ` → HTTP ${result.status}` : ''}${result.note ? ` — ${result.note}` : ''}. লাইভ সাইট নিজে থেকে কয়েক মিনিটে আপডেট নেবে।`,
-    );
+    await recordStatus(true, 'ঠিক আছে');
+    return { ok: true, message: 'ঠিক আছে' };
   }
+
+  console.error(
+    `[revalidate-catalog] ❌ ব্যর্থ (${url})${result.status ? ` → HTTP ${result.status}` : ''}${result.note ? ` — ${result.note}` : ''}. লাইভ সাইট নিজে থেকে কয়েক মিনিটে আপডেট নেবে।`,
+  );
+  const message = `${result.status ? `HTTP ${result.status}` : 'সংযোগ ব্যর্থ'}${result.note ? ` — ${result.note}` : ''}`;
+  await recordStatus(false, message);
+  return { ok: false, message };
 }

@@ -15,6 +15,7 @@ import { useToast } from '@/components/admin/Toast';
 import GuidePagesListModal from '@/components/guides/GuidePagesListModal';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { Field, FIELD_CLS } from '@/components/common/FormField';
+import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 interface Props {
   categories: CategoryOption[];
@@ -79,6 +80,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
       editor.mode === 'add'
         ? await addCategory({ id: editor.id, name: editor.name, icon: editor.icon })
         : await updateCategory(editor.originalId!, { name: editor.name, icon: editor.icon });
+    notifyCatalogSyncCheck();
     setSaving(false);
 
     if (!res.ok) {
@@ -95,6 +97,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
     if (!deleteTarget) return;
     setDeleting(true);
     const res = await deleteCategory(deleteTarget.id);
+    notifyCatalogSyncCheck();
     setDeleting(false);
 
     if (!res.ok) {
@@ -113,6 +116,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
     const moved = ids.splice(fromIdx, 1)[0];
     ids.splice(toIdx, 0, moved);
     await reorderCategories(ids);
+    notifyCatalogSyncCheck();
     showToast('✅ ক্যাটাগরির ক্রম সাজানো হয়েছে');
     router.refresh();
   }

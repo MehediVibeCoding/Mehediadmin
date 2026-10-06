@@ -9,6 +9,7 @@ import GuidePagesListModal from '@/components/guides/GuidePagesListModal';
 import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useToast } from '@/components/admin/Toast';
+import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 interface Props {
   products: Product[];
@@ -197,6 +198,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
     if (!deleting) return;
     setDeleting({ ...deleting, busy: true });
     const res = await deleteProduct(deleting.product.id);
+    notifyCatalogSyncCheck();
     if (!res.ok) {
       setDeleting(null);
       showToast('❌ ডিলিট ব্যর্থ: ' + (res.message || 'error'));
@@ -213,6 +215,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
       popover.kind === 'stock'
         ? await updateStock(popover.product.id, Number(value))
         : await updateBadge(popover.product.id, String(value));
+    notifyCatalogSyncCheck();
     if (!res.ok) {
       showToast('❌ সেভ ব্যর্থ: ' + (res.message || 'error'));
       return;
@@ -258,6 +261,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
     dragState.current = null;
     setDraggingId(null);
     await updateProductOrder(dragOrder);
+    notifyCatalogSyncCheck();
     setDragOrder(null);
     onChanged();
   }

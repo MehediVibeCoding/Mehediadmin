@@ -2,6 +2,7 @@ import Sidebar from '@/components/admin/Sidebar';
 import TopProgressBar from '@/components/admin/TopProgressBar';
 import { ToastProvider } from '@/components/admin/Toast';
 import { OrdersRealtimeProvider } from '@/components/admin/OrdersRealtimeProvider';
+import CatalogSyncBanner from '@/components/admin/CatalogSyncBanner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             }}
           >
             <div className="mx-auto w-full max-w-[1520px]">
+              <CatalogSyncBanner />
               {children}
             </div>
           </main>

@@ -20,15 +20,28 @@ import type { Order, OrderItem, OrderStatus } from '@/types';
 export async function listOrders(): Promise<Order[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw new Error('অর্ডার লোড ব্যর্থ: ' + error.message);
+
+  // 🛡️ Supabase/PostgREST একবারে সাধারণত সর্বোচ্চ ১০০০ সারি দেয় — এর বেশি অর্ডার হলে আগে CSV এক্সপোর্ট
+  // চুপচাপ ১০০০-এ কেটে যেত। তাই পাতা ধরে ধরে সব আনা হয়। যতগুলো সারি ফেরত আসে ততটাই এগোই
+  // (সীমা ১০০০ না হলেও ঠিক থাকে), আর created_at-এর সাথে id দিয়ে সর্ট স্থির রাখি যাতে পাতার মাঝে সারি বাদ/ডুপ্লিকেট না হয়।
+  const PAGE = 1000;
+  const MAX_ROWS = 100000; // অসীম লুপের বিরুদ্ধে সুরক্ষা
+  const rows: Parameters<typeof mapOrderRow>[0][] = [];
+  for (let from = 0; from < MAX_ROWS; ) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error('অর্ডার লোড ব্যর্থ: ' + error.message);
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+    from += data.length;
+  }
 
   // প্রতিটা লগইন-ইউজারের ডেলিভার্ড অর্ডার গুনে ডায়মন্ড মেম্বার চিহ্নিত করা
   // (একই fetch থেকেই — আলাদা কোনো DB কল লাগে না)
-  const rows = data || [];
   // 🔒 প্রফিট স্ন্যাপশট এখন গোপন `order_private` টেবিলে — সারিগুলোতে বসিয়ে নেওয়া
   await attachProfitSnapshots(supabase, rows);
   const deliveredByUser = new Map<string, number>();

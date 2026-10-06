@@ -10,6 +10,7 @@ import ImageManager from './ImageManager';
 import SectionHeading from '@/components/common/SectionHeading';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { Field, FIELD_CLS, TEXTAREA_CLS, SelectBox } from '@/components/common/FormField';
+import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 type Tab = 'basic' | 'layout' | 'images';
 
@@ -118,6 +119,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
       const result = editingProduct
         ? await updateProduct(editingProduct.id, form)
         : await createProduct(form, { forceDuplicate });
+      notifyCatalogSyncCheck();
 
       if (result.status === 'duplicate') {
         setDupAsk(true);
