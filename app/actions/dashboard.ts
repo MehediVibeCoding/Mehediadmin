@@ -35,7 +35,6 @@ export interface DashboardData {
 
 // কম স্টকের সীমা (আগের মতোই: ৫ বা কম)
 const LOW_STOCK_LIMIT = 5;
-const PRODUCT_ORDER_KEY = 'vc_prod_order';
 
 interface SummaryRpc {
   totalOrders?: number;
@@ -48,43 +47,25 @@ interface SummaryRpc {
   revenueByDate?: Record<string, number>;
 }
 
-// প্রোডাক্ট তালিকার কাস্টম সাজানো ক্রম (ড্র্যাগ-সর্ট) — products.ts-এর applyOrder-এর সাথে একই নিয়ম,
-// যাতে স্টক সমান হলে আগের মতোই একই ক্রমে দেখায়
-async function readProductOrder(): Promise<Map<number, number>> {
-  const supabase = createServiceRoleClient();
-  const map = new Map<number, number>();
-  const { data } = await supabase
-    .from('store_settings')
-    .select('setting_value')
-    .eq('setting_key', PRODUCT_ORDER_KEY)
-    .maybeSingle();
-  if (!data?.setting_value) return map;
-  try {
-    const raw = data.setting_value;
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (Array.isArray(parsed)) parsed.forEach((id: number, i: number) => map.set(Number(id), i));
-  } catch {
-    // নষ্ট মান হলে ক্রম ছাড়াই চলবে
-  }
-  return map;
-}
-
 // 🚀 আগে: সব অর্ডার + সব প্রোডাক্ট টেনে এনে এখানে গুনত। এখন ডাটাবেজের admin_dashboard_summary()
 // ফাংশন স্ট্যাট/প্রফিট/রেভিনিউ-চার্ট হিসাব করে দেয়; শুধু সর্বশেষ ৫টি অর্ডার ও কম-স্টক প্রোডাক্ট আলাদা আসে।
 // ফলাফল সার্ভারে ক্যাশ থাকে (ট্যাগ: অর্ডার/প্রোডাক্ট বদলালে মুছে যায়, সর্বোচ্চ ২ মিনিট)।
+// 🆕 (প্রোডাক্ট লিস্ট স্কেল ফিক্স, ২০২৬-১০): কাস্টম সাজানো ক্রম আগে আলাদা করে store_settings-এর
+// vc_prod_order JSON array থেকে পড়তে হতো (readProductOrder — এখন সরানো হয়েছে)। এখন প্রোডাক্ট
+// টেবিলেই sort_order কলাম আছে, তাই একই কুয়েরিতে সরাসরি সেই কলাম ধরে সাজানো যায় — আলাদা নেটওয়ার্ক
+// কলই লাগে না।
 const loadDashboardCached = adminCached(
   async (): Promise<DashboardData> => {
     const supabase = createServiceRoleClient();
 
-    const [summaryRes, recentRes, lowRes, order] = await Promise.all([
+    const [summaryRes, recentRes, lowRes] = await Promise.all([
       supabase.rpc('admin_dashboard_summary'),
       supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
       supabase
         .from('custom_products')
-        .select('id, name, stock, imgs')
+        .select('id, name, stock, imgs, sort_order')
         .or(`stock.is.null,stock.lte.${LOW_STOCK_LIMIT}`)
-        .order('id', { ascending: true }),
-      readProductOrder(),
+        .order('sort_order', { ascending: true }),
     ]);
 
     if (summaryRes.error) throw new Error('ড্যাশবোর্ড হিসাব ব্যর্থ: ' + summaryRes.error.message);
@@ -101,13 +82,7 @@ const loadDashboardCached = adminCached(
         stock: (p.stock as number | null) ?? 0,
         thumb: ((p.imgs as string[] | null) || [])[0] || '📦',
       }))
-      .sort((a, b) => {
-        const ia = order.has(a.id) ? order.get(a.id)! : 99999;
-        const ib = order.has(b.id) ? order.get(b.id)! : 99999;
-        if (ia !== ib) return ia - ib;
-        return a.id - b.id;
-      })
-      .sort((a, b) => a.stock - b.stock); // Array.sort স্থিতিশীল — আগের ক্রম সমান স্টকে বজায় থাকে
+      .sort((a, b) => a.stock - b.stock); // কুয়েরিতেই sort_order ধরা, এখানে শুধু স্টক কম থেকে বেশি (Array.sort স্থিতিশীল)
 
     return {
       stats: {

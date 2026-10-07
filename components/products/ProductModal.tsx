@@ -1,10 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Product } from '@/types';
+import type { Product, ProductListRow } from '@/types';
 import type { CategoryOption } from '@/lib/constants/categories';
 import type { ProductFormInput } from '@/app/actions/products';
-import { createProduct, updateProduct, linkColorVariant, unlinkColorVariant } from '@/app/actions/products';
+import {
+  createProduct,
+  updateProduct,
+  linkColorVariant,
+  unlinkColorVariant,
+  getColorGroupMembers,
+  getProductsPage,
+} from '@/app/actions/products';
 import CategoryPicker from './CategoryPicker';
 import ImageManager from './ImageManager';
 import SectionHeading from '@/components/common/SectionHeading';
@@ -19,7 +26,6 @@ interface Props {
   editingProduct?: Product;
   initialState: ProductFormInput;
   titleOverride?: string; // যেমন AI Parser থেকে খোলা হলে '🤖 AI Parse — প্রোডাক্ট যোগ করুন'
-  allProducts?: Product[]; // 🆕 কালার ভ্যারিয়েন্ট লিংক-পিকারে সার্চ করার জন্য — বাকি সব প্রোডাক্টের তালিকা
   onClose: () => void;
   onSaved: (product: Product) => void;
 }
@@ -30,7 +36,7 @@ const TABS: [Tab, string][] = [
   ['images', 'Images'],
 ];
 
-export default function ProductModal({ categories, editingProduct, initialState, titleOverride, allProducts = [], onClose, onSaved }: Props) {
+export default function ProductModal({ categories, editingProduct, initialState, titleOverride, onClose, onSaved }: Props) {
   const [tab, setTab] = useState<Tab>('basic');
   const [form, setForm] = useState<ProductFormInput>(initialState);
   const [saving, setSaving] = useState(false);
@@ -44,18 +50,44 @@ export default function ProductModal({ categories, editingProduct, initialState,
   const [linkQuery, setLinkQuery] = useState('');
   const [linking, setLinking] = useState(false);
 
-  const groupMembers = editingProduct && colorGroupId
-    ? allProducts.filter((p) => p.color_group_id === colorGroupId && p.id !== editingProduct.id)
-    : [];
-  const linkCandidates = editingProduct && linkQuery.trim()
-    ? allProducts
-        .filter((p) => (
-          p.id !== editingProduct.id &&
-          !(colorGroupId && p.color_group_id === colorGroupId) &&
-          p.name.toLowerCase().includes(linkQuery.trim().toLowerCase())
-        ))
-        .slice(0, 8)
-    : [];
+  // 🚀 (প্রোডাক্ট লিস্ট স্কেল ফিক্স): আগে বাকি সব প্রোডাক্ট (allProducts prop) ব্রাউজারে
+  // থেকে এখানে ফিল্টার হতো। এখন সার্ভার থেকে শুধু দরকারি কয়েকটা রো আসে — ১০ হাজার
+  // প্রোডাক্টেও এই লিংক-পিকার হালকা থাকে।
+  type ColorGroupMember = { id: number; name: string; color_name: string | null; color_swatch: string | null };
+  const [groupMembers, setGroupMembers] = useState<ColorGroupMember[]>([]);
+  const [linkCandidates, setLinkCandidates] = useState<ProductListRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (editingProduct && colorGroupId) {
+      getColorGroupMembers(colorGroupId, editingProduct.id)
+        .then((rows) => { if (!cancelled) setGroupMembers(rows); })
+        .catch(() => { if (!cancelled) setGroupMembers([]); });
+    } else {
+      setGroupMembers([]);
+    }
+    return () => { cancelled = true; };
+  }, [editingProduct, colorGroupId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = linkQuery.trim();
+    if (!editingProduct || !q) {
+      setLinkCandidates([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      getProductsPage({ search: q, cat: 'all', page: 1, pageSize: 8 })
+        .then((res) => {
+          if (cancelled) return;
+          setLinkCandidates(
+            res.rows.filter((p) => p.id !== editingProduct.id && !(colorGroupId && p.color_group_id === colorGroupId))
+          );
+        })
+        .catch(() => { if (!cancelled) setLinkCandidates([]); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [linkQuery, editingProduct, colorGroupId]);
 
   // ব্যাকগ্রাউন্ড স্ক্রল লক (মডাল খোলা থাকলে নিচের পেজ নড়বে না)
   useEffect(() => {

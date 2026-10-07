@@ -1,14 +1,22 @@
-import { listProducts } from '@/app/actions/products';
+import { getProductsPage, getCategoryCounts } from '@/app/actions/products';
 import { getCategories } from '@/app/actions/categories';
+import { PAGE_SIZE } from '@/lib/constants/pagination';
 import ProductsPageClient from './ProductsPageClient';
 import PageErrorBox from '@/components/common/PageErrorBox';
 
 export const dynamic = 'force-dynamic';
 
+// 🚀 (প্রোডাক্ট লিস্ট স্কেল ফিক্স): আগে এখানে listProducts() দিয়ে পুরো টেবিল
+// একবারে আসত। এখন শুধু প্রথম পেজ (হালকা কলাম) + ক্যাটাগরি-গণনা সার্ভার থেকে আসে;
+// বাকি পেজ/সার্চ ক্লায়েন্ট থেকে getProductsPage() কল করে আনবে (ProductsPageClient দ্রষ্টব্য)।
 export default async function ProductsPage() {
   try {
-    const [products, categories] = await Promise.all([listProducts(), getCategories()]);
-    return <ProductsPageClient initialProducts={products} categories={categories} />;
+    const [initialPage, counts, categories] = await Promise.all([
+      getProductsPage({ search: '', cat: 'all', page: 1, pageSize: PAGE_SIZE }),
+      getCategoryCounts(),
+      getCategories(),
+    ]);
+    return <ProductsPageClient initialPage={initialPage} initialCounts={counts} categories={categories} />;
   } catch (err) {
     // Supabase/env সমস্যা হলে blank 500 না দেখিয়ে আসল কারণটা দেখাও —
     // এটা শুধু ডায়াগনস্টিকের জন্য, রুট কজ ফিক্স হয়ে গেলে এই catch আর

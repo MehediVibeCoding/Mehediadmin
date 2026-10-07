@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { OfferConfig, OfferActiveModel, Product } from '@/types';
+import type { OfferConfig, OfferActiveModel } from '@/types';
+import type { ProductPickerRow } from '@/app/actions/products';
 import {
   toggleActiveModel,
   saveOfferModel1,
@@ -17,7 +18,7 @@ import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 interface Props {
   config: OfferConfig;
-  products: Product[];
+  products: ProductPickerRow[];
 }
 
 type ModelKey = Exclude<OfferActiveModel, 'none'>;
@@ -472,7 +473,7 @@ function ModelPreview({
 }: {
   model: ModelKey;
   cfg: OfferConfig;
-  products: Product[];
+  products: ProductPickerRow[];
 }) {
   if (model === 'model1') {
     const d = cfg.model1;

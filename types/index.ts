@@ -175,13 +175,36 @@ export interface Product {
   color_swatch: string | null;
   created_at?: string;
   // 🔒 (প্রফিট-লিক ফিক্স, ২০২৬-০৯): এটা `custom_products`-এর কলাম না — আলাদা
-  // অ্যাডমিন-অনলি `product_costs` টেবিল থেকে জয়েন করে বসানো হয় `listProducts()`-এ
+  // অ্যাডমিন-অনলি `product_costs` টেবিল থেকে জয়েন করে বসানো হয় `getProductById()`-এ
   // (আগে `specs._profit`-এ থাকত, যেটা RLS দিয়ে সবার জন্য পাবলিক-রিডেবল ছিল)।
   unit_profit?: number;
 }
 
 // নতুন প্রোডাক্ট তৈরির সময় id/created_at বাদে বাকি সব ফিল্ড লাগবে
 export type ProductInput = Omit<Product, 'id' | 'created_at'>;
+
+// 🆕 (প্রোডাক্ট লিস্ট স্কেল ফিক্স, ২০২৬-১০): তালিকা/অফার-পিকার/কালার-লিংক-সার্চে এখন
+// পুরো Product না, এই হালকা শেপ ব্যবহার হয় — ডাটাবেজের admin_products_page() RPC-এর
+// jsonb আউটপুটের সাথে হুবহু মেলে। পুরো প্রোডাক্ট (specs/desc/features/faqs ইত্যাদিসহ)
+// লাগে শুধু এডিট-মোডাল খোলার সময়, getProductById() দিয়ে আলাদাভাবে আসে।
+export interface ProductListRow {
+  id: number;
+  name: string;
+  name_bn: string | null;
+  cat: string;
+  cats: string[];
+  price: number;
+  old: number;
+  stock: number;
+  warranty: string;
+  badge: string;
+  rating: number;
+  color_group_id: string | null;
+  color_name: string | null;
+  color_swatch: string | null;
+  sort_order: number;
+  first_img: string | null;
+}
 
 export interface StoreSetting {
   setting_key: string;

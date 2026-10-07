@@ -1,22 +1,34 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import type { Product } from '@/types';
+import type { ProductListRow } from '@/types';
+import type { CategoryCounts } from '@/app/actions/products';
 import type { CategoryOption } from '@/lib/constants/categories';
-import { deleteProduct, updateBadge, updateProductOrder, updateStock } from '@/app/actions/products';
+import { deleteProduct, reorderProducts, updateBadge, updateStock } from '@/app/actions/products';
 import QuickEditPopover from './QuickEditPopover';
 import GuidePagesListModal from '@/components/guides/GuidePagesListModal';
-import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
+import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useToast } from '@/components/admin/Toast';
 import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 
 interface Props {
-  products: Product[];
+  rows: ProductListRow[]; // বর্তমান পেজের সারি — সার্ভার থেকে আগেই সার্চ/ক্যাটাগরি/পেজ করা
+  total: number; // বর্তমান ফিল্টারে মোট প্রোডাক্ট (পেজিনেশনের জন্য)
+  page: number;
+  pageSize: number;
+  loading: boolean;
+  query: string;
+  catFilter: string;
+  counts: CategoryCounts; // ক্যাটাগরি চিপের সংখ্যা (সব প্রোডাক্ট থেকে, ফিল্টার-নিরপেক্ষ)
   categories: CategoryOption[];
-  onEdit: (p: Product) => void;
+  onQueryChange: (q: string) => void;
+  onCatChange: (cat: string) => void;
+  onPageChange: (p: number) => void;
+  onEdit: (id: number) => void;
   onAdd: () => void;
-  onChanged: () => void; // পেরেন্টকে বলে products রিফ্রেশ করতে (server action-এর revalidatePath এমনিতেই করবে, তবে optimistic UX-এর জন্য)
+  onReordered: (rows: ProductListRow[]) => void; // ড্র্যাগ-সর্ট সফল হলে, নতুন ক্রম
+  onChanged: () => void; // কুইক-এডিট/ডিলিটের পর পেরেন্টকে পুরো পেজ+গণনা রিফ্রেশ করতে বলা
 }
 
 const money = (n: number) => '৳' + (n || 0).toLocaleString('en-US');
@@ -132,14 +144,28 @@ function EditDot({ onClick, title }: { onClick: () => void; title: string }) {
   );
 }
 
-export default function ProductsTable({ products, categories, onEdit, onAdd, onChanged }: Props) {
+export default function ProductsTable({
+  rows,
+  total,
+  page,
+  pageSize,
+  loading,
+  query,
+  catFilter,
+  counts,
+  categories,
+  onQueryChange,
+  onCatChange,
+  onPageChange,
+  onEdit,
+  onAdd,
+  onReordered,
+  onChanged,
+}: Props) {
   const { showToast } = useToast();
-  const [query, setQuery] = useState('');
-  const [catFilter, setCatFilter] = useState('all');
-  const [page, setPage] = useState(1);
-  const [popover, setPopover] = useState<{ product: Product; kind: 'stock' | 'badge' } | null>(null);
-  const [guidePagesFor, setGuidePagesFor] = useState<Product | null>(null);
-  const [deleting, setDeleting] = useState<{ product: Product; busy: boolean } | null>(null);
+  const [popover, setPopover] = useState<{ row: ProductListRow; kind: 'stock' | 'badge' } | null>(null);
+  const [guidePagesFor, setGuidePagesFor] = useState<ProductListRow | null>(null);
+  const [deleting, setDeleting] = useState<{ row: ProductListRow; busy: boolean } | null>(null);
   const [dragOrder, setDragOrder] = useState<number[] | null>(null); // বর্তমান পেজের rows-এর id, ড্র্যাগ চলাকালীন লাইভ অর্ডার
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set()); // মোবাইল কার্ডে "সবকিছু দেখুন" খোলা প্রোডাক্টগুলো
@@ -151,38 +177,20 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
     return m;
   }, [categories]);
 
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase();
-    return products.filter((p) => {
-      const nameMatch = !q || p.name.toLowerCase().includes(q) || (p.name_bn || '').toLowerCase().includes(q);
-      const cats = p.cats && p.cats.length ? p.cats : [p.cat];
-      const catMatch = catFilter === 'all' || cats.includes(catFilter);
-      return nameMatch && catMatch;
-    });
-  }, [products, query, catFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageSafe = Math.min(page, totalPages);
-  const basePageItems = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
-  const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const rowById = useMemo(() => new Map(rows.map((p) => [p.id, p])), [rows]);
   // ড্র্যাগ চলাকালীন dragOrder অনুযায়ী বর্তমান পেজের সারি সাজানো দেখানো হয়
-  const pageItems = dragOrder ? (dragOrder.map((id) => productById.get(id)).filter(Boolean) as Product[]) : basePageItems;
+  const pageItems = dragOrder ? (dragOrder.map((id) => rowById.get(id)).filter(Boolean) as ProductListRow[]) : rows;
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    products.forEach((p) => {
-      const cats = p.cats && p.cats.length ? p.cats : [p.cat];
-      cats.forEach((id) => id && (c[id] = (c[id] || 0) + 1));
-    });
-    return c;
-  }, [products]);
+  const chips: { id: string; label: string; count: number }[] = [
+    { id: 'all', label: 'সব', count: counts.all },
+    ...categories.filter((c) => c.id !== 'all').map((c) => ({ id: c.id, label: c.name, count: counts.byCat[c.id] || 0 })),
+  ];
 
   const hasFilters = !!query || catFilter !== 'all';
 
-  function onFilterChange(q: string, cat: string) {
-    setQuery(q);
-    setCatFilter(cat);
-    setPage(1);
+  function clearFilters() {
+    onQueryChange('');
+    onCatChange('all');
   }
 
   function toggleExpand(id: number) {
@@ -197,7 +205,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
   async function confirmDelete() {
     if (!deleting) return;
     setDeleting({ ...deleting, busy: true });
-    const res = await deleteProduct(deleting.product.id);
+    const res = await deleteProduct(deleting.row.id);
     notifyCatalogSyncCheck();
     if (!res.ok) {
       setDeleting(null);
@@ -213,8 +221,8 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
     if (!popover) return;
     const res =
       popover.kind === 'stock'
-        ? await updateStock(popover.product.id, Number(value))
-        : await updateBadge(popover.product.id, String(value));
+        ? await updateStock(popover.row.id, Number(value))
+        : await updateBadge(popover.row.id, String(value));
     notifyCatalogSyncCheck();
     if (!res.ok) {
       showToast('❌ সেভ ব্যর্থ: ' + (res.message || 'error'));
@@ -226,14 +234,15 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
   }
 
   // ── Drag-sort (pointer events — mouse + touch দুটোতেই কাজ করে) ──
-  // legacy initDragSort()-এর মতোই: শুধু বর্তমান পেজে দৃশ্যমান row-গুলোর
-  // মধ্যে reorder হয়; সেই সাব-অর্ডার সার্ভারে পাঠালে updateProductOrder
-  // পুরো লিস্টের বাকি id-গুলোর পজিশন অক্ষত রেখে merge করে।
+  // 🚀 (প্রোডাক্ট লিস্ট স্কেল ফিক্স): শুধু বর্তমান পেজে দৃশ্যমান row-গুলোর মধ্যে reorder হয়।
+  // এই পেজের sort_order মানগুলো (যেগুলো আগে থেকেই আগের/পরের পেজের মানের মাঝে বসানো আছে)
+  // নতুন ক্রমে পুনর্বিন্যাস করে পাঠানো হয় — তাই সার্ভারে শুধু এই কয়েকটা সারিই আপডেট হয়,
+  // বাকি হাজার হাজার প্রোডাক্ট পুরোপুরি অক্ষত থাকে।
   function handlePointerDown(id: number, e: React.PointerEvent<HTMLElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragState.current = { id };
     setDraggingId(id);
-    setDragOrder(basePageItems.map((p) => p.id));
+    setDragOrder(rows.map((p) => p.id));
   }
 
   function handlePointerMove(e: React.PointerEvent) {
@@ -260,10 +269,24 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
     }
     dragState.current = null;
     setDraggingId(null);
-    await updateProductOrder(dragOrder);
+    // এই পেজের বিদ্যমান sort_order মানগুলো (ছোট থেকে বড়) নতুন ক্রমে বসিয়ে দেওয়া —
+    // মান নিজেই পুরনো, শুধু কোন id কোন মান পাচ্ছে সেটা বদলাচ্ছে
+    const sortedValues = rows.map((p) => p.sort_order).sort((a, b) => a - b);
+    const updates = dragOrder.map((id, i) => ({ id, sort_order: sortedValues[i] }));
+    const res = await reorderProducts(updates);
     notifyCatalogSyncCheck();
+    if (!res.ok) {
+      showToast('❌ সাজানো সেভ ব্যর্থ: ' + (res.message || 'error'));
+      setDragOrder(null);
+      return;
+    }
+    const sortOrderById = new Map(updates.map((u) => [u.id, u.sort_order]));
+    const newRows = dragOrder.map((id) => {
+      const r = rowById.get(id)!;
+      return { ...r, sort_order: sortOrderById.get(id) ?? r.sort_order };
+    });
     setDragOrder(null);
-    onChanged();
+    onReordered(newRows);
   }
 
   // ব্রাউজার ড্র্যাগ বাতিল করলে (যেমন টাচ স্ক্রল) — সেভ না করে সাজানো ফিরিয়ে দাও
@@ -272,11 +295,6 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
     setDraggingId(null);
     setDragOrder(null);
   }
-
-  const chips: { id: string; label: string; count: number }[] = [
-    { id: 'all', label: 'সব', count: products.length },
-    ...categories.filter((c) => c.id !== 'all').map((c) => ({ id: c.id, label: c.name, count: counts[c.id] || 0 })),
-  ];
 
   return (
     <div>
@@ -298,14 +316,14 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
             </svg>
             <input
               value={query}
-              onChange={(e) => onFilterChange(e.target.value, catFilter)}
+              onChange={(e) => onQueryChange(e.target.value)}
               placeholder="প্রোডাক্টের নাম দিয়ে খুঁজুন..."
               className="h-11 w-full rounded-full border border-border-base/80 bg-surface-muted/50 pl-11 pr-10 font-body text-[13px] font-medium text-ink transition-all duration-brand placeholder:text-muted/70 focus:bg-white lg:h-10"
             />
             {query && (
               <button
                 type="button"
-                onClick={() => onFilterChange('', catFilter)}
+                onClick={() => onQueryChange('')}
                 aria-label="সার্চ মুছুন"
                 className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-border-base/70 text-muted transition-colors hover:bg-brand-light hover:text-white"
               >
@@ -334,7 +352,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
               <button
                 key={c.id}
                 type="button"
-                onClick={() => onFilterChange(query, c.id)}
+                onClick={() => onCatChange(c.id)}
                 className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                   active
                     ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
@@ -357,7 +375,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
           {hasFilters && (
             <button
               type="button"
-              onClick={() => onFilterChange('', 'all')}
+              onClick={clearFilters}
               className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-red-200/80 bg-red-50 px-3.5 font-body text-[12px] font-extrabold text-danger transition-all duration-brand hover:bg-red-100 active:scale-95"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
@@ -372,7 +390,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
       {/* মোট সংখ্যা + ড্র্যাগ হিন্ট */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-1">
         <span className="rounded-full bg-brand-light/15 px-3 py-1.5 font-body text-[12px] font-black text-ink">
-          মোট {products.length}টি প্রোডাক্ট
+          মোট {counts.all.toLocaleString('en-US')}টি প্রোডাক্ট
         </span>
         <span className="flex items-center gap-1.5 font-body text-[11.5px] font-semibold text-ink/60">
           <span className="text-brand-light">
@@ -383,7 +401,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
       </div>
 
       {/* ═══ তালিকা: মোবাইল/ট্যাবলেটে কার্ড (<1024px), ডেস্কটপে টেবিল ═══ */}
-      <div className="lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-white/90 lg:bg-white lg:shadow-sh1">
+      <div className={`lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-white/90 lg:bg-white lg:shadow-sh1 ${loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}`}>
         {pageItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2.5 rounded-[24px] border border-white/90 bg-white px-6 py-16 text-center shadow-sh1 lg:rounded-none lg:border-0 lg:shadow-none">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-light/[0.12] text-brand-light">
@@ -408,7 +426,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
               {pageItems.map((p) => {
                 const stock = p.stock ?? 0;
                 const cats = p.cats && p.cats.length ? p.cats : [p.cat];
-                const firstImg = (p.imgs && p.imgs[0]) || '📦';
+                const firstImg = p.first_img || '📦';
                 const isDragging = draggingId === p.id;
                 const isOpen = expanded.has(p.id);
                 return (
@@ -485,14 +503,14 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                             <div className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted">স্টক</div>
                             <div className="mt-1 flex items-center justify-between gap-1.5">
                               <StockPill stock={stock} />
-                              <EditDot onClick={() => setPopover({ product: p, kind: 'stock' })} title="স্টক সম্পাদনা" />
+                              <EditDot onClick={() => setPopover({ row: p, kind: 'stock' })} title="স্টক সম্পাদনা" />
                             </div>
                           </div>
                           <div className="min-w-0 rounded-xl border border-border-base/70 px-3 py-2">
                             <div className="font-body text-[10px] font-extrabold uppercase tracking-wide text-muted">ব্যাজ</div>
                             <div className="mt-1 flex items-center justify-between gap-1.5">
                               <BadgeChip badge={p.badge} />
-                              <EditDot onClick={() => setPopover({ product: p, kind: 'badge' })} title="ব্যাজ সম্পাদনা" />
+                              <EditDot onClick={() => setPopover({ row: p, kind: 'badge' })} title="ব্যাজ সম্পাদনা" />
                             </div>
                           </div>
                           <div className="min-w-0 rounded-xl border border-border-base/70 px-3 py-2">
@@ -504,7 +522,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                         <div className="mt-2.5 flex gap-2">
                           <button
                             type="button"
-                            onClick={() => onEdit(p)}
+                            onClick={() => onEdit(p.id)}
                             className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)] transition-all duration-brand active:scale-[0.98]"
                           >
                             <PencilIcon />
@@ -522,7 +540,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDeleting({ product: p, busy: false })}
+                            onClick={() => setDeleting({ row: p, busy: false })}
                             aria-label="ডিলিট করুন"
                             title="ডিলিট করুন"
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand active:scale-90"
@@ -562,7 +580,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                     {pageItems.map((p) => {
                       const stock = p.stock ?? 0;
                       const cats = p.cats && p.cats.length ? p.cats : [p.cat];
-                      const firstImg = (p.imgs && p.imgs[0]) || '📦';
+                      const firstImg = p.first_img || '📦';
                       const isDragging = draggingId === p.id;
                       return (
                         <tr
@@ -600,7 +618,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               <BadgeChip badge={p.badge} />
-                              <EditDot onClick={() => setPopover({ product: p, kind: 'badge' })} title="ব্যাজ সম্পাদনা" />
+                              <EditDot onClick={() => setPopover({ row: p, kind: 'badge' })} title="ব্যাজ সম্পাদনা" />
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-3 py-3">
@@ -610,7 +628,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2">
                               <StockPill stock={stock} />
-                              <EditDot onClick={() => setPopover({ product: p, kind: 'stock' })} title="স্টক সম্পাদনা" />
+                              <EditDot onClick={() => setPopover({ row: p, kind: 'stock' })} title="স্টক সম্পাদনা" />
                             </div>
                           </td>
                           <td className="px-3 py-3 text-[12px] font-semibold text-ink">
@@ -620,7 +638,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                             <div className="flex justify-end gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => onEdit(p)}
+                                onClick={() => onEdit(p.id)}
                                 title="এডিট করুন"
                                 aria-label="এডিট করুন"
                                 className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)] transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
@@ -638,7 +656,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setDeleting({ product: p, busy: false })}
+                                onClick={() => setDeleting({ row: p, busy: false })}
                                 title="ডিলিট করুন"
                                 aria-label="ডিলিট করুন"
                                 className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand hover:bg-danger hover:text-white active:scale-90"
@@ -657,18 +675,18 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
           </>
         )}
 
-        {filtered.length > 0 && (
+        {total > 0 && (
           <div className="mt-3 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1 lg:mt-0 lg:rounded-none lg:border-0 lg:border-t lg:border-border-base/60 lg:px-5 lg:shadow-none">
-            <Pagination page={pageSafe} total={filtered.length} onPageChange={setPage} bare />
+            <Pagination page={page} total={total} pageSize={pageSize} onPageChange={onPageChange} bare />
           </div>
         )}
       </div>
 
       {popover && (
         <QuickEditPopover
-          productName={popover.product.name}
+          productName={popover.row.name}
           kind={popover.kind}
-          initialValue={popover.kind === 'stock' ? popover.product.stock ?? 0 : popover.product.badge || ''}
+          initialValue={popover.kind === 'stock' ? popover.row.stock ?? 0 : popover.row.badge || ''}
           onSave={handleQuickSave}
           onClose={() => setPopover(null)}
         />
@@ -688,7 +706,7 @@ export default function ProductsTable({ products, categories, onEdit, onAdd, onC
           title="প্রোডাক্ট ডিলিট করবেন?"
           message={
             <>
-              <span className="font-extrabold text-ink">&ldquo;{deleting.product.name}&rdquo;</span> স্থায়ীভাবে মুছে যাবে — এই কাজ ফিরিয়ে আনা যাবে না।
+              <span className="font-extrabold text-ink">&ldquo;{deleting.row.name}&rdquo;</span> স্থায়ীভাবে মুছে যাবে — এই কাজ ফিরিয়ে আনা যাবে না।
             </>
           }
           confirmLabel="হ্যাঁ, ডিলিট করুন"

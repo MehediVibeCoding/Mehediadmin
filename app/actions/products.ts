@@ -7,7 +7,9 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
 import { validateImageUpload } from '@/lib/uploadValidation';
 import { requireAdmin } from '@/lib/auth-guard';
-import type { Product, ProductFaq, ProductInfoBox, ProductSpecs } from '@/types';
+import { adminCached, PRODUCTS_TAG } from '@/lib/adminCache';
+import { PAGE_SIZE } from '@/lib/constants/pagination';
+import type { Product, ProductFaq, ProductInfoBox, ProductListRow, ProductSpecs } from '@/types';
 import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
 import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
 import { guidePageUrlPath } from '@/types/guides';
@@ -16,78 +18,174 @@ const GUIDE_TABLE = 'guide_pages';
 const GUIDE_TEMPLATES_TABLE = 'guide_page_templates';
 
 const TABLE = 'custom_products';
-const ORDER_KEY = 'vc_prod_order';
 const STORAGE_BUCKET = 'product-images';
+// ড্র্যাগ-সর্টে নতুন sort_order মানগুলো এই ব্যবধানে বসে — মাঝে নতুন প্রোডাক্ট
+// ঢোকানোর (ভবিষ্যতে দরকার হলে) জায়গা রাখতে। নতুন প্রোডাক্ট তৈরির সময়ও এই
+// ব্যবধানেই পরের মান বসে (নিচে createProduct দ্রষ্টব্য)।
+const SORT_ORDER_GAP = 1000;
 
-// ══════════════════════════════════════════════════════════════
-//  ORDER (drag-sort) — legacy vc_prod_order (store_settings) থেকে
-// ══════════════════════════════════════════════════════════════
-
-async function readOrder(): Promise<number[]> {
-  const supabase = createServiceRoleClient();
-  const { data } = await supabase
-    .from('store_settings')
-    .select('setting_value')
-    .eq('setting_key', ORDER_KEY)
-    .maybeSingle();
-  if (!data?.setting_value) return [];
-  try {
-    const raw = data.setting_value;
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function escapeIlike(raw: string): string {
+  // % ও _ ILIKE-এ ওয়াইল্ডকার্ড — প্রোডাক্টের নামে এগুলো থাকলেও যেন ভুল মিল না ধরে
+  return raw.replace(/[%_]/g, (m) => '\\' + m);
 }
 
-async function writeOrder(order: number[]): Promise<void> {
-  const supabase = createServiceRoleClient();
-  // legacy saveSettingToSupabase()-এর মতোই upsert, fallback delete+insert
-  const { error: upsertError } = await supabase
-    .from('store_settings')
-    .upsert({ setting_key: ORDER_KEY, setting_value: JSON.stringify(order) }, { onConflict: 'setting_key' });
-  if (upsertError) {
-    await supabase.from('store_settings').delete().eq('setting_key', ORDER_KEY);
-    await supabase
-      .from('store_settings')
-      .insert({ setting_key: ORDER_KEY, setting_value: JSON.stringify(order) });
-  }
+// ══════════════════════════════════════════════════════════════
+//  READ — তালিকা (হালকা, পেজ ধরে, সার্চ/ক্যাটাগরি ফিল্টারসহ)
+// ══════════════════════════════════════════════════════════════
+// 🚀 (প্রোডাক্ট লিস্ট স্কেল ফিক্স, ২০২৬-১০): আগে এখানে পুরো টেবিল select('*') দিয়ে
+// একবারে আসত (লম্বা বর্ণনা/স্পেকসহ), তাই ১০০০+ প্রোডাক্টে ধীর আর ব্রাউজারে ভারী হতো।
+// এখন ডাটাবেজের admin_products_page() RPC শুধু তালিকায় দেখানো কলামগুলো, সার্চ/ক্যাটাগরি
+// ফিল্টার করে, আর পেজ ধরে পাঠায় — যত প্রোডাক্টই থাকুক, প্রতিবার মাত্র কয়েক KB আসে।
+// সাজানোর ক্রম এখন custom_products.sort_order কলামে (আগের vc_prod_order JSON
+// array-এর বদলে) — ড্র্যাগ করলে শুধু নড়াচড়া করা সারিগুলোই আপডেট হয় (reorderProducts)।
+
+export interface ProductsPageParams {
+  search: string;
+  cat: string; // 'all' = সব ক্যাটাগরি
+  page: number; // 1-based
+  pageSize: number;
 }
 
-function applyOrder(products: Product[], order: number[]): Product[] {
-  if (!order.length) return products;
-  const orderMap = new Map<number, number>();
-  order.forEach((id, i) => orderMap.set(id, i));
-  return [...products].sort((a, b) => {
-    const ia = orderMap.has(a.id) ? orderMap.get(a.id)! : 99999;
-    const ib = orderMap.has(b.id) ? orderMap.get(b.id)! : 99999;
-    return ia - ib;
+export interface ProductsPageResult {
+  rows: ProductListRow[];
+  total: number;
+}
+
+const MAX_SEARCH_LENGTH = 80;
+
+function mapProductListRow(r: Record<string, unknown>): ProductListRow {
+  return {
+    id: Number(r.id),
+    name: String(r.name ?? ''),
+    name_bn: (r.name_bn as string) ?? null,
+    cat: String(r.cat ?? ''),
+    cats: Array.isArray(r.cats) ? (r.cats as string[]) : [],
+    price: Number(r.price) || 0,
+    old: Number(r.old) || 0,
+    stock: r.stock !== undefined && r.stock !== null ? Number(r.stock) : 0,
+    warranty: String(r.warranty ?? ''),
+    badge: String(r.badge ?? ''),
+    rating: Number(r.rating) || 0,
+    color_group_id: (r.color_group_id as string) ?? null,
+    color_name: (r.color_name as string) ?? null,
+    color_swatch: (r.color_swatch as string) ?? null,
+    sort_order: Number(r.sort_order) || 0,
+    first_img: (r.first_img as string) ?? null,
+  };
+}
+
+async function fetchProductsPage(search: string, cat: string, limit: number, offset: number): Promise<ProductsPageResult> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.rpc('admin_products_page', {
+    p_search: search,
+    p_cat: cat,
+    p_limit: limit,
+    p_offset: offset,
   });
+  if (error) throw new Error('প্রোডাক্ট লোড ব্যর্থ: ' + error.message);
+  const d = (data || {}) as { rows?: Record<string, unknown>[]; total?: number };
+  return {
+    rows: (d.rows || []).map(mapProductListRow),
+    total: Number(d.total) || 0,
+  };
 }
 
-// ══════════════════════════════════════════════════════════════
-//  READ
-// ══════════════════════════════════════════════════════════════
+// সার্চ ছাড়া পেজগুলো ক্যাশ হয় (প্রোডাক্ট বদলালে মুছে যায়, সর্বোচ্চ ২ মিনিট) —
+// customers.ts-এর fetchCustomersPageCached-এর একই প্যাটার্ন।
+const fetchProductsPageCached = adminCached(fetchProductsPage, ['admin-products-page'], [PRODUCTS_TAG]);
 
-export async function listProducts(): Promise<Product[]> {
+export async function getProductsPage(params: ProductsPageParams): Promise<ProductsPageResult> {
+  await requireAdmin();
+  const pageSize = Math.min(Math.max(1, Math.floor(Number(params.pageSize)) || PAGE_SIZE), 200);
+  const page = Math.max(1, Math.floor(Number(params.page)) || 1);
+  const search = String(params.search ?? '').slice(0, MAX_SEARCH_LENGTH).trim();
+  const cat = String(params.cat ?? 'all').trim() || 'all';
+  const offset = (page - 1) * pageSize;
+  return search ? fetchProductsPage(search, cat, pageSize, offset) : fetchProductsPageCached('', cat, pageSize, offset);
+}
+
+// ক্যাটাগরি চিপের পাশের সংখ্যাগুলো — আগে সব প্রোডাক্ট ব্রাউজারে এনে গোনা হতো,
+// এখন ডাটাবেজের admin_category_counts() RPC একবারেই গুনে দেয়।
+export interface CategoryCounts {
+  all: number;
+  byCat: Record<string, number>;
+}
+
+async function fetchCategoryCounts(): Promise<CategoryCounts> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.rpc('admin_category_counts');
+  if (error) throw new Error('ক্যাটাগরি গণনা ব্যর্থ: ' + error.message);
+  const d = (data || {}) as { all?: number; by_cat?: Record<string, number> };
+  return { all: Number(d.all) || 0, byCat: d.by_cat || {} };
+}
+
+const fetchCategoryCountsCached = adminCached(fetchCategoryCounts, ['admin-category-counts'], [PRODUCTS_TAG]);
+
+export async function getCategoryCounts(): Promise<CategoryCounts> {
+  await requireAdmin();
+  return fetchCategoryCountsCached();
+}
+
+// এডিট-মোডাল খোলার সময় একটা প্রোডাক্টের পুরো ডেটা (specs/desc/features/faqs সহ) —
+// তালিকায় আর এটা লাগে না, তাই listProducts()-এর বদলে শুধু এডিট ক্লিক করলেই এটা চলে।
+export async function getProductById(id: number): Promise<Product | null> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
-  const [{ data, error }, order, { data: costsData }] = await Promise.all([
-    supabase.from(TABLE).select('*'),
-    readOrder(),
-    // 🔒 প্রফিট-লিক ফিক্স: profit এখন এখান থেকে জয়েন হয়, specs._profit থেকে না
-    supabase.from('product_costs').select('product_id, unit_profit'),
+  const [{ data, error }, { data: costRow }] = await Promise.all([
+    supabase.from(TABLE).select('*').eq('id', id).maybeSingle(),
+    supabase.from('product_costs').select('unit_profit').eq('product_id', id).maybeSingle(),
   ]);
   if (error) throw new Error('প্রোডাক্ট লোড ব্যর্থ: ' + error.message);
-  const profitByProductId = new Map<number, number>(
-    (costsData || []).map((c) => [c.product_id as number, Number(c.unit_profit)])
-  );
-  const products = (data || []).map((p) => ({
-    ...p,
-    unit_profit: profitByProductId.get(p.id),
-  })) as Product[];
-  return applyOrder(products, order);
+  if (!data) return null;
+  return {
+    ...data,
+    unit_profit: costRow?.unit_profit !== undefined && costRow?.unit_profit !== null ? Number(costRow.unit_profit) : undefined,
+  } as Product;
 }
+
+export interface ProductPickerRow {
+  id: number;
+  name: string;
+  price: number;
+  imgs: string[];
+}
+
+// অফার-পিকারের মতো ড্রপডাউনে "সব প্রোডাক্ট" দরকার হয় (শুধু id/name/price/ছবি) —
+// পেজিনেশন ছাড়া, কিন্তু আগের মতো পুরো বর্ণনা/স্পেক/ফিচার/FAQ টেনে আনে না।
+export async function listProductsForPicker(): Promise<ProductPickerRow[]> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id, name, price, imgs')
+    .order('sort_order', { ascending: true });
+  if (error) throw new Error('প্রোডাক্ট লোড ব্যর্থ: ' + error.message);
+  return (data || []).map((p) => ({
+    id: Number(p.id),
+    name: String(p.name ?? ''),
+    price: Number(p.price) || 0,
+    imgs: Array.isArray(p.imgs) ? (p.imgs as string[]) : [],
+  }));
+}
+
+// কালার-ভ্যারিয়েন্ট লিংক-পিকারে একটা বিদ্যমান গ্রুপের বাকি সদস্যরা (ProductModal) —
+// আগে পুরো প্রোডাক্ট তালিকা ব্রাউজারে থেকে ফিল্টার হতো, এখন সরাসরি group id দিয়ে কুয়েরি।
+export async function getColorGroupMembers(
+  groupId: string,
+  excludeId: number
+): Promise<{ id: number; name: string; color_name: string | null; color_swatch: string | null }[]> {
+  await requireAdmin();
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id, name, color_name, color_swatch')
+    .eq('color_group_id', groupId)
+    .neq('id', excludeId)
+    .limit(50);
+  if (error) throw new Error('কালার গ্রুপ লোড ব্যর্থ: ' + error.message);
+  return (data || []) as { id: number; name: string; color_name: string | null; color_swatch: string | null }[];
+}
+
 
 // 🔒 প্রফিট-লিক ফিক্স (P0-01): `product_costs`-এই এখন একমাত্র সোর্স-অফ-ট্রুথ —
 // আগে buildSpecs() এটা specs._profit হিসেবে custom_products-এ লিখত, যেটা
@@ -205,12 +303,18 @@ interface SaveResult {
 
 export async function checkDuplicateName(name: string, excludeId?: number): Promise<boolean> {
   await requireAdmin();
-  const supabase = createServiceRoleClient();
-  const { data } = await supabase.from(TABLE).select('id, name');
   const nameLower = name.toLowerCase().trim();
-  return !!(data || []).find(
-    (p: { id: number; name: string }) => p.id !== excludeId && (p.name || '').toLowerCase().trim() === nameLower
-  );
+  if (!nameLower) return false;
+  const supabase = createServiceRoleClient();
+  // 🚀 আগে পুরো টেবিলের id+name ব্রাউজারে এনে মেলানো হতো (১০ হাজার প্রোডাক্টে প্রতিটা
+  // সেভে পুরো টেবিল স্ক্যান)। এখন ডাটাবেজই নাম মেলায় (ইনডেক্সড lower(name) কলাম ব্যবহার করে)।
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id')
+    .ilike('name', escapeIlike(nameLower))
+    .limit(5);
+  if (error) return false;
+  return !!(data || []).find((p: { id: number }) => p.id !== excludeId);
 }
 
 export async function createProduct(
@@ -228,6 +332,18 @@ export async function createProduct(
   const supabase = createServiceRoleClient();
   const imgs = input.imgs.filter(Boolean);
   const desc = sanitizeInput(input.desc);
+
+  // নতুন প্রোডাক্ট সবসময় তালিকার শেষে বসে (sort_order = বর্তমান সর্বোচ্চ + গ্যাপ)।
+  // 🚀 আগে পুরো order array ডাটাবেজ থেকে এনে push করে আবার পুরোটা লিখতে হতো;
+  // এখন শুধু সর্বোচ্চ sort_order-টা (একটা সারি) এনে +১০০০ করলেই হয়।
+  const { data: maxRow } = await supabase
+    .from(TABLE)
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextSortOrder = (Number(maxRow?.sort_order) || 0) + SORT_ORDER_GAP;
+
   const row = {
     name: sanitizeInput(input.name),
     name_bn: sanitizeInput(input.nameBn),
@@ -256,6 +372,7 @@ export async function createProduct(
     packaging_content: input.packagingContent ? sanitizeInput(input.packagingContent) : null,
     color_name: input.colorName ? sanitizeInput(input.colorName) : null,
     color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
+    sort_order: nextSortOrder,
   };
 
   const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
@@ -263,13 +380,6 @@ export async function createProduct(
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(data.id, unitProfit);
-
-  // নতুন id-কে order-এর শেষে যোগ করো
-  const order = await readOrder();
-  if (!order.includes(data.id)) {
-    order.push(data.id);
-    await writeOrder(order);
-  }
 
   revalidatePath('/products');
   await revalidateVangcurCatalog();
@@ -470,17 +580,22 @@ export async function updateBadge(id: number, badge: string): Promise<{ ok: bool
 //  DRAG-SORT ORDER
 // ══════════════════════════════════════════════════════════════
 
-export async function updateProductOrder(visibleOrderedIds: number[]): Promise<{ ok: boolean }> {
+export interface ReorderUpdate {
+  id: number;
+  sort_order: number;
+}
+
+// 🚀 (প্রোডাক্ট লিস্ট স্কেল ফিক্স): আগে পুরো প্রোডাক্ট তালিকা এনে, দৃশ্যমান
+// অংশে নতুন পজিশন বসিয়ে, পুরো vc_prod_order array আবার লিখতে হতো — ১০ হাজার
+// প্রোডাক্টে প্রতি ড্র্যাগে এটা বড় একটা JSON লেখা। এখন ক্লায়েন্ট (ProductsTable)
+// বর্তমান পেজের sort_order মানগুলোই নতুন ক্রমে পুনর্বিন্যাস করে পাঠায় — ডাটাবেজ
+// শুধু ওই কয়েকটা (সর্বোচ্চ এক পেজ) সারির sort_order আপডেট করে, বাকি টেবিল অক্ষত।
+export async function reorderProducts(updates: ReorderUpdate[]): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
-  // legacy saveCurrentOrder()-এর মতোই: ফিল্টার/পেজিনেশনের কারণে সবসময় সব
-  // প্রোডাক্ট টেবিলে দৃশ্যমান থাকে না, তাই পুরনো সম্পূর্ণ অর্ডার রেখে শুধু
-  // দৃশ্যমান আইটেমগুলোর পজিশনে নতুন সিরিয়াল বসানো হয়, বাকিগুলো অপরিবর্তিত।
-  const products = await listProducts();
-  const fullOld = products.map((p) => p.id);
-  const visibleSet = new Set(visibleOrderedIds);
-  let vi = 0;
-  const merged = fullOld.map((id) => (visibleSet.has(id) ? visibleOrderedIds[vi++] : id));
-  await writeOrder(merged);
+  if (!updates.length) return { ok: true };
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.rpc('admin_reorder_products', { p_updates: updates });
+  if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
   await revalidateVangcurCatalog();
   return { ok: true };
