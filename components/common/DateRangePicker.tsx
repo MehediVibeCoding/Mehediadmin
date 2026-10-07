@@ -100,6 +100,21 @@ export default function DateRangePicker({
     }
   }
 
+  // দ্রুত বাছাই: এই মাস / গত মাস (সিলেক্ট করা যায় এমন সীমার ভেতরে ছেঁটে)
+  const presets = [
+    { label: 'এই মাস', start: new Date(today.getFullYear(), today.getMonth(), 1), end: today },
+    { label: 'গত মাস', start: new Date(today.getFullYear(), today.getMonth() - 1, 1), end: new Date(today.getFullYear(), today.getMonth(), 0) },
+  ]
+    .map((p) => ({ ...p, start: p.start < minDate ? minDate : p.start }))
+    .filter((p) => p.start <= p.end);
+
+  function pickPreset(p: { start: Date; end: Date }) {
+    setPendStart(p.start);
+    setPendEnd(p.end);
+    setPicking(false);
+    setViewMonth(new Date(p.end.getFullYear(), p.end.getMonth(), 1));
+  }
+
   function apply() {
     onApply({ start: pendStart, end: pendEnd });
     setOpen(false);
@@ -181,6 +196,20 @@ export default function DateRangePicker({
             className="max-h-[88dvh] w-full max-w-[330px] overflow-y-auto rounded-[26px] bg-white p-4 shadow-[0_24px_60px_rgba(26,26,26,0.22)]"
             onClick={(e) => e.stopPropagation()}
           >
+            {presets.length > 0 && (
+              <div className="mb-3 flex gap-2">
+                {presets.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => pickPreset(p)}
+                    className="h-8 flex-1 rounded-full bg-surface-muted font-body text-[12px] font-extrabold text-ink transition-brand hover:bg-brand-bg/60 active:scale-95"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mb-3 flex items-center justify-between">
               <button
                 type="button"

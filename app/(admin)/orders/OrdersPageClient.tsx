@@ -28,16 +28,6 @@ interface Props {
 
 type StatusFilter = 'all' | OrderStatus;
 
-// শুধু এক্সপোর্টের জন্য পুরো তালিকা দরকার — বাকি সময় সার্ভার থেকে শুধু পেজ আসে
-function inRange(dateStr: string, range: DateRange): boolean {
-  const d = new Date(dateStr);
-  const start = new Date(range.start);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(range.end);
-  end.setHours(23, 59, 59, 999);
-  return d >= start && d <= end;
-}
-
 // স্থানীয় সময়ের দিনের শুরু/শেষ → ISO (ডাটাবেজে created_at তুলনার জন্য)
 function rangeToIso(range: DateRange): { from: string; to: string } {
   const start = new Date(range.start);
@@ -332,8 +322,8 @@ export default function OrdersPageClient({ initialPage }: Props) {
 
   async function exportRange(range: DateRange) {
     try {
-      const all = await listOrders();
-      const list = all.filter((o) => inRange(o.created_at, range));
+      const iso = rangeToIso(range);
+      const list = await listOrders({ fromIso: iso.from, toIso: iso.to });
       downloadCsvRows(ordersToCsvRows(list), 'orders_range');
       showToastRef.current(`⬇️ ${list.length}টি অর্ডারের CSV ডাউনলোড শুরু হয়েছে`);
     } catch {

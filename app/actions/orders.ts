@@ -17,9 +17,19 @@ import type { Order, OrderItem, OrderStatus } from '@/types';
 // ══════════════════════════════════════════════════════════════
 
 // legacy getOrdersAsync() — সব অর্ডার, created_at DESC (Supabase-ই সর্ট করে দেয়)
-export async function listOrders(): Promise<Order[]> {
+// range দিলে শুধু সেই সময়ের অর্ডার ডাটাবেজ থেকেই ছেঁকে আনে (created_at ইনডেক্স দিয়ে) — পুরো টেবিল টেনে
+// ব্রাউজারে ছাঁটা হয় না। এক্সপোর্টে অর্ডার বাড়লেও তাই শুধু দরকারি মাসের সারিই আসে।
+export async function listOrders(range?: { fromIso?: string | null; toIso?: string | null }): Promise<Order[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
+
+  const validIso = (v?: string | null): string | null => {
+    if (!v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const fromIso = validIso(range?.fromIso);
+  const toIso = validIso(range?.toIso);
 
   // 🛡️ Supabase/PostgREST একবারে সাধারণত সর্বোচ্চ ১০০০ সারি দেয় — এর বেশি অর্ডার হলে আগে CSV এক্সপোর্ট
   // চুপচাপ ১০০০-এ কেটে যেত। তাই পাতা ধরে ধরে সব আনা হয়। যতগুলো সারি ফেরত আসে ততটাই এগোই
@@ -28,9 +38,10 @@ export async function listOrders(): Promise<Order[]> {
   const MAX_ROWS = 100000; // অসীম লুপের বিরুদ্ধে সুরক্ষা
   const rows: Parameters<typeof mapOrderRow>[0][] = [];
   for (let from = 0; from < MAX_ROWS; ) {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
+    let q = supabase.from('orders').select('*');
+    if (fromIso) q = q.gte('created_at', fromIso);
+    if (toIso) q = q.lte('created_at', toIso);
+    const { data, error } = await q
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(from, from + PAGE - 1);

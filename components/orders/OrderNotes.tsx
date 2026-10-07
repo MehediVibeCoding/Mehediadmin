@@ -1,50 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { addOrderNote, deleteOrderNote, listOrderNotes, type OrderNote } from '@/app/actions/orderNotes';
+import { useEffect, useRef, useState } from 'react';
+import { deleteOrderNote, getOrderNote, saveOrderNote, type OrderNote } from '@/app/actions/orderNotes';
 import { useToast } from '@/components/admin/Toast';
 import SectionHeading from '@/components/common/SectionHeading';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { TEXTAREA_CLS } from '@/components/common/FormField';
 
 const NOTE_MAX = 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function daysLeft(expiresAt: string): number {
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / DAY_MS));
-}
-
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  return (
-    d.toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) +
-    ', ' +
-    d.toLocaleTimeString('bn-BD', { hour: 'numeric', minute: '2-digit', hour12: true })
-  );
-}
 
 // অর্ডার ডিটেইল মডালের ভেতরের "অ্যাডমিন নোট" — শুধু এখানেই দেখায়, আর কোথাও নয়।
-// প্রতিটা নোট আলাদা; ৩০ দিন পরে ডাটাবেজ নিজে মুছে ফেলে।
+// প্রতি অর্ডারে একটাই নোট: না থাকলে শুধু ছোট একটা "+"; থাকলে নোটটা আর ✏️ এডিট / 🗑 ডিলিট আইকন।
+// এডিট করলে ৩০ দিনের মেয়াদ আবার নতুন করে গোনা শুরু হয়।
 export default function OrderNotes({ orderId }: { orderId: string }) {
   const { showToast } = useToast();
-  const [notes, setNotes] = useState<OrderNote[]>([]);
+  const [note, setNote] = useState<OrderNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<OrderNote | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setLoadFailed(false);
-    setNotes([]);
+    setNote(null);
+    setEditing(false);
     setText('');
-    listOrderNotes(orderId)
-      .then((rows) => {
-        if (!cancelled) setNotes(rows);
+    getOrderNote(orderId)
+      .then((row) => {
+        if (!cancelled) setNote(row);
       })
       .catch(() => {
         if (!cancelled) setLoadFailed(true);
@@ -57,14 +46,36 @@ export default function OrderNotes({ orderId }: { orderId: string }) {
     };
   }, [orderId]);
 
+  useEffect(() => {
+    if (editing) areaRef.current?.focus();
+  }, [editing]);
+
+  function startAdd() {
+    setText('');
+    setEditing(true);
+  }
+
+  function startEdit() {
+    if (!note) return;
+    setText(note.note);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    if (saving) return;
+    setEditing(false);
+    setText('');
+  }
+
   async function handleSave() {
     const value = text.trim();
     if (!value || saving) return;
     setSaving(true);
     try {
-      const res = await addOrderNote(orderId, value);
+      const res = await saveOrderNote(orderId, value);
       if (res.status === 'ok') {
-        setNotes((prev) => [res.note, ...prev]);
+        setNote(res.note);
+        setEditing(false);
         setText('');
         showToast('✅ নোট সেভ হয়েছে');
       } else {
@@ -78,13 +89,12 @@ export default function OrderNotes({ orderId }: { orderId: string }) {
   }
 
   async function handleDelete() {
-    if (!deleteTarget || deleting) return;
+    if (!note || deleting) return;
     setDeleting(true);
     try {
-      const res = await deleteOrderNote(deleteTarget.id);
+      const res = await deleteOrderNote(orderId);
       if (res.status === 'ok') {
-        const gone = deleteTarget.id;
-        setNotes((prev) => prev.filter((n) => n.id !== gone));
+        setNote(null);
         showToast('✅ নোট মুছে ফেলা হয়েছে');
       } else {
         showToast('❌ ' + (res.message || 'নোট মোছা যায়নি'));
@@ -93,86 +103,113 @@ export default function OrderNotes({ orderId }: { orderId: string }) {
       showToast('❌ নোট মোছা যায়নি, আবার চেষ্টা করুন');
     } finally {
       setDeleting(false);
-      setDeleteTarget(null);
+      setConfirmDelete(false);
     }
   }
 
+  const iconBtn =
+    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-brand active:scale-90';
+
   return (
     <section>
-      <SectionHeading hint="শুধু অ্যাডমিন প্যানেলে দেখা যায় — কাস্টমার বা মেইন সাইটে কখনো যায় না। প্রতিটা নোট ৩০ দিন পরে নিজে মুছে যায়।">
-        অ্যাডমিন নোট
-      </SectionHeading>
-
-      <textarea
-        rows={3}
-        maxLength={NOTE_MAX}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="যেমন: পরশু ডেলিভারি দিতে বলেছে, দুইবার কল দিয়েছি ধরেনি..."
-        className={TEXTAREA_CLS + ' resize-none focus:border-brand-light focus:outline-none'}
-        disabled={saving}
-      />
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <span className="font-body text-[11px] font-semibold text-muted">
-          {text.length}/{NOTE_MAX}
-        </span>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !text.trim()}
-          className="h-10 rounded-full bg-brand-light px-5 font-body text-[13px] font-extrabold text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-95 disabled:opacity-50"
-        >
-          {saving ? 'সেভ হচ্ছে...' : 'নোট যোগ করুন'}
-        </button>
-      </div>
-
-      <div className="mt-4">
-        {loading ? (
-          <div className="rounded-2xl border border-border-base/80 bg-surface-muted/60 px-4 py-4 text-center font-body text-[12.5px] font-medium text-muted">
-            নোট লোড হচ্ছে...
-          </div>
-        ) : loadFailed ? (
-          <div className="rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-center font-body text-[12.5px] font-bold text-red-700">
-            নোট লোড করা যায়নি। মডাল বন্ধ করে আবার খুলুন।
-          </div>
-        ) : notes.length === 0 ? (
-          <div className="rounded-2xl border border-border-base/80 bg-surface-muted/60 px-4 py-4 text-center font-body text-[12.5px] font-medium text-muted">
-            এই অর্ডারে এখনো কোনো নোট নেই
-          </div>
-        ) : (
-          <ul className="space-y-2.5">
-            {notes.map((n) => (
-              <li
-                key={n.id}
-                className="rounded-2xl border border-border-base/80 border-l-[3.5px] border-l-brand-light bg-surface-muted/60 px-4 py-3"
-              >
-                <p className="whitespace-pre-wrap break-words font-body text-[13.5px] font-semibold leading-relaxed text-ink">
-                  {n.note}
-                </p>
-                <div className="mt-2 flex items-center justify-between gap-3 font-body text-[11px] font-semibold text-muted">
-                  <span className="min-w-0">
-                    {formatWhen(n.created_at)} · আর {daysLeft(n.expires_at).toLocaleString('bn-BD')} দিন থাকবে
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(n)}
-                    aria-label="নোট মুছুন"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-brand hover:bg-red-50 hover:text-danger active:scale-90"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18" />
-                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    </svg>
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {/* হেডিং + (নোট না থাকলে) ছোট "+" — কোনো ব্যাখ্যা/hint নেই */}
+      <div className="flex items-center gap-2">
+        <SectionHeading className="!mb-0">অ্যাডমিন নোট</SectionHeading>
+        {!loading && !loadFailed && !note && !editing && (
+          <button
+            type="button"
+            onClick={startAdd}
+            aria-label="নোট যোগ করুন"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-light/12 text-brand-light transition-all duration-brand hover:bg-brand-light/20 active:scale-90"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
         )}
       </div>
 
-      {deleteTarget && (
+      {loadFailed && (
+        <p className="mt-2 font-body text-[12px] font-bold text-red-700">নোট লোড হয়নি</p>
+      )}
+
+      {editing && (
+        <div className="mt-3">
+          <textarea
+            ref={areaRef}
+            rows={3}
+            maxLength={NOTE_MAX}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className={TEXTAREA_CLS + ' resize-none focus:border-brand-light focus:outline-none'}
+            disabled={saving}
+          />
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="font-body text-[11px] font-semibold text-muted">
+              {text.length}/{NOTE_MAX}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={saving}
+                className="h-10 rounded-full bg-surface-muted px-4 font-body text-[13px] font-extrabold text-ink transition-all duration-brand hover:bg-border-base active:scale-95 disabled:opacity-60"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !text.trim()}
+                className="h-10 rounded-full bg-brand-light px-5 font-body text-[13px] font-extrabold text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-95 disabled:opacity-50"
+              >
+                {saving ? '...' : 'সেভ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!editing && note && (
+        <div
+          className="mt-3 rounded-2xl border border-border-base/80 border-l-[3.5px] border-l-brand-light bg-surface-muted/60 py-3 pl-4 pr-2"
+          title="৩০ দিন পরে নিজে মুছে যাবে (এডিট করলে আবার ৩০ দিন)"
+        >
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 whitespace-pre-wrap break-words pt-1 font-body text-[13.5px] font-semibold leading-relaxed text-ink">
+              {note.note}
+            </p>
+            <div className="flex shrink-0 items-center">
+              <button
+                type="button"
+                onClick={startEdit}
+                aria-label="নোট এডিট করুন"
+                className={iconBtn + ' hover:bg-brand-light/12 hover:text-brand-light'}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                aria-label="নোট মুছুন"
+                className={iconBtn + ' hover:bg-red-50 hover:text-danger'}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
         <ConfirmDialog
           title="নোটটি মুছবেন?"
           message="মুছে ফেললে নোটটি আর ফেরত পাওয়া যাবে না।"
@@ -181,7 +218,7 @@ export default function OrderNotes({ orderId }: { orderId: string }) {
           busy={deleting}
           tone="danger"
           onConfirm={handleDelete}
-          onCancel={() => !deleting && setDeleteTarget(null)}
+          onCancel={() => !deleting && setConfirmDelete(false)}
         />
       )}
     </section>

@@ -15,6 +15,7 @@ import StatusPill from '@/components/admin/StatusPill';
 import SectionHeading from '@/components/common/SectionHeading';
 import { RISK_META } from '@/components/orders/RiskBadge';
 import OrderNotes from '@/components/orders/OrderNotes';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 interface Props {
   order: Order;
@@ -51,10 +52,19 @@ function CopyGlyph() {
 export default function OrderDetailModal({ order, onClose, onStatusChange }: Props) {
   const { showToast } = useToast();
   const [changingTo, setChangingTo] = useState<OrderStatus | null>(null);
+  // স্ট্যাটাস বদলের আগে নিশ্চিতকরণ: কোন স্ট্যাটাসে যেতে চাওয়া হয়েছে (null = ডায়ালগ বন্ধ)
+  const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
+  // থ্রি-ডট মেনু (বাকি স্ট্যাটাসগুলো) খোলা কি না
+  const [moreOpen, setMoreOpen] = useState(false);
+  // ট্রাস্ট স্কোরের বিস্তারিত খোলা কি না (ডিফল্টে শুধু প্রথম সারি)
+  const [riskOpen, setRiskOpen] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   // কীবোর্ড শর্টকাট সবসময় সর্বশেষ order/স্ট্যাটাস দিয়ে কাজ করে (effect-এর [] deps-এর stale closure এড়াতে)
-  const statusClickRef = useRef<(s: OrderStatus) => Promise<void>>(async () => {});
+  const requestStatusRef = useRef<(s: OrderStatus) => void>(() => {});
+  const pendingStatusRef = useRef<OrderStatus | null>(null);
+  pendingStatusRef.current = pendingStatus;
+  const closeConfirmRef = useRef<() => void>(() => {});
 
   const orderDate = new Date(order.created_at || Date.now());
   const payTxt = order.payment_txn
@@ -74,6 +84,12 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
     document.body.style.overflow = 'hidden';
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        // নিশ্চিতকরণ ডায়ালগ খোলা থাকলে Esc শুধু ডায়ালগ বন্ধ করে, মডাল নয়
+        if (pendingStatusRef.current) {
+          e.preventDefault();
+          closeConfirmRef.current();
+          return;
+        }
         // নোটের ঘরে লেখা অসেভ লেখা থাকলে Esc শুধু ঘর থেকে বেরোয়, মডাল বন্ধ করে না — লেখা হারানো ঠেকাতে
         const t = e.target as HTMLElement | null;
         if (t && t.tagName === 'TEXTAREA' && (t as HTMLTextAreaElement).value.trim()) {
@@ -88,12 +104,14 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
       const el = e.target as HTMLElement | null;
       const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
       if (typing) return;
+      // ডায়ালগ খোলা থাকলে শর্টকাট চলবে না; নইলে শর্টকাটও আগে নিশ্চিতকরণ চাইবে (ভুল চাপে সরাসরি বদলায় না)
+      if (pendingStatusRef.current) return;
       if (e.code === 'KeyC') {
         e.preventDefault();
-        void statusClickRef.current('confirmed');
+        requestStatusRef.current('confirmed');
       } else if (e.code === 'KeyX') {
         e.preventDefault();
-        void statusClickRef.current('rejected');
+        requestStatusRef.current('rejected');
       }
     }
     document.addEventListener('keydown', onKey);
@@ -113,17 +131,32 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
     }
   }
 
-  async function handleStatusClick(status: OrderStatus) {
-    if (status === order.status || changingTo) return;
+  // কোনো স্ট্যাটাস বাছলে সরাসরি বদলায় না — আগে "নিশ্চিত?" ডায়ালগ আসে
+  function requestStatusChange(status: OrderStatus) {
+    if (status === order.status || changingTo || pendingStatus) return;
+    setMoreOpen(false);
+    setPendingStatus(status);
+  }
+
+  function closeConfirm() {
+    if (changingTo) return;
+    setPendingStatus(null);
+  }
+
+  async function confirmStatusChange() {
+    const status = pendingStatus;
+    if (!status || status === order.status || changingTo) return;
     setChangingTo(status);
     try {
       await onStatusChange(order.id, status);
     } finally {
       setChangingTo(null);
+      setPendingStatus(null);
     }
   }
 
-  statusClickRef.current = handleStatusClick;
+  requestStatusRef.current = requestStatusChange;
+  closeConfirmRef.current = closeConfirm;
 
   return (
     // z-[60] > নিচের ট্যাব বার (z-40) — তাই বার আর কখনো মোডালের উপরে/বোতামের উপরে আসে না
@@ -194,65 +227,90 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
             </div>
           )}
 
-          {/* ── ট্রাস্ট স্কোর (পুরনো অর্ডার বা এখনো হিসাব না হওয়া অর্ডারে দেখায় না) ── */}
+          {/* ── ট্রাস্ট স্কোর: ডিফল্টে শুধু প্রথম সারি (লেভেল + স্কোর); নিচমুখী তীরে ক্লিক করলে বাকিটা খোলে।
+              (পুরনো অর্ডার বা এখনো হিসাব না হওয়া অর্ডারে দেখায় না) ── */}
           {order.risk && (
             <section>
               <SectionHeading>ট্রাস্ট স্কোর</SectionHeading>
-              <div className="rounded-2xl border border-border-base bg-white p-3.5 shadow-sh1">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className={`flex items-center gap-2 font-body text-[15px] font-black ${RISK_META[order.risk.level].text}`}>
-                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${RISK_META[order.risk.level].dot}`} />
-                      {RISK_META[order.risk.level].label}
-                    </div>
-                    <p className="mt-1 font-body text-[12px] font-semibold leading-snug text-muted">
+              <div className="rounded-2xl border border-border-base bg-white shadow-sh1">
+                <button
+                  type="button"
+                  onClick={() => setRiskOpen((v) => !v)}
+                  aria-expanded={riskOpen}
+                  aria-label={riskOpen ? 'ট্রাস্ট স্কোরের বিস্তারিত বন্ধ করুন' : 'ট্রাস্ট স্কোরের বিস্তারিত দেখুন'}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl p-3.5 text-left transition-all duration-brand active:scale-[0.99]"
+                >
+                  <span className={`flex min-w-0 items-center gap-2 font-body text-[15px] font-black ${RISK_META[order.risk.level].text}`}>
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${RISK_META[order.risk.level].dot}`} />
+                    {RISK_META[order.risk.level].label}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2.5 font-body">
+                    <span>
+                      <span className="text-[22px] font-black leading-none tracking-tight text-ink">{order.risk.score}</span>
+                      <span className="text-[12px] font-bold text-muted">/100</span>
+                    </span>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`text-muted transition-transform duration-brand ${riskOpen ? 'rotate-180' : ''}`}
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </span>
+                </button>
+
+                {riskOpen && (
+                  <div className="border-t border-border-base/50 px-3.5 pb-3.5 pt-3">
+                    <p className="font-body text-[12px] font-semibold leading-snug text-muted">
                       {RISK_META[order.risk.level].hint}
                     </p>
-                  </div>
-                  <div className="shrink-0 text-right font-body">
-                    <span className="text-[26px] font-black leading-none tracking-tight text-ink">{order.risk.score}</span>
-                    <span className="text-[12px] font-bold text-muted">/100</span>
-                  </div>
-                </div>
 
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted">
-                  <div
-                    className={`h-full rounded-full ${RISK_META[order.risk.level].bar}`}
-                    style={{ width: `${Math.max(2, Math.min(100, order.risk.score))}%` }}
-                  />
-                </div>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                      <div
+                        className={`h-full rounded-full ${RISK_META[order.risk.level].bar}`}
+                        style={{ width: `${Math.max(2, Math.min(100, order.risk.score))}%` }}
+                      />
+                    </div>
 
-                {order.risk.hard_limit && (
-                  <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 font-body text-[12px] font-bold leading-snug text-red-700">
-                    লিমিট ভাঙার রেকর্ড আছে — স্কোর যাই হোক, এই অর্ডার সরাসরি লাল ধরা হয়েছে।
-                  </div>
-                )}
+                    {order.risk.hard_limit && (
+                      <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 font-body text-[12px] font-bold leading-snug text-red-700">
+                        লিমিট ভাঙার রেকর্ড আছে — স্কোর যাই হোক, এই অর্ডার সরাসরি লাল ধরা হয়েছে।
+                      </div>
+                    )}
 
-                {order.risk.breakdown.length > 0 && (
-                  <ul className="mt-3 divide-y divide-border-base/50">
-                    {order.risk.breakdown.map((f) => (
-                      <li key={f.key} className="flex items-start gap-2.5 py-2">
-                        <span
-                          className={`mt-[5px] h-2 w-2 shrink-0 rounded-full ${
-                            f.tone === 'good' ? 'bg-success' : f.tone === 'warn' ? 'bg-warn' : 'bg-danger'
-                          }`}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-body text-[12.5px] font-extrabold text-ink">{f.label}</div>
-                          <div className="font-body text-[11.5px] font-medium leading-snug text-muted">{f.note}</div>
-                        </div>
-                        <span className="shrink-0 font-body text-[12px] font-black text-ink/80">
-                          {f.points}/{f.max}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                    {order.risk.breakdown.length > 0 && (
+                      <ul className="mt-3 divide-y divide-border-base/50">
+                        {order.risk.breakdown.map((f) => (
+                          <li key={f.key} className="flex items-start gap-2.5 py-2">
+                            <span
+                              className={`mt-[5px] h-2 w-2 shrink-0 rounded-full ${
+                                f.tone === 'good' ? 'bg-success' : f.tone === 'warn' ? 'bg-warn' : 'bg-danger'
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-body text-[12.5px] font-extrabold text-ink">{f.label}</div>
+                              <div className="font-body text-[11.5px] font-medium leading-snug text-muted">{f.note}</div>
+                            </div>
+                            <span className="shrink-0 font-body text-[12px] font-black text-ink/80">
+                              {f.points}/{f.max}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
-                {(order.ip || order.risk.ip_city) && (
-                  <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-border-base/50 pt-2.5 font-body text-[11.5px] font-semibold text-muted">
-                    {order.ip && <span>আইপি: {order.ip}</span>}
-                    {order.risk.ip_city && <span>আইপি লোকেশন: {order.risk.ip_city}</span>}
+                    {(order.ip || order.risk.ip_city) && (
+                      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-border-base/50 pt-2.5 font-body text-[11.5px] font-semibold text-muted">
+                        {order.ip && <span>আইপি: {order.ip}</span>}
+                        {order.risk.ip_city && <span>আইপি লোকেশন: {order.risk.ip_city}</span>}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -337,40 +395,65 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
           {/* ── অ্যাডমিন নোট (শুধু এখানেই দেখায়; অর্ডার বদলালে নতুন করে লোড হয়) ── */}
           <OrderNotes key={order.id} orderId={order.id} />
 
-          {/* ── স্ট্যাটাস পরিবর্তন ── */}
+          {/* ── স্ট্যাটাস: বর্তমানটা বড় করে দেখায়; বাকিগুলো থ্রি-ডটের ভেতরে; কোনোটা বাছলে আগে নিশ্চিতকরণ চায়
+              (ভুল ক্লিকে স্ট্যাটাস বদলে যাওয়া ঠেকাতে) ── */}
           <section>
-            <SectionHeading>স্ট্যাটাস পরিবর্তন করুন</SectionHeading>
-            <p className="mb-2.5 hidden font-body text-[11px] font-semibold text-muted md:block">
-              ⌨️ Shift+C কনফার্ম · Shift+X রিজেক্ট · J / K পরের / আগের অর্ডার · Esc বন্ধ
-            </p>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-              {ORDER_STATUS_ORDER.map((s) => {
-                const m = ORDER_STATUS_META[s];
-                const active = s === order.status;
-                const busy = changingTo === s;
-                return (
+            <SectionHeading>স্ট্যাটাস</SectionHeading>
+            {(() => {
+              const cur = ORDER_STATUS_META[order.status];
+              return (
+                <div className="flex items-stretch gap-2.5">
+                  <div
+                    style={{ background: cur.bg, borderColor: cur.dot, color: cur.text }}
+                    className="flex h-14 min-w-0 flex-1 items-center justify-center gap-2.5 rounded-2xl border-[1.5px] px-4 font-body text-[15px] font-black"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {cur.label}
+                  </div>
                   <button
-                    key={s}
                     type="button"
-                    disabled={busy}
-                    onClick={() => handleStatusClick(s)}
-                    style={active ? { background: m.bg, borderColor: m.dot, color: m.text } : undefined}
-                    className={`flex h-12 items-center justify-center gap-2 rounded-2xl border-[1.5px] px-3 font-body text-[13px] font-extrabold transition-all duration-brand active:scale-95 disabled:opacity-60 ${
-                      active ? '' : 'border-border-base bg-white text-ink hover:border-brand-light'
+                    onClick={() => setMoreOpen((v) => !v)}
+                    disabled={!!changingTo}
+                    aria-label="অন্য স্ট্যাটাস দেখুন"
+                    aria-expanded={moreOpen}
+                    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-[1.5px] transition-all duration-brand active:scale-95 disabled:opacity-60 ${
+                      moreOpen ? 'border-brand-light bg-brand-light/10 text-brand-light' : 'border-border-base bg-white text-ink hover:border-brand-light'
                     }`}
                   >
-                    {active ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: m.dot }} />
-                    )}
-                    {busy ? '...' : m.label}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="5" cy="12" r="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <circle cx="19" cy="12" r="2" />
+                    </svg>
                   </button>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })()}
+
+            {moreOpen && (
+              <div className="animate-soft-fade-in mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {ORDER_STATUS_ORDER.filter((s) => s !== order.status).map((s) => {
+                  const m = ORDER_STATUS_META[s];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => requestStatusChange(s)}
+                      className="flex h-11 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-border-base bg-white px-3 font-body text-[13px] font-extrabold text-ink transition-all duration-brand hover:border-brand-light active:scale-95"
+                    >
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: m.dot }} />
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="mt-2.5 hidden font-body text-[11px] font-semibold text-muted md:block">
+              ⌨️ Shift+C কনফার্ম · Shift+X রিজেক্ট (আগে নিশ্চিত করতে বলবে) · J / K পরের / আগের অর্ডার · Esc বন্ধ
+            </p>
 
             <button
               type="button"
@@ -382,6 +465,24 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
           </section>
         </div>
       </div>
+
+      {pendingStatus && (
+        <ConfirmDialog
+          title="স্ট্যাটাস বদলাবেন?"
+          message={
+            <>
+              এই অর্ডারের স্ট্যাটাস <b>{ORDER_STATUS_META[order.status].label}</b> থেকে{' '}
+              <b>{ORDER_STATUS_META[pendingStatus].label}</b> করতে চান? এটা কি সত্যিই করবেন?
+            </>
+          }
+          confirmLabel="হ্যাঁ, বদলান"
+          busyLabel="বদলাচ্ছে..."
+          busy={!!changingTo}
+          tone={pendingStatus === 'rejected' || pendingStatus === 'cancelled' ? 'danger' : 'brand'}
+          onConfirm={confirmStatusChange}
+          onCancel={closeConfirm}
+        />
+      )}
     </div>
   );
 }
