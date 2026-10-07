@@ -27,7 +27,13 @@ export interface CatalogSyncResult {
 
 const TIMEOUT_MS = 4000;
 
-async function attempt(url: string, secret: string): Promise<{ ok: boolean; status?: number; note?: string; retry: boolean }> {
+const MAX_REDIRECT_HOPS = 2;
+
+async function attempt(
+  url: string,
+  secret: string,
+  hop = 0,
+): Promise<{ ok: boolean; status?: number; note?: string; retry: boolean }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -36,18 +42,31 @@ async function attempt(url: string, secret: string): Promise<{ ok: boolean; stat
       headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret },
       body: '{}',
       cache: 'no-store',
-      // রিডাইরেক্ট নিজে অনুসরণ করা হয় না — ৩০১/৩০২ হলে POST চুপচাপ GET হয়ে যায় এবং
-      // রিভ্যালিডেশন কখনোই চলে না; তাই রিডাইরেক্ট ধরা পড়লে স্পষ্টভাবে লগ করি।
+      // রিডাইরেক্ট নিজে অনুসরণ করা হয় (নিচে) — ব্রাউজার-স্টাইল স্বয়ংক্রিয় অনুসরণে ৩০১/৩০২-এ POST চুপচাপ
+      // GET হয়ে যায় ও রিভ্যালিডেশন চলে না; ৩০৭/৩০৮-এ মেথড ঠিক থাকে। তাই আমরা নিজেরাই POST সহ পুনরায় পাঠাই।
       redirect: 'manual',
       signal: controller.signal,
     });
     if (res.ok) return { ok: true, status: res.status, retry: false };
 
     if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location') || '';
+      // 🛡️ গোপন চাবি শুধু https + একই এন্ডপয়েন্ট পাথে পাঠানো হবে, সর্বোচ্চ ২ হপ — অন্য কোথাও নয়
+      let next: URL | null = null;
+      try {
+        next = new URL(location, url);
+      } catch {
+        next = null;
+      }
+      const samePath = next && next.pathname.replace(/\/$/, '') === new URL(url).pathname.replace(/\/$/, '');
+      if (next && next.protocol === 'https:' && samePath && hop < MAX_REDIRECT_HOPS) {
+        console.warn(`[revalidate-catalog] ↪ রিডাইরেক্ট অনুসরণ: ${url} → ${next.toString()} (VANGCUR_SITE_URL-এ চূড়ান্ত ঠিকানা দিলে এই ধাপ লাগে না)`);
+        return attempt(next.toString(), secret, hop + 1);
+      }
       return {
         ok: false,
         status: res.status,
-        note: `রিডাইরেক্ট হচ্ছে → ${res.headers.get('location') || '?'} — VANGCUR_SITE_URL-এ সরাসরি চূড়ান্ত ঠিকানাটা দিন`,
+        note: `রিডাইরেক্ট হচ্ছে → ${location || '?'} — VANGCUR_SITE_URL-এ সরাসরি চূড়ান্ত ঠিকানাটা দিন`,
         retry: false,
       };
     }

@@ -119,14 +119,62 @@ export default function WeatherWidget({ dateLabel, name = 'Mehedi' }: WeatherWid
 
   useEffect(() => {
     let cancelled = false;
+    let reqId = 0; // শুধু সর্বশেষ অনুরোধের ফলই কার্ডে বসবে — দেরিতে আসা পুরনো উত্তর নতুনটাকে উল্টে দেবে না
 
-    async function fetchWeather(lat: number, lon: number, locationName: string) {
+    const LOC_CACHE_KEY = 'vc_admin_weather_loc';
+    const DEFAULT_LAT = 23.2167;
+    const DEFAULT_LON = 91.3167;
+    const DEFAULT_NAME = 'চৌদ্দগ্রাম, কুমিল্লা';
+    const GENERIC_NAME = 'আপনার বর্তমান এলাকা';
+
+    // শেষবার জানা লোকেশন — পরের বার খুলতেই সঠিক এলাকার আবহাওয়া ঝলকে দেখাতে (ভুল জায়গা দেখিয়ে লাফানো এড়াতে)
+    function readCachedLocation(): { lat: number; lon: number; name: string } | null {
+      try {
+        const raw = localStorage.getItem(LOC_CACHE_KEY);
+        if (!raw) return null;
+        const v = JSON.parse(raw);
+        if (typeof v?.lat === 'number' && typeof v?.lon === 'number') {
+          return { lat: v.lat, lon: v.lon, name: typeof v.name === 'string' && v.name ? v.name : GENERIC_NAME };
+        }
+      } catch {
+        // ক্যাশ পড়া ব্যর্থ হলে ডিফল্টই চলবে
+      }
+      return null;
+    }
+
+    function saveCachedLocation(lat: number, lon: number, name: string) {
+      try {
+        localStorage.setItem(LOC_CACHE_KEY, JSON.stringify({ lat, lon, name }));
+      } catch {
+        // ignore
+      }
+    }
+
+    // লোকেশনের নাম (বিনা-কী রিভার্স জিওকোডিং)। ব্যর্থ হলে খালি স্ট্রিং — আবহাওয়ার সংখ্যা তাতে আটকায় না
+    async function resolvePlaceName(lat: number, lon: number): Promise<string> {
+      try {
+        const res = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=bn`,
+          { signal: AbortSignal.timeout(4000) },
+        );
+        if (!res.ok) return '';
+        const j = await res.json();
+        const place = (j.locality || j.city || '').toString().trim();
+        const region = (j.principalSubdivision || '').toString().replace(/\s*(বিভাগ|Division)\s*$/i, '').trim();
+        return [place, region].filter((s, i, a) => s && a.indexOf(s) === i).join(', ');
+      } catch {
+        return '';
+      }
+    }
+
+    async function fetchWeather(lat: number, lon: number, locationName: string): Promise<boolean> {
+      const myReq = ++reqId;
       try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&forecast_days=1&timezone=auto`;
         const res = await fetch(url);
-        if (!res.ok) return;
+        if (!res.ok) return false;
         const json = await res.json();
-        if (cancelled || !json.current) return;
+        if (cancelled || myReq !== reqId || !json.current) return false;
 
         const cur = json.current;
         const code = cur.weather_code;
@@ -159,26 +207,42 @@ export default function WeatherWidget({ dateLabel, name = 'Mehedi' }: WeatherWid
           wind: `${Math.round(cur.wind_speed_10m)} km/h`,
           forecast: forecast.length > 0 ? forecast : DEFAULT_WEATHER.forecast,
         });
+        return true;
       } catch {
-        // কোনো নেটওয়ার্ক সমস্যা হলে ডিফল্ট চৌদ্দগ্রাম প্রদর্শিত থাকবে, ফলে কখনোই ভাঙা অবস্থা আসবে না
+        // কোনো নেটওয়ার্ক সমস্যা হলে আগের/ডিফল্ট ডেটাই থাকবে, ফলে কখনোই ভাঙা অবস্থা আসবে না
+        return false;
       }
     }
 
-    // ১. মাউন্ট হওয়ামাত্রই তাৎক্ষণিক লাইভ চৌদ্দগ্রাম, কুমিল্লার আবহাওয়া ফেচ শুরু হবে (জিরো ডিলে)
-    fetchWeather(23.2167, 91.3167, 'চৌদ্দগ্রাম, কুমিল্লা');
+    // ১. মাউন্ট হওয়ামাত্র শেষবার জানা লোকেশন (না থাকলে চৌদ্দগ্রাম) দিয়ে তাৎক্ষণিক ফেচ
+    const cached = readCachedLocation();
+    fetchWeather(
+      cached ? cached.lat : DEFAULT_LAT,
+      cached ? cached.lon : DEFAULT_LON,
+      cached ? cached.name : DEFAULT_NAME,
+    );
 
-    // ২. ব্রাউজার লোকেশন সাপোর্ট করলে ব্যাকগ্রাউন্ডে ইউজার লোকেশনে স্মুথলি শিফট হবে
+    // ২. ব্রাউজারের বর্তমান লোকেশনে সরে যাওয়া — সফল হলে সেই জায়গার আসল আবহাওয়া ও এলাকার নাম বসে
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (!cancelled) {
-            fetchWeather(pos.coords.latitude, pos.coords.longitude, 'আপনার বর্তমান এলাকা');
+        async (pos) => {
+          if (cancelled) return;
+          const { latitude, longitude } = pos.coords;
+          const ok = await fetchWeather(latitude, longitude, GENERIC_NAME);
+          if (!ok || cancelled) return;
+          const myReq = reqId;
+          const name = await resolvePlaceName(latitude, longitude);
+          const finalName = name || GENERIC_NAME;
+          saveCachedLocation(latitude, longitude, finalName);
+          if (!cancelled && myReq === reqId && name) {
+            setData((d) => ({ ...d, loc: name }));
           }
         },
         () => {
-          // পারমিশন ডিনাই করলেও কোনো সমস্যা নেই, চৌদ্দগ্রাম নিরবচ্ছিন্নভাবে চলবে
+          // অনুমতি না দিলে বা লোকেশন না পেলে শেষবার জানা/ডিফল্ট এলাকাই চলবে
         },
-        { timeout: 4000 }
+        // Windows/ডেস্কটপে Wi-Fi ভিত্তিক লোকেশন পেতে ৪ সেকেন্ডের বেশি লাগতে পারে; ৩০ মিনিটের মধ্যে পাওয়া লোকেশন পুনর্ব্যবহার
+        { timeout: 12000, maximumAge: 30 * 60 * 1000 },
       );
     }
 

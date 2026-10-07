@@ -31,13 +31,28 @@ export async function revalidateGuidePage(path?: string | null): Promise<void> {
   const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
-    await fetch(`${base.replace(/\/$/, '')}/api/revalidate-guide`, {
+    const url = `${base.replace(/\/$/, '')}/api/revalidate-guide`;
+    const init = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret },
       body: JSON.stringify({ path: path ?? undefined }),
-      cache: 'no-store',
+      cache: 'no-store' as const,
+      redirect: 'manual' as const,
       signal: controller.signal,
-    });
+    };
+    const res = await fetch(url, init);
+    // ডোমেইন রিডাইরেক্ট (যেমন পুরনো vercel.app → কাস্টম ডোমেইন) হলে একই পাথে https-এ একবার পুনরায় POST
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location');
+      try {
+        const next = loc ? new URL(loc, url) : null;
+        if (next && next.protocol === 'https:' && next.pathname === new URL(url).pathname) {
+          await fetch(next.toString(), init);
+        }
+      } catch {
+        // best-effort
+      }
+    }
   } catch {
     // best-effort — নেটওয়ার্ক ব্যর্থতা বা timeout, দুটোতেই অ্যাডমিনের সেভ/পাবলিশ ফ্লো ব্লক করব না
   } finally {

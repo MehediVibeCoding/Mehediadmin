@@ -5,6 +5,9 @@
 // সাথে কানেক্ট করে (lib/supabase/client.ts, OrdersRealtimeProvider),
 // তাই connect-src-এ Supabase-এর https ও wss দুটো অরিজিনই থাকা দরকার।
 //
+// 🌦️ ড্যাশবোর্ডের আবহাওয়া কার্ডের জন্য connect-src-এ open-meteo (আবহাওয়া) ও bigdatacloud (এলাকার নাম)
+// অনুমোদিত, আর Permissions-Policy-তে geolocation=(self) — নইলে ব্রাউজার সরাসরি ব্লক করত।
+//
 // ⚠️ deploy করার আগে staging-এ টেস্ট করে নাও — বিশেষ করে script-src-এ
 // 'unsafe-inline' রাখা হয়েছে কারণ লাইভ পরিবেশে টেস্ট না করে সেটা বাদ
 // দিলে Next.js হাইড্রেশন/ইনলাইন স্ক্রিপ্ট ভেঙে যাওয়ার ঝুঁকি আছে।
@@ -19,7 +22,7 @@ const contentSecurityPolicy = [
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `font-src 'self' https://fonts.gstatic.com`,
   `img-src 'self' data: blob: https://res.cloudinary.com ${supabaseUrl}`,
-  `connect-src 'self' ${supabaseUrl} ${supabaseWsUrl}`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseWsUrl} https://api.open-meteo.com https://api.bigdatacloud.net`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,
@@ -34,7 +37,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
   },
 ];
 
