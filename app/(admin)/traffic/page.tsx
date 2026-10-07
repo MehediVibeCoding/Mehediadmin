@@ -14,7 +14,7 @@ export default async function TrafficPage() {
       <PageErrorBox
         title="ট্রাফিক ডাটা লোড করতে সমস্যা হয়েছে"
         message={message}
-        hint="সাধারণত এর কারণ: অ্যাডমিন লগইন সেশন শেষ হয়ে যাওয়া বা Vercel-এ Supabase এনভায়রনমেন্ট ভ্যারিয়েবল ভুল/missing।"
+        hint="সাধারণত এর কারণ: অ্যাডমিন লগইন সেশন শেষ হয়ে যাওয়া বা Vercel-এ ADMIN_EMAIL / Supabase এনভায়রনমেন্ট ভেরিয়েবল ভুল বা missing।"
       />
     );
   }
