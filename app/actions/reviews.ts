@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { ALLOWED_IMAGE_MIME } from '@/lib/uploadValidation';
+import { ALLOWED_IMAGE_MIME, verifyImageMagicBytes, MAGIC_BYTE_MISMATCH_MESSAGE } from '@/lib/uploadValidation';
 import type { Review } from '@/types';
 
 const TABLE = 'customer_reviews';
@@ -96,6 +96,10 @@ export async function uploadReviewImage(
   const ext = ALLOWED_IMAGE_MIME[file.type];
   if (!ext) {
     return { ok: false, message: 'শুধুমাত্র JPG, PNG বা WebP ছবি আপলোড করা যাবে' };
+  }
+  // 🛡️ অডিট ফিক্স: file.type স্পুফ করা সম্ভব, তাই আসল ফাইল-বাইট দিয়েও যাচাই
+  if (!(await verifyImageMagicBytes(file, file.type))) {
+    return { ok: false, message: MAGIC_BYTE_MISMATCH_MESSAGE };
   }
   const supabase = createServiceRoleClient();
   const path = `reviews/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;

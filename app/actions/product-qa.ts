@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { sanitizeInput } from '@/lib/security';
+import { sanitizeInput, isValidPositiveIntId } from '@/lib/security';
 import type { ProductQuestion, ProductQuestionAnswer, ProductQuestionWithAnswers } from '@/types';
 
 const Q_TABLE = 'product_questions';
@@ -63,6 +63,8 @@ export interface QaActionResult {
 
 export async function answerQuestion(questionId: number, answerText: string): Promise<QaActionResult> {
   await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidPositiveIntId(questionId)) return { ok: false, message: '❌ প্রশ্নের আইডি সঠিক নয়' };
   // অডিট §২.২: লেখা DB-তে যাওয়ার আগে সার্ভারে HTML/script স্ট্রিপ
   const answer = sanitizeInput(answerText).slice(0, 2000);
   if (!answer) return { ok: false, message: '❌ উত্তর লিখুন' };
@@ -82,6 +84,7 @@ export async function answerQuestion(questionId: number, answerText: string): Pr
 
 export async function deleteQuestion(id: number): Promise<QaActionResult> {
   await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: '❌ প্রশ্নের আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   // DB-তে ON DELETE CASCADE নিশ্চিত না থাকায় আগে সব উত্তর মুছে, তারপর প্রশ্ন মুছছি
@@ -95,6 +98,7 @@ export async function deleteQuestion(id: number): Promise<QaActionResult> {
 
 export async function deleteAnswer(id: number): Promise<QaActionResult> {
   await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: '❌ উত্তরের আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from(A_TABLE).delete().eq('id', id);
   if (error) return { ok: false, message: '❌ মুছতে সমস্যা: ' + error.message };

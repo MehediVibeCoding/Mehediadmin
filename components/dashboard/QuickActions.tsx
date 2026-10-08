@@ -2,25 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { listOrders } from '@/app/actions/orders';
-import { downloadCsvRows, ordersToCsvRows } from '@/lib/csv';
 import { useToast } from '@/components/admin/Toast';
 
 export default function QuickActions() {
   const [exporting, setExporting] = useState(false);
   const { showToast } = useToast();
 
-  async function handleExport() {
+  // 🚀 স্কেল ফিক্স: Orders পেজের মতোই, এটাও এখন সরাসরি স্ট্রিমিং
+  // /api/export-orders Route Handler-এ নেভিগেট করে (listOrders() দিয়ে সব
+  // অর্ডার মেমোরিতে এনে data: URI বানানোর বদলে) — অর্ডার অনেক বেড়ে গেলেও
+  // (৫০,০০০+) ডাউনলোড আটকাবে না।
+  function handleExport() {
     setExporting(true);
-    try {
-      const orders = await listOrders();
-      downloadCsvRows(ordersToCsvRows(orders), 'orders_all');
-      showToast('CSV ফাইল ডাউনলোড শুরু হয়েছে');
-    } catch {
-      showToast('CSV এক্সপোর্ট সম্পন্ন করা যায়নি');
-    } finally {
-      setExporting(false);
-    }
+    window.location.href = '/api/export-orders?status=all';
+    showToast('CSV ফাইল ডাউনলোড শুরু হয়েছে');
+    setTimeout(() => setExporting(false), 1500);
   }
 
   return (

@@ -11,7 +11,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { sanitizeInput } from '@/lib/security';
+import { sanitizeInput, isValidUuid, isValidPositiveIntId } from '@/lib/security';
 import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
 import { guidePageUrlPath } from '@/types/guides';
 import type { GuideBlock, GuidePage, GuidePageTemplate, GuidePageType } from '@/types/guides';
@@ -79,6 +79,8 @@ export async function listAllGuidePagesForLinking(): Promise<LinkableGuidePage[]
 
 export async function listGuidePagesByProduct(productId: number): Promise<GuidePage[]> {
   await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidPositiveIntId(productId)) return [];
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from(TABLE)
@@ -103,6 +105,7 @@ export async function listGuidePagesByCategory(categoryId: string): Promise<Guid
 
 export async function getGuidePage(id: string): Promise<GuidePage | null> {
   await requireAdmin();
+  if (!isValidUuid(id)) return null;
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.from(TABLE).select('*').eq('id', id).maybeSingle();
   if (error || !data) return null;
@@ -194,6 +197,8 @@ export interface UpdateGuidePageInput {
 
 export async function updateGuidePage(input: UpdateGuidePageInput): Promise<GuidePageActionResult> {
   const { email } = await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidUuid(input.id)) return { ok: false, message: 'গাইড পেজ আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   const slug = sanitizeInput(input.slug)
@@ -247,6 +252,7 @@ export async function updateGuidePage(input: UpdateGuidePageInput): Promise<Guid
 
 export async function setGuidePagePublished(id: string, published: boolean): Promise<GuidePageActionResult> {
   await requireAdmin();
+  if (!isValidUuid(id)) return { ok: false, message: 'গাইড পেজ আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   const { data, error } = await supabase
@@ -273,6 +279,7 @@ export async function setGuidePagePublished(id: string, published: boolean): Pro
 
 export async function deleteGuidePage(id: string): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
+  if (!isValidUuid(id)) return { ok: false, message: 'গাইড পেজ আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   // ডিলিট করার আগেই slug/page_type ধরে রাখা — রো মুছে যাওয়ার পর আর সেটা জানার উপায় থাকবে না
@@ -296,6 +303,9 @@ export async function duplicateGuidePage(
   id: string,
   overrides: { slug: string; product_id?: number | null; category_id?: string | null }
 ): Promise<GuidePageActionResult> {
+  // getGuidePage() নিজেই isValidUuid চেক করে (null ফেরত দিয়ে) — আলাদা করে
+  // এখানে আবার লেখার দরকার নেই, নিচের "সোর্স পাওয়া যায়নি" মেসেজ দুটো
+  // ক্ষেত্রেই (ভুল ফরম্যাট আইডি বা সত্যিই না-পাওয়া) ঠিকঠাক কভার করে।
   const source = await getGuidePage(id);
   if (!source) return { ok: false, message: 'সোর্স পেজ পাওয়া যায়নি' };
 

@@ -6,7 +6,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { sanitizeInput } from '@/lib/security';
+import { sanitizeInput, isValidUuid } from '@/lib/security';
 import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
 import { RESERVED_URL_PREFIXES } from '@/types/guides';
 import type { GuideBlock, GuidePageTemplate } from '@/types/guides';
@@ -118,6 +118,8 @@ export async function updateGuideTemplate(input: {
   is_active: boolean;
 }): Promise<GuideTemplateActionResult> {
   const { email } = await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidUuid(input.id)) return { ok: false, message: 'টেমপ্লেট আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   const url_prefix = normalizePrefix(input.url_prefix);
@@ -148,6 +150,7 @@ export async function updateGuideTemplate(input: {
 
 export async function deleteGuideTemplate(id: string): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
+  if (!isValidUuid(id)) return { ok: false, message: 'টেমপ্লেট আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   const { data: key } = await supabase.from(TABLE).select('key').eq('id', id).maybeSingle();

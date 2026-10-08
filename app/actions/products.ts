@@ -4,10 +4,10 @@ import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import { sanitizeInput, sanitizeInputArray } from '@/lib/security';
+import { sanitizeInput, sanitizeInputArray, isValidPositiveIntId } from '@/lib/security';
 import { validateImageUpload } from '@/lib/uploadValidation';
 import { requireAdmin } from '@/lib/auth-guard';
-import { adminCached, PRODUCTS_TAG } from '@/lib/adminCache';
+import { adminCached, invalidateProductsData, PRODUCTS_TAG } from '@/lib/adminCache';
 import { PAGE_SIZE } from '@/lib/constants/pagination';
 import type { Product, ProductFaq, ProductInfoBox, ProductListRow, ProductSpecs } from '@/types';
 import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
@@ -382,12 +382,15 @@ export async function createProduct(
   await upsertProductCost(data.id, unitProfit);
 
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
 export async function updateProduct(id: number, input: ProductFormInput): Promise<SaveResult> {
   await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidPositiveIntId(id)) return { status: 'error', message: 'প্রোডাক্ট আইডি সঠিক নয়' };
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
@@ -439,6 +442,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   await upsertProductCost(id, unitProfit);
 
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
@@ -488,6 +492,7 @@ export async function linkColorVariant(
   }
 
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { ok: true, groupId };
 }
@@ -498,11 +503,13 @@ export async function unlinkColorVariant(productId: number): Promise<{ ok: boole
   const { error } = await supabase.from(TABLE).update({ color_group_id: null }).eq('id', productId);
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { ok: true };
 }
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: 'প্রোডাক্ট আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
   // ডিলিটের পর আর এগুলো জানার উপায় থাকবে না, অথচ নিচে রিভ্যালিডেশনের জন্য দরকার
   const { data: linkedPages } = await supabase
@@ -527,6 +534,7 @@ export async function deleteProduct(id: number): Promise<{ ok: boolean; message?
   if (error) return { ok: false, message: error.message };
 
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
 
   // ডিলিট হওয়া সাব পেজগুলোর লাইভ URL রিভ্যালিডেট করা — best-effort, ব্যর্থ হলেও প্রোডাক্ট
@@ -552,19 +560,39 @@ export async function deleteProduct(id: number): Promise<{ ok: boolean; message?
 //  QUICK EDIT — স্টক ও ব্যাজ (টেবিলে ইনলাইন পপওভার থেকে)
 // ══════════════════════════════════════════════════════════════
 
+// 📒 stock_logs অডিট: অ্যাডমিন নিজে ম্যানুয়ালি স্টক সংখ্যা বদলালে (টেবিলের
+// ইনলাইন পপওভার থেকে) তার হিস্টরি রাখা হয় — কে, কবে, আগের-পরের সংখ্যা সহ।
+// আগে old stock এনে নতুনটার সাথে ডিফ করা হয় যাতে change_qty সঠিক ধনাত্মক/ঋণাত্মক হয়।
 export async function updateStock(id: number, stock: number): Promise<{ ok: boolean; message?: string }> {
-  await requireAdmin();
+  const { email: adminEmail } = await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: 'প্রোডাক্ট আইডি সঠিক নয়' };
   if (!Number.isFinite(stock) || stock < 0) return { ok: false, message: 'সঠিক স্টক সংখ্যা দিন' };
   const supabase = createServiceRoleClient();
+
+  const { data: before } = await supabase.from(TABLE).select('stock').eq('id', id).single();
+  const previousStock = before && Number.isFinite(before.stock) ? Number(before.stock) : null;
+
   const { error } = await supabase.from(TABLE).update({ stock }).eq('id', id);
   if (error) return { ok: false, message: error.message };
+
+  if (previousStock !== null && previousStock !== stock) {
+    await supabase.from('stock_logs').insert({
+      product_id: id,
+      change_qty: stock - previousStock,
+      reason: 'manual_admin_edit',
+      changed_by: adminEmail,
+    });
+  }
+
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { ok: true };
 }
 
 export async function updateBadge(id: number, badge: string): Promise<{ ok: boolean; message?: string }> {
   await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: 'প্রোডাক্ট আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
   const { error } = await supabase
     .from(TABLE)
@@ -572,6 +600,7 @@ export async function updateBadge(id: number, badge: string): Promise<{ ok: bool
     .eq('id', id);
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { ok: true };
 }
@@ -597,6 +626,7 @@ export async function reorderProducts(updates: ReorderUpdate[]): Promise<{ ok: b
   const { error } = await supabase.rpc('admin_reorder_products', { p_updates: updates });
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
+  invalidateProductsData();
   await revalidateVangcurCatalog();
   return { ok: true };
 }
@@ -616,7 +646,8 @@ export async function uploadProductImage(
     return { ok: false, message: 'কোনো ফাইল পাওয়া যায়নি' };
   }
   // 🛡️ অডিট ফিক্স: ফাইলের নাম না, আসল MIME টাইপ চেক করে ext বসানো হচ্ছে
-  const validated = validateImageUpload(file);
+  // 🛡️ অডিট ফিক্স: ফাইলের নাম না, আসল MIME টাইপ ও magic bytes চেক করে ext বসানো হচ্ছে
+  const validated = await validateImageUpload(file);
   if (!validated.ok) return { ok: false, message: validated.message };
   const supabase = createServiceRoleClient();
   const ext = validated.ext;

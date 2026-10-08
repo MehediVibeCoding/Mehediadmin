@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSoundMuted } from '@/components/admin/useSoundMuted';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
+import { clearOrdersCache } from '@/lib/clientOrdersCache';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import PendingOrdersBadge from '@/components/admin/PendingOrdersBadge';
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo';
@@ -946,6 +947,10 @@ export default function Sidebar() {
           tone="danger"
           onConfirm={() => {
             setLoggingOut(true);
+            // 🛡️ অডিট ফিক্স: লগআউটের আগে ব্রাউজারের মেমোরি-ক্যাশ (clientOrdersCache)
+            // পরিষ্কার করা হচ্ছে — নইলে শেয়ার্ড/পাবলিক ব্রাউজারে লগআউটের পরেও
+            // রিফ্রেশ না করা পর্যন্ত আগের অর্ডার-ডাটা মেমোরিতে থেকে যেত।
+            clearOrdersCache();
             logoutFormRef.current?.requestSubmit();
           }}
           onCancel={() => setConfirmLogout(false)}

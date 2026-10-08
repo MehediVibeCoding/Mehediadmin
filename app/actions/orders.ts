@@ -1,7 +1,6 @@
 'use server';
 
 import { after } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
@@ -10,6 +9,7 @@ import { syncConfirmedOrderToSheet } from '@/lib/googleSheet';
 import { attachOrderRisk } from '@/lib/orderRisk';
 import { attachProfitSnapshots } from '@/lib/orderPrivate';
 import { adminCached, invalidateOrdersData, ORDERS_TAG } from '@/lib/adminCache';
+import { isValidUuid } from '@/lib/security';
 import type { Order, OrderItem, OrderStatus } from '@/types';
 
 // ══════════════════════════════════════════════════════════════
@@ -255,13 +255,20 @@ const STOCK_RESTORED_STATUSES: OrderStatus[] = ['rejected', 'cancelled'];
 // জানালে এই কোড মিলিয়ে দেওয়া যাবে।
 async function restoreStockForItems(
   supabase: SupabaseClient,
-  items: OrderItem[]
+  items: OrderItem[],
+  reason: string,
+  changedBy: string
 ): Promise<{ ok: boolean; message?: string }> {
   const restorable = (items || []).filter((it) => it && it.id !== undefined && it.id !== null && it.qty > 0);
   if (!restorable.length) return { ok: true };
 
+  // 📒 stock_logs অডিট ফিক্স: reason/changed_by RPC-কে পাঠানো হয় যাতে
+  // কে/কেন স্টক ফেরত দিলো তা stock_logs টেবিলে ধরা পড়ে (Supabase-এর
+  // decrement/restore_product_stock ফাংশন এখন এই দুই প্যারামিটার নেয়)।
   const { error } = await supabase.rpc('restore_product_stock', {
     p_items: restorable.map((it) => ({ id: it.id, qty: it.qty })),
+    p_reason: reason,
+    p_changed_by: changedBy,
   });
 
   if (error) {
@@ -287,13 +294,17 @@ async function restoreStockForItems(
 // (fail-closed), যাতে স্টক নেগেটিভ না হয়ে যায়।
 async function decrementStockForItems(
   supabase: SupabaseClient,
-  items: OrderItem[]
+  items: OrderItem[],
+  reason: string,
+  changedBy: string
 ): Promise<{ ok: boolean; message?: string }> {
   const decrementable = (items || []).filter((it) => it && it.id !== undefined && it.id !== null && it.qty > 0);
   if (!decrementable.length) return { ok: true };
 
   const { error } = await supabase.rpc('decrement_product_stock', {
     p_items: decrementable.map((it) => ({ id: it.id, qty: it.qty })),
+    p_reason: reason,
+    p_changed_by: changedBy,
   });
 
   if (error) {
@@ -311,7 +322,9 @@ async function decrementStockForItems(
 // legacy setOrderStatus() — শুধু Supabase আপডেট অংশ। sound legacy-তেও
 // client-side, তাই OrdersPageClient.tsx-এই আছে (এখানে না)।
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<OrderActionResult> {
-  await requireAdmin();
+  const { email: adminEmail } = await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidUuid(id)) return { status: 'error', message: 'অর্ডার আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
 
   // সবসময় আগে বর্তমান status/items জেনে নেওয়া হয় — দুই দিকের ট্রানজিশনই
@@ -329,11 +342,11 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
 
   if (enteringRestored && !wasRestored) {
     // active → rejected/cancelled: স্টক ফেরত
-    const restore = await restoreStockForItems(supabase, current.items as OrderItem[]);
+    const restore = await restoreStockForItems(supabase, current.items as OrderItem[], `order_status:${status}`, adminEmail);
     if (!restore.ok) return { status: 'error', message: restore.message };
   } else if (!enteringRestored && wasRestored) {
     // rejected/cancelled → active (রি-কনফার্ম): স্টক আবার কমানো, অপর্যাপ্ত হলে ব্লক
-    const decrement = await decrementStockForItems(supabase, current.items as OrderItem[]);
+    const decrement = await decrementStockForItems(supabase, current.items as OrderItem[], `order_status:${status}`, adminEmail);
     if (!decrement.ok) return { status: 'error', message: decrement.message };
   }
 
@@ -352,10 +365,20 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
     });
   }
 
+  // 🩹 ফিক্স (স্কেলেটন ফ্লিকার): আগে এখানে revalidatePath('/orders') +
+  // revalidatePath('/') কল হতো, যা প্রতিটা স্ট্যাটাস বদলে ক্লায়েন্টের
+  // Router Cache (next.config.js-এর staleTimes) জোর করে মুছে দিত —
+  // ফলে অর্ডার/ড্যাশবোর্ড পেজে পরের নেভিগেশনেই আবার পুরো loading.tsx
+  // স্কেলেটন দেখাত, staleTimes যতই বড় রাখা হোক না কেন। listOrdersPage
+  // ও getDashboardData দুটোই আগে থেকেই ORDERS_TAG দিয়ে adminCached()
+  // (lib/adminCache.ts, unstable_cache + ADMIN_CACHE_SECONDS=120s)
+  // ব্যবহার করে — তাই invalidateOrdersData() একাই যথেষ্ট: ডাটা সর্বোচ্চ
+  // ~২ মিনিট পুরনো থাকতে পারে, কিন্তু Router Cache অক্ষত থাকায় পেজ
+  // সুইচে কোনো স্কেলেটন ফ্ল্যাশ হয় না। বর্তমান ট্যাব নিজেই status বদলের
+  // পর load(..., true)/clearOrdersCache() দিয়ে সাথে সাথে নিজের ডাটা
+  // রিফ্রেশ করে নেয় (OrdersPageClient.tsx), তাই তাৎক্ষণিক ফিডব্যাকও মিস হয় না।
   invalidateOrdersData();
 
-  revalidatePath('/orders');
-  revalidatePath('/');
   return { status: 'ok' };
 }
 
@@ -370,8 +393,13 @@ export async function bulkUpdateOrderStatus(
   ids: string[],
   status: OrderStatus
 ): Promise<BulkOrderActionResult> {
-  await requireAdmin();
+  const { email: adminEmail } = await requireAdmin();
   if (!ids.length) return { status: 'error', changed: 0, message: 'অন্তত একটি অর্ডার সিলেক্ট করুন' };
+  // 🛡️ অডিট ফিক্স: ভুল-ফরম্যাট id থাকলে পুরো বাল্ক রিকোয়েস্ট বাতিল (চুপচাপ বাদ না দিয়ে,
+  // যাতে caller বুঝতে পারে কোনো একটা id গড়বড়)
+  if (!ids.every(isValidUuid)) {
+    return { status: 'error', changed: 0, message: 'একটি বা একাধিক অর্ডার আইডি সঠিক নয়' };
+  }
   // 🔒 ফিক্স (audit P1-20): আগে ids-এর আকারে কোনো সীমা ছিল না — UI থেকে সবসময়
   // যুক্তিসঙ্গত সংখ্যা আসে, কিন্তু server action সরাসরি কল করা গেলে (বা ভবিষ্যতে
   // UI বদলালে) অনেক বড় অ্যারে দিয়ে DB-তে চাপ ফেলা যেত। ২০০-এ ক্যাপ করলাম।
@@ -400,12 +428,12 @@ export async function bulkUpdateOrderStatus(
     for (const row of rows || []) {
       const wasRestored = STOCK_RESTORED_STATUSES.includes(row.status);
       if (enteringRestored && !wasRestored) {
-        const restore = await restoreStockForItems(supabase, row.items as OrderItem[]);
+        const restore = await restoreStockForItems(supabase, row.items as OrderItem[], `order_status_bulk:${status}`, adminEmail);
         if (!restore.ok) failedIds.push(row.id);
       } else if (!enteringRestored && wasRestored) {
         // 🛡️ অডিট ফিক্স: বাল্কে রি-কনফার্ম করলেও স্টক আবার কমাতে হবে, নাহলে
         // একই "রি-কনফার্ম" বাগ বাল্ক-পাথ দিয়েও ঘটত
-        const decrement = await decrementStockForItems(supabase, row.items as OrderItem[]);
+        const decrement = await decrementStockForItems(supabase, row.items as OrderItem[], `order_status_bulk:${status}`, adminEmail);
         if (!decrement.ok) failedIds.push(row.id);
       }
     }
@@ -430,8 +458,6 @@ export async function bulkUpdateOrderStatus(
 
   if (targetIds.length < ids.length) {
     invalidateOrdersData();
-    revalidatePath('/orders');
-    revalidatePath('/');
     return {
       status: 'ok',
       changed: count ?? targetIds.length,
@@ -443,7 +469,5 @@ export async function bulkUpdateOrderStatus(
 
   invalidateOrdersData();
 
-  revalidatePath('/orders');
-  revalidatePath('/');
   return { status: 'ok', changed: count ?? targetIds.length };
 }

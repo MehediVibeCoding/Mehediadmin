@@ -685,6 +685,7 @@ export default function ProductsTable({
       {popover && (
         <QuickEditPopover
           productName={popover.row.name}
+          productId={popover.row.id}
           kind={popover.kind}
           initialValue={popover.kind === 'stock' ? popover.row.stock ?? 0 : popover.row.badge || ''}
           onSave={handleQuickSave}

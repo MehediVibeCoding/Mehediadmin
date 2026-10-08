@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Order, OrderStatus } from '@/types';
 import {
-  listOrders,
   listOrdersPage,
   updateOrderStatus,
   bulkUpdateOrderStatus,
@@ -12,7 +11,6 @@ import {
 } from '@/app/actions/orders';
 import { refreshAdminCaches } from '@/app/actions/cache';
 import { clearOrdersCache, getOrdersCache, getOrdersCacheEpoch, setOrdersCache } from '@/lib/clientOrdersCache';
-import { downloadCsvRows, ordersToCsvRows } from '@/lib/csv';
 import { playChaChing } from '@/lib/sound';
 import { useToast } from '@/components/admin/Toast';
 import { useOrdersRealtime } from '@/components/admin/OrdersRealtimeProvider';
@@ -310,25 +308,23 @@ export default function OrdersPageClient({ initialPage }: Props) {
     }
   }
 
-  async function exportAll() {
-    try {
-      const all = await listOrders();
-      downloadCsvRows(ordersToCsvRows(all), 'orders_all');
-      showToastRef.current('⬇️ CSV ডাউনলোড শুরু হয়েছে');
-    } catch {
-      showToastRef.current('❌ এক্সপোর্ট ব্যর্থ হয়েছে');
-    }
+  // 🚀 স্কেল ফিক্স: আগে listOrders() (server action) দিয়ে সব অর্ডার একসাথে
+  // মেমোরিতে এনে, ক্লায়েন্টে CSV বানিয়ে data: URI হিসেবে ডাউনলোড হতো —
+  // অর্ডার ৫,০০০-৫০,০০০ ছাড়ালে Server Action payload সীমা বা ব্রাউজারের
+  // data: URI দৈর্ঘ্য সীমায় আটকে যেতে পারত। এখন সরাসরি /api/export-orders
+  // Route Handler-এ নেভিগেট করি — ওটা Supabase থেকে ব্যাচে ব্যাচে পড়ে CSV
+  // স্ট্রিম করে ব্রাউজারে ফাইল ডাউনলোড করায়, পুরো ডাটা কখনো একসাথে
+  // মেমোরিতে থাকে না।
+  function exportAll() {
+    window.location.href = '/api/export-orders?status=all';
+    showToastRef.current('⬇️ CSV ডাউনলোড শুরু হয়েছে');
   }
 
-  async function exportRange(range: DateRange) {
-    try {
-      const iso = rangeToIso(range);
-      const list = await listOrders({ fromIso: iso.from, toIso: iso.to });
-      downloadCsvRows(ordersToCsvRows(list), 'orders_range');
-      showToastRef.current(`⬇️ ${list.length}টি অর্ডারের CSV ডাউনলোড শুরু হয়েছে`);
-    } catch {
-      showToastRef.current('❌ এক্সপোর্ট ব্যর্থ হয়েছে');
-    }
+  function exportRange(range: DateRange) {
+    const iso = rangeToIso(range);
+    const params = new URLSearchParams({ status: 'all', from: iso.from, to: iso.to });
+    window.location.href = `/api/export-orders?${params.toString()}`;
+    showToastRef.current('⬇️ CSV ডাউনলোড শুরু হয়েছে');
   }
 
   function clearFilters() {

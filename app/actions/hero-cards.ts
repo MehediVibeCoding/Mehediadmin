@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
-import { ALLOWED_IMAGE_MIME } from '@/lib/uploadValidation';
+import { ALLOWED_IMAGE_MIME, verifyImageMagicBytes, MAGIC_BYTE_MISMATCH_MESSAGE } from '@/lib/uploadValidation';
 import {
   DEFAULT_HERO_CARDS, HERO_CARDS_MAX, type HeroCard, type HeroCardInput, type HeroProductOption,
 } from '@/lib/constants/heroCards';
@@ -174,6 +174,10 @@ export async function uploadHeroCardImage(
   const ext = ALLOWED_IMAGE_MIME[file.type];
   if (!ext) {
     return { ok: false, message: 'শুধুমাত্র JPG, PNG বা WebP ছবি আপলোড করা যাবে' };
+  }
+  // 🛡️ অডিট ফিক্স: file.type স্পুফ করা সম্ভব, তাই আসল ফাইল-বাইট দিয়েও যাচাই
+  if (!(await verifyImageMagicBytes(file, file.type))) {
+    return { ok: false, message: MAGIC_BYTE_MISMATCH_MESSAGE };
   }
   const supabase = createServiceRoleClient();
   const path = `hero-cards/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { sanitizeCouponCode, estimateTotalDiscountGiven } from '@/lib/coupons';
+import { isValidUuid } from '@/lib/security';
 import type { Coupon, CouponDiscountType, CouponRequiredTier, CouponStats } from '@/types';
 
 const TABLE = 'coupons';
@@ -139,6 +140,8 @@ export async function createCoupon(input: CouponFormInput): Promise<CouponAction
 
 export async function updateCoupon(id: string, input: CouponFormInput): Promise<CouponActionResult> {
   await requireAdmin();
+  // 🛡️ অডিট ফিক্স: service-role client-এ যাওয়ার আগে id ফরম্যাট যাচাই
+  if (!isValidUuid(id)) return { status: 'error', message: 'কুপন আইডি সঠিক নয়' };
   const validationError = validate(input);
   if (validationError) return { status: 'error', message: validationError };
 
@@ -156,6 +159,7 @@ export async function updateCoupon(id: string, input: CouponFormInput): Promise<
 // টেবিলের রিয়েলটাইম টগল সুইচ থেকে কল হয় — শুধু is_active বদলায়, বাকি ফিল্ড ছোঁয় না
 export async function toggleCouponActive(id: string, isActive: boolean): Promise<CouponActionResult> {
   await requireAdmin();
+  if (!isValidUuid(id)) return { status: 'error', message: 'কুপন আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.from(TABLE).update({ is_active: isActive }).eq('id', id).select().single();
   if (error) return { status: 'error', message: error.message };
@@ -165,6 +169,7 @@ export async function toggleCouponActive(id: string, isActive: boolean): Promise
 
 export async function deleteCoupon(id: string): Promise<CouponActionResult> {
   await requireAdmin();
+  if (!isValidUuid(id)) return { status: 'error', message: 'কুপন আইডি সঠিক নয়' };
   const supabase = createServiceRoleClient();
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) return { status: 'error', message: error.message };
