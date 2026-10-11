@@ -173,6 +173,18 @@ const NAV_SECTIONS: NavSection[] = [
         ),
       },
       {
+        href: '/design/home-showcase',
+        label: 'হোম শোকেস (কার্ড ও স্পটলাইট)',
+        enabled: true,
+        icon: (
+          <>
+            <rect x="3" y="3" width="8" height="8" />
+            <rect x="13" y="3" width="8" height="8" />
+            <rect x="3" y="13" width="18" height="8" />
+          </>
+        ),
+      },
+      {
         href: '/design/categories',
         label: 'ক্যাটাগরি',
         enabled: true,
