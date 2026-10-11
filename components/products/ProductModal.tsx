@@ -13,6 +13,9 @@ import {
   getProductsPage,
 } from '@/app/actions/products';
 import CategoryPicker from './CategoryPicker';
+import CollectionPicker from './CollectionPicker';
+import { getCollectionOptions, type CollectionOption } from '@/app/actions/home-showcase';
+import { DEFAULT_SHOWCASE } from '@/lib/constants/homeShowcase';
 import ImageManager from './ImageManager';
 import SectionHeading from '@/components/common/SectionHeading';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -43,6 +46,18 @@ export default function ProductModal({ categories, editingProduct, initialState,
   const [error, setError] = useState('');
   const [dupAsk, setDupAsk] = useState(false); // একই নামে প্রোডাক্ট আছে — নিশ্চিতকরণ ডায়ালগ
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // 🆕 কালেকশন ড্রপডাউনের অপশন — নাম আসে হোম শোকেসের কার্ড থেকে (প্রথমে ডিফল্ট নাম, লোড হলে বর্তমান নাম)
+  const [collectionOptions, setCollectionOptions] = useState<CollectionOption[]>(
+    DEFAULT_SHOWCASE.cards.map((c) => ({ id: c.collectionId, name: c.title }))
+  );
+  useEffect(() => {
+    let cancelled = false;
+    getCollectionOptions()
+      .then((opts) => { if (!cancelled && opts.length) setCollectionOptions(opts); })
+      .catch(() => { /* ডিফল্ট নামই থাকবে */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // 🆕 কালার ভ্যারিয়েন্ট — group id নিয়মিত ফর্ম সেভের অংশ না (link/unlink
   // সাথে সাথে সার্ভারে সেভ হয়ে যায়), তাই এটা আলাদা লোকাল স্টেটে রাখা
@@ -249,6 +264,9 @@ export default function ProductModal({ categories, editingProduct, initialState,
                   </div>
                   <div className="mt-3.5">
                     <CategoryPicker categories={categories} value={form.cats} onChange={(v) => set('cats', v)} />
+                  </div>
+                  <div className="mt-3.5">
+                    <CollectionPicker options={collectionOptions} value={form.collections} onChange={(v) => set('collections', v)} />
                   </div>
                 </section>
 

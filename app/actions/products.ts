@@ -13,6 +13,7 @@ import type { Product, ProductFaq, ProductInfoBox, ProductListRow, ProductSpecs 
 import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
 import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
 import { guidePageUrlPath } from '@/types/guides';
+import { COLLECTION_IDS } from '@/lib/constants/homeShowcase';
 
 const GUIDE_TABLE = 'guide_pages';
 const GUIDE_TEMPLATES_TABLE = 'guide_page_templates';
@@ -211,6 +212,8 @@ export interface ProductFormInput {
   name: string;
   nameBn: string;
   cats: string[];
+  // 🆕 কালেকশন id লিস্ট (gift/premium/unique/cute) — ক্যাটাগরি (cats) থেকে সম্পূর্ণ আলাদা সিস্টেম
+  collections: string[];
   price: number;
   old: number;
   stock: number;
@@ -237,6 +240,22 @@ export interface ProductFormInput {
   colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
   colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
 }
+
+// 🆕 কালেকশন: ক্লায়েন্ট থেকে আসা মান বিশ্বাস করা হয় না — শুধু পরিচিত id রাখা হয় (ডুপ্লিকেট বাদ, স্থায়ী ক্রমে)
+function cleanCollections(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const given = new Set(v.filter((x): x is string => typeof x === 'string'));
+  return COLLECTION_IDS.filter((id) => given.has(id));
+}
+
+// custom_products.collections কলাম (_migration_reference/002_product_collections.sql) এখনো তৈরি না হলে
+// ডাটাবেজ এই ধরনের ত্রুটি দেয়
+function isMissingCollectionsColumn(message: string): boolean {
+  return /collections/i.test(message) && /(column|schema cache)/i.test(message);
+}
+
+const COLLECTIONS_SQL_MESSAGE =
+  'কালেকশন সেভ করতে আগে ডাটাবেজে SQL চালাতে হবে (_migration_reference/002_product_collections.sql) — প্রোডাক্ট সেভ হয়নি';
 
 function parseTechSpecs(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -332,6 +351,7 @@ export async function createProduct(
   const supabase = createServiceRoleClient();
   const imgs = input.imgs.filter(Boolean);
   const desc = sanitizeInput(input.desc);
+  const collections = cleanCollections(input.collections);
 
   // নতুন প্রোডাক্ট সবসময় তালিকার শেষে বসে (sort_order = বর্তমান সর্বোচ্চ + গ্যাপ)।
   // 🚀 আগে পুরো order array ডাটাবেজ থেকে এনে push করে আবার পুরোটা লিখতে হতো;
@@ -351,6 +371,7 @@ export async function createProduct(
     old: input.old || input.price,
     cat: input.cats[0] || 'rgb',
     cats: input.cats,
+    collections,
     stock: Number.isFinite(input.stock) ? input.stock : 0,
     warranty: sanitizeInput(input.warranty), // খালি থাকলে খালিই সেভ হয় — মেইন সাইটে ওয়ারেন্টি অংশ দেখাবে না
     imgs: imgs.length ? imgs : ['📦'],
@@ -375,8 +396,15 @@ export async function createProduct(
     sort_order: nextSortOrder,
   };
 
-  const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
-  if (error) return { status: 'error', message: error.message };
+  let { data, error } = await supabase.from(TABLE).insert([row]).select().single();
+  if (error && isMissingCollectionsColumn(error.message)) {
+    // কলাম এখনো নেই: কালেকশন না বাছা থাকলে আগের মতোই সেভ চলবে, বাছা থাকলে স্পষ্ট বার্তা দিয়ে থামবে
+    if (collections.length) return { status: 'error', message: COLLECTIONS_SQL_MESSAGE };
+    const { collections: omitted, ...rowWithoutCollections } = row;
+    void omitted;
+    ({ data, error } = await supabase.from(TABLE).insert([rowWithoutCollections]).select().single());
+  }
+  if (error || !data) return { status: 'error', message: error?.message || 'সেভ ব্যর্থ হয়েছে' };
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(data.id, unitProfit);
@@ -401,6 +429,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   const supabase = createServiceRoleClient();
   const imgs = input.imgs.filter(Boolean);
   const desc = sanitizeInput(input.desc);
+  const collections = cleanCollections(input.collections);
   // ✅ 'closing' column ইচ্ছাকৃতভাবে এখানে টাচ করা হচ্ছে না — legacy ফর্মে
   // এটার কোনো ম্যানুয়াল এডিট ফিল্ড নেই (শুধু AI Parse করলে সেট হয়), আর
   // legacy-তে edit করার সময় hidden field থেকে খালি ভ্যালু গিয়ে বিদ্যমান
@@ -413,6 +442,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     old: input.old || input.price,
     cat: input.cats[0] || 'rgb',
     cats: input.cats,
+    collections,
     stock: Number.isFinite(input.stock) ? input.stock : 0,
     warranty: sanitizeInput(input.warranty),
     imgs: imgs.length ? imgs : ['📦'],
@@ -435,8 +465,15 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
   };
 
-  const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
-  if (error) return { status: 'error', message: error.message };
+  let { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
+  if (error && isMissingCollectionsColumn(error.message)) {
+    // কলাম এখনো নেই: কালেকশন না বাছা থাকলে আগের মতোই সেভ চলবে, বাছা থাকলে স্পষ্ট বার্তা দিয়ে থামবে
+    if (collections.length) return { status: 'error', message: COLLECTIONS_SQL_MESSAGE };
+    const { collections: omitted, ...rowWithoutCollections } = row;
+    void omitted;
+    ({ data, error } = await supabase.from(TABLE).update(rowWithoutCollections).eq('id', id).select().single());
+  }
+  if (error || !data) return { status: 'error', message: error?.message || 'সেভ ব্যর্থ হয়েছে' };
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(id, unitProfit);

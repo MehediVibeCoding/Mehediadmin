@@ -1,17 +1,26 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   SHOWCASE_LIMITS as L,
   type ShowcaseCard,
   type ShowcaseConfig,
   type ShowcaseSpotlight,
-  type SpotlightLinkType,
 } from '@/lib/constants/homeShowcase';
 import type { CategoryOption } from '@/lib/constants/categories';
-import type { HeroProductOption } from '@/lib/constants/heroCards';
-import { saveHomeShowcase, resetHomeShowcaseToDefault, uploadHomeShowcaseImage } from '@/app/actions/home-showcase';
+import {
+  saveHomeShowcase,
+  resetHomeShowcaseToDefault,
+  uploadHomeShowcaseImage,
+  previewProductRef,
+} from '@/app/actions/home-showcase';
+import {
+  getCollectionProducts,
+  searchProductsForCollection,
+  setProductInCollection,
+  type CollectionProductItem,
+} from '@/app/actions/collection-products';
 import { useToast } from '@/components/admin/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import SectionHeading from '@/components/common/SectionHeading';
@@ -21,7 +30,8 @@ import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
 interface Props {
   config: ShowcaseConfig;
   categories: CategoryOption[];
-  products: HeroProductOption[];
+  /** প্রতিটা কালেকশনে কয়টা প্রোডাক্ট আছে; ready=false মানে ডাটাবেজে SQL (002_product_collections.sql) চালানো বাকি */
+  collectionCounts: { counts: Record<string, number>; ready: boolean };
 }
 
 const CARD = 'rounded-[24px] border border-white/90 bg-white shadow-sh1';
@@ -66,9 +76,62 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
-// বাংলা + ইংরেজি দুই ভাষার টেক্সট ইনপুট জোড়া (সাথে অক্ষর গণনা)
+// ভাঁজ-করা অংশ — হেডারে ছোট থাম্বনেইল, নাম ও সারাংশ; ক্লিক করলে ভেতরে এডিট খোলে
+function Accordion({
+  open, onToggle, thumb, title, subtitle, right, children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  thumb: React.ReactNode;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`${TILE} overflow-hidden transition-shadow duration-brand ${open ? 'ring-1 ring-brand-light/50' : ''}`}>
+      <div className="flex items-center gap-2 p-2 sm:p-2.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-2xl p-1.5 text-left transition-colors duration-brand hover:bg-brand-bg/25 active:scale-[0.995]"
+        >
+          {thumb}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-body text-[13.5px] font-extrabold text-ink">{title}</span>
+            {subtitle ? <span className="mt-0.5 block truncate font-body text-[11px] font-semibold text-muted">{subtitle}</span> : null}
+          </span>
+          <Svg className={`h-4 w-4 shrink-0 text-muted transition-transform duration-brand ${open ? 'rotate-180' : ''}`} sw={2.6}>
+            <path d="m6 9 6 6 6-6" />
+          </Svg>
+        </button>
+        {right}
+      </div>
+      {open && <div className="space-y-4 border-t border-border-base/60 p-3.5 sm:p-4">{children}</div>}
+    </div>
+  );
+}
+
+function Thumb({ src, className = 'h-11 w-11' }: { src: string; className?: string }) {
+  return (
+    <span className={`relative shrink-0 overflow-hidden bg-slate-800 ${className}`}>
+      {isImgSrc(src) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <ImgPlaceholder />
+      )}
+    </span>
+  );
+}
+
+const counterCls = (len: number, max: number, soft?: number) =>
+  `font-body text-[10.5px] font-bold ${len >= max ? 'text-danger' : soft && len > soft ? 'text-amber-600' : 'text-muted'}`;
+
+// বাংলা টেক্সট ইনপুট; "English" ভাঁজটা খুললে নিচে ইংরেজি ঘর আসে (ডিফল্টে বন্ধ — পেজ ছোট রাখতে)
 function BnEn({
-  label, bn, en, onBn, onEn, max, placeholderBn, placeholderEn, multiline = false,
+  label, bn, en, onBn, onEn, max, softMax, placeholderBn, placeholderEn, multiline = false, rows = 3, showEn, help,
 }: {
   label: string;
   bn: string;
@@ -76,42 +139,62 @@ function BnEn({
   onBn: (v: string) => void;
   onEn: (v: string) => void;
   max: number;
+  softMax?: number;
   placeholderBn?: string;
   placeholderEn?: string;
   multiline?: boolean;
+  rows?: number;
+  showEn: boolean;
+  help?: React.ReactNode;
 }) {
-  const counter = (v: string) => (
-    <span className={`font-body text-[10.5px] font-bold ${v.length >= max ? 'text-danger' : 'text-muted'}`}>
-      {v.length}/{max}
-    </span>
-  );
   return (
-    <Field label={label}>
+    <Field label={label} help={help}>
       <div className="space-y-2">
         <div>
           <div className="mb-1 flex items-center justify-between font-body text-[10.5px] font-extrabold uppercase tracking-wide text-muted">
             <span>বাংলা</span>
-            {counter(bn)}
+            <span className={counterCls(bn.length, max, softMax)}>{bn.length}/{max}</span>
           </div>
           {multiline ? (
-            <textarea rows={3} maxLength={max} value={bn} onChange={(e) => onBn(e.target.value)} placeholder={placeholderBn} className={TEXTAREA_CLS} />
+            <textarea rows={rows} maxLength={max} value={bn} onChange={(e) => onBn(e.target.value)} placeholder={placeholderBn} className={TEXTAREA_CLS} />
           ) : (
             <input type="text" maxLength={max} value={bn} onChange={(e) => onBn(e.target.value)} placeholder={placeholderBn} className={FIELD_CLS} />
           )}
         </div>
-        <div>
-          <div className="mb-1 flex items-center justify-between font-body text-[10.5px] font-extrabold uppercase tracking-wide text-muted">
-            <span>English</span>
-            {counter(en)}
+        {showEn && (
+          <div>
+            <div className="mb-1 flex items-center justify-between font-body text-[10.5px] font-extrabold uppercase tracking-wide text-muted">
+              <span>English</span>
+              <span className={counterCls(en.length, max, softMax)}>{en.length}/{max}</span>
+            </div>
+            {multiline ? (
+              <textarea rows={rows} maxLength={max} value={en} onChange={(e) => onEn(e.target.value)} placeholder={placeholderEn} className={TEXTAREA_CLS} />
+            ) : (
+              <input type="text" maxLength={max} value={en} onChange={(e) => onEn(e.target.value)} placeholder={placeholderEn} className={FIELD_CLS} />
+            )}
           </div>
-          {multiline ? (
-            <textarea rows={3} maxLength={max} value={en} onChange={(e) => onEn(e.target.value)} placeholder={placeholderEn} className={TEXTAREA_CLS} />
-          ) : (
-            <input type="text" maxLength={max} value={en} onChange={(e) => onEn(e.target.value)} placeholder={placeholderEn} className={FIELD_CLS} />
-          )}
-        </div>
+        )}
       </div>
     </Field>
+  );
+}
+
+function EnToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={show}
+      className={`flex h-9 items-center gap-1.5 rounded-full border px-3.5 font-body text-[11.5px] font-extrabold transition-all duration-brand active:scale-95 ${
+        show ? 'border-brand-light bg-brand-light/10 text-ink' : 'border-border-base/80 bg-white text-muted'
+      }`}
+    >
+      <Svg className="h-3.5 w-3.5" sw={2.4}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" />
+      </Svg>
+      {show ? 'English ঘর লুকান' : 'English সংস্করণও লিখুন'}
+    </button>
   );
 }
 
@@ -180,89 +263,435 @@ function ImageField({
   );
 }
 
-function ProductPicker({
-  products, productId, productName, onPick, onClear,
-}: {
-  products: HeroProductOption[];
-  productId?: number;
-  productName?: string;
-  onPick: (p: HeroProductOption) => void;
-  onClear: () => void;
-}) {
-  const [query, setQuery] = useState('');
-  const q = query.trim().toLowerCase();
-  const filtered = products.filter((p) => !q || p.name.toLowerCase().includes(q) || String(p.id) === q).slice(0, 40);
+// প্রোডাক্টের লিংক বা আইডি — লেখার ০.৫ সেকেন্ড পর সার্ভার থেকে মিলিয়ে "✓ প্রোডাক্টের নাম" দেখায়
+function ProductLinkField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'ok' | 'error'; text?: string }>({ kind: 'idle' });
+
+  useEffect(() => {
+    const ref = value.trim();
+    if (!ref) {
+      setState({ kind: 'idle' });
+      return;
+    }
+    let cancelled = false;
+    setState({ kind: 'loading' });
+    const t = setTimeout(() => {
+      previewProductRef(ref)
+        .then((res) => {
+          if (cancelled) return;
+          if (res.ok && res.id) setState({ kind: 'ok', text: `${res.name || 'প্রোডাক্ট'}  (#${res.id})` });
+          else setState({ kind: 'error', text: res.message || 'প্রোডাক্ট পাওয়া যায়নি' });
+        })
+        .catch(() => { if (!cancelled) setState({ kind: 'error', text: 'যাচাই করা যায়নি, আবার চেষ্টা করুন' }); });
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [value]);
 
   return (
-    <Field label="কোন প্রোডাক্ট?" required>
-      {productId ? (
-        <div className="mb-2.5 flex items-center justify-between gap-2 rounded-2xl border border-brand-light/40 bg-brand-light/10 px-3.5 py-2.5">
-          <span className="min-w-0 truncate font-body text-[12.5px] font-extrabold text-ink">
-            {productName} <span className="font-semibold text-muted">#{productId}</span>
-          </span>
-          <button
-            type="button"
-            onClick={onClear}
-            aria-label="প্রোডাক্ট সরান"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-muted shadow-sh1 active:scale-90"
-          >
-            <Svg className="h-3 w-3" sw={2.8}>
-              <path d="M18 6 6 18M6 6l12 12" />
-            </Svg>
-          </button>
-        </div>
-      ) : null}
+    <Field
+      label="প্রোডাক্টের লিংক বা আইডি"
+      help="যেকোনো প্রোডাক্ট পেজের লিংক (vangcur.com/product/...) অথবা শুধু প্রোডাক্টের আইডি নম্বর লিখুন — বাটনে ক্লিক করলে সরাসরি ওই প্রোডাক্টের ডিটেলস পেজে যাবে। ফাঁকা রাখলে নিচের ক্যাটাগরি পেজে যাবে।"
+    >
       <input
         type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="প্রোডাক্টের নাম বা আইডি লিখে খুঁজুন..."
-        className={`${FIELD_CLS} mb-2`}
+        inputMode="url"
+        maxLength={L.link}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="যেমন: 12  অথবা  https://vangcur.com/product/নাম-12"
+        className={FIELD_CLS}
       />
-      <div className="max-h-52 overflow-y-auto overscroll-contain rounded-2xl border border-border-base/80">
-        {filtered.map((p) => {
-          const selected = productId === p.id;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onPick(p)}
-              className={`flex min-h-12 w-full items-center gap-2.5 border-b border-border-base/50 px-3 py-2 text-left transition-colors duration-brand last:border-b-0 active:bg-brand-bg/40 ${
-                selected ? 'bg-brand-light/10' : 'hover:bg-brand-bg/25'
-              }`}
-            >
-              {p.img ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.img} alt="" className="h-9 w-9 shrink-0 rounded-xl border border-border-base/70 object-cover" />
-              ) : (
-                <span className="h-9 w-9 shrink-0 rounded-xl bg-surface-muted" />
-              )}
+      {state.kind !== 'idle' && (
+        <div
+          className={`mt-2 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 font-body text-[12px] font-bold ${
+            state.kind === 'ok'
+              ? 'border border-brand-light/40 bg-brand-light/10 text-ink'
+              : state.kind === 'error'
+                ? 'border border-red-200/80 bg-red-50 text-danger'
+                : 'bg-surface-muted text-muted'
+          }`}
+        >
+          {state.kind === 'ok' && (
+            <Svg className="h-4 w-4 shrink-0 text-brand-light" sw={3}>
+              <polyline points="20 6 9 17 4 12" />
+            </Svg>
+          )}
+          <span className="min-w-0 break-words">{state.kind === 'loading' ? 'যাচাই হচ্ছে...' : state.text}</span>
+        </div>
+      )}
+    </Field>
+  );
+}
+
+// ── কালেকশনের প্রোডাক্ট ম্যানেজার ──────────────────────────────────────────────
+// কার্ড খুললে তবেই লোড হয়। যোগ/বাদ দিলে সাথে সাথে সেভ হয় (উপরের "সব সেভ করুন"-এর অপেক্ষা করে না)
+// — প্রোডাক্ট এডিট ফর্মের "কালেকশন" ড্রপডাউনের সাথে একই ডেটা।
+
+function CollectionProductsManager({
+  collectionId, ready, onChanged,
+}: {
+  collectionId: string;
+  ready: boolean;
+  onChanged: () => void;
+}) {
+  const { showToast } = useToast();
+  const [items, setItems] = useState<CollectionProductItem[]>([]);
+  const [loading, setLoading] = useState(ready);
+  const [loadError, setLoadError] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<CollectionProductItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    getCollectionProducts(collectionId)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) setItems(res.products);
+        else setLoadError(res.message || 'তালিকা আনা যায়নি');
+      })
+      .catch(() => { if (!cancelled) setLoadError('তালিকা আনা যায়নি, আবার চেষ্টা করুন'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [collectionId, ready]);
+
+  // লেখার ০.৪ সেকেন্ড পর খোঁজে (প্রতি অক্ষরে সার্ভারে যায় না)
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setSearchError('');
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(() => {
+      searchProductsForCollection(q, collectionId)
+        .then((res) => {
+          if (cancelled) return;
+          setResults(res.products);
+          setSearchError(res.ok ? '' : res.message || 'খুঁজতে সমস্যা হয়েছে');
+        })
+        .catch(() => { if (!cancelled) setSearchError('খুঁজতে সমস্যা হয়েছে, আবার চেষ্টা করুন'); })
+        .finally(() => { if (!cancelled) setSearching(false); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query, collectionId]);
+
+  async function change(p: CollectionProductItem, add: boolean) {
+    if (busyId !== null) return;
+    setBusyId(p.id);
+    try {
+      const res = await setProductInCollection(p.id, collectionId, add);
+      notifyCatalogSyncCheck();
+      if (!res.ok) {
+        showToast(res.message || '❌ ব্যর্থ হয়েছে');
+        return;
+      }
+      if (add) {
+        setItems((cur) => (cur.some((x) => x.id === p.id) ? cur : [...cur, p]));
+        setResults((cur) => cur.filter((x) => x.id !== p.id));
+      } else {
+        setItems((cur) => cur.filter((x) => x.id !== p.id));
+      }
+      showToast(add ? '✅ কালেকশনে যোগ হয়েছে' : '✅ কালেকশন থেকে বাদ দেওয়া হয়েছে');
+      onChanged();
+    } catch {
+      showToast('❌ ব্যর্থ হয়েছে, আবার চেষ্টা করুন');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (!ready) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3 font-body text-[12px] font-semibold leading-relaxed text-amber-800">
+        প্রোডাক্ট যোগ করার আগে ডাটাবেজে SQL (002_product_collections.sql) একবার চালাতে হবে।
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="font-body text-[12.5px] font-extrabold text-ink">এই কালেকশনের প্রোডাক্ট</span>
+          <span className="font-body text-[11px] font-bold text-muted">{loading ? '...' : `${items.length}টি`}</span>
+        </div>
+
+        <div className="max-h-64 overflow-y-auto overscroll-contain rounded-2xl border border-border-base/80">
+          {loading && <div className="p-4 text-center font-body text-[12px] font-semibold text-muted">লোড হচ্ছে...</div>}
+          {!loading && loadError && <div className="p-4 text-center font-body text-[12px] font-semibold text-danger">{loadError}</div>}
+          {!loading && !loadError && items.length === 0 && (
+            <div className="p-4 text-center font-body text-[12px] font-semibold text-muted">এখনো কোনো প্রোডাক্ট নেই — নিচ থেকে খুঁজে যোগ করুন</div>
+          )}
+          {items.map((p) => (
+            <div key={p.id} className="flex min-h-12 items-center gap-2.5 border-b border-border-base/50 px-3 py-2 last:border-b-0">
+              <Thumb src={p.img} className="h-9 w-9 rounded-xl" />
               <span className="min-w-0 flex-1 truncate font-body text-[12.5px] font-bold text-ink">{p.name}</span>
               <span className="shrink-0 font-body text-[10.5px] font-semibold text-muted">#{p.id}</span>
-              {selected && (
-                <Svg className="h-4 w-4 shrink-0 text-brand-light" sw={3}>
-                  <polyline points="20 6 9 17 4 12" />
+              <button
+                type="button"
+                disabled={busyId !== null}
+                onClick={() => change(p, false)}
+                aria-label={`${p.name} কালেকশন থেকে সরান`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand active:scale-90 disabled:opacity-50"
+              >
+                <Svg className="h-3.5 w-3.5" sw={2.8}>
+                  <path d="M18 6 6 18M6 6l12 12" />
                 </Svg>
-              )}
-            </button>
-          );
-        })}
-        {filtered.length === 0 && <div className="p-4 text-center font-body text-[12px] font-semibold text-muted">কোনো প্রোডাক্ট পাওয়া যায়নি</div>}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
-    </Field>
+
+      <div>
+        <div className="mb-1.5 font-body text-[12.5px] font-extrabold text-ink">প্রোডাক্ট যোগ করুন</div>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="প্রোডাক্টের নাম বা আইডি লিখে খুঁজুন..."
+          className={`${FIELD_CLS} mb-2`}
+        />
+        {query.trim() && (
+          <div className="max-h-56 overflow-y-auto overscroll-contain rounded-2xl border border-border-base/80">
+            {searching && <div className="p-3.5 text-center font-body text-[12px] font-semibold text-muted">খোঁজা হচ্ছে...</div>}
+            {!searching && searchError && <div className="p-3.5 text-center font-body text-[12px] font-semibold text-danger">{searchError}</div>}
+            {!searching && !searchError && results.length === 0 && (
+              <div className="p-3.5 text-center font-body text-[12px] font-semibold text-muted">কোনো প্রোডাক্ট পাওয়া যায়নি (বা আগে থেকেই কালেকশনে আছে)</div>
+            )}
+            {!searching && results.map((p) => (
+              <div key={p.id} className="flex min-h-12 items-center gap-2.5 border-b border-border-base/50 px-3 py-2 last:border-b-0">
+                <Thumb src={p.img} className="h-9 w-9 rounded-xl" />
+                <span className="min-w-0 flex-1 truncate font-body text-[12.5px] font-bold text-ink">{p.name}</span>
+                <span className="shrink-0 font-body text-[10.5px] font-semibold text-muted">#{p.id}</span>
+                <button
+                  type="button"
+                  disabled={busyId !== null}
+                  onClick={() => change(p, true)}
+                  className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-brand-light/40 bg-brand-light/10 px-3 font-body text-[11.5px] font-extrabold text-ink transition-all duration-brand active:scale-95 disabled:opacity-50"
+                >
+                  <Svg className="h-3 w-3 text-brand-light" sw={3}>
+                    <path d="M12 5v14M5 12h14" />
+                  </Svg>
+                  যোগ
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 font-body text-[11px] font-medium leading-relaxed text-muted">
+          এখানকার যোগ/বাদ সাথে সাথে সেভ হয়ে যায় (আলাদা সেভ লাগে না)। প্রোডাক্ট এডিট ফর্মের &quot;কালেকশন&quot; ঘর থেকেও একই কাজ করা যায়।
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── কালেকশন কার্ড এডিটর ───────────────────────────────────────────────────────
+
+function CardEditor({
+  c, onPatch, onUploading, countReady, onProductsChanged,
+}: {
+  c: ShowcaseCard;
+  onPatch: (p: Partial<ShowcaseCard>) => void;
+  onUploading: (d: 1 | -1) => void;
+  countReady: boolean;
+  onProductsChanged: () => void;
+}) {
+  const [showEn, setShowEn] = useState(false);
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row">
+      {/* লাইভ প্রিভিউ — সাইটের কার্ডের মতো লম্বা (২:৩), সোজা কোণা, নিচে গ্লাস বাটনে নাম */}
+      <div className="mx-auto w-36 shrink-0 sm:mx-0">
+        <div className="relative aspect-[2/3] w-full overflow-hidden bg-slate-900">
+          {isImgSrc(c.img) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.img} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <ImgPlaceholder />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5" />
+          <div className="absolute inset-1.5 border border-white/30" />
+          <div className="absolute inset-x-0 bottom-0 p-2.5">
+            <span className="flex min-h-8 items-center justify-between gap-1 border border-white/45 bg-white/[0.14] px-2 py-1 text-white backdrop-blur-sm">
+              <span className="line-clamp-2 text-[10px] font-bold leading-tight">{c.title || '—'}</span>
+              <span className="text-[10px]">→</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-4">
+        <ImageField
+          value={c.img}
+          onChange={(url) => onPatch({ img: url })}
+          onUploading={onUploading}
+          hint="লম্বা (২:৩ বা ৩:৪) ছবি সবচেয়ে ভালো দেখায় — যেকোনো মাপ দিলেও সাইটে নিজে থেকে ক্রপ হয়ে বসবে"
+        />
+        <BnEn
+          label="কালেকশনের নাম (বাটনে বসবে)"
+          bn={c.title}
+          en={c.titleEn}
+          onBn={(v) => onPatch({ title: v })}
+          onEn={(v) => onPatch({ titleEn: v })}
+          max={L.cardTitle}
+          placeholderBn="যেমন: গিফট আইডিয়া"
+          placeholderEn="e.g. Gift Ideas"
+          showEn={showEn}
+        />
+        <EnToggle show={showEn} onToggle={() => setShowEn((v) => !v)} />
+
+        <CollectionProductsManager collectionId={c.collectionId} ready={countReady} onChanged={onProductsChanged} />
+      </div>
+    </div>
+  );
+}
+
+// ── স্পটলাইট এডিটর ──────────────────────────────────────────────────────────
+
+function SpotlightEditor({
+  s, i, categories, onPatch, onUploading,
+}: {
+  s: ShowcaseSpotlight;
+  i: number;
+  categories: CategoryOption[];
+  onPatch: (p: Partial<ShowcaseSpotlight>) => void;
+  onUploading: (d: 1 | -1) => void;
+}) {
+  const [showEn, setShowEn] = useState(false);
+  const reverse = i === 1;
+  const descLen = s.desc.length;
+
+  return (
+    <div className={`space-y-4 transition-opacity duration-brand ${s.enabled ? '' : 'opacity-50'}`}>
+      {/* প্রিভিউ — সাইটের মোবাইল লেআউটের ছোট নমুনা (ছবি ৯:১৬) */}
+      <div className={`grid overflow-hidden bg-[#F0F8FF] ${reverse ? 'grid-cols-[1fr_42%]' : 'grid-cols-[42%_1fr]'}`}>
+        <div className={`relative overflow-hidden bg-slate-900 ${reverse ? 'order-2' : 'order-1'}`}>
+          <div className="aspect-[9/16] w-full" />
+          {isImgSrc(s.img) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={s.img} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <ImgPlaceholder />
+          )}
+        </div>
+        <div className={`flex min-w-0 flex-col justify-center gap-1.5 p-3 ${reverse ? 'order-1' : 'order-2'}`}>
+          {s.badge && (
+            <span className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-wider text-brand-light">
+              <span className="h-px w-3 bg-brand-light" />
+              {s.badge}
+            </span>
+          )}
+          <span className="break-words text-[12px] font-bold leading-snug text-ink">{s.title || '—'}</span>
+          <span className="whitespace-pre-line break-words text-[9px] leading-snug text-muted">{s.desc}</span>
+          {s.price > 0 && <span className="text-[11px] font-bold text-ink">৳{s.price.toLocaleString('en-US')}</span>}
+          <span className="mt-0.5 w-fit bg-brand-light px-2.5 py-1 text-[9px] font-bold text-white">{s.btn || '—'} →</span>
+        </div>
+      </div>
+
+      <ImageField
+        value={s.img}
+        onChange={(url) => onPatch({ img: url })}
+        onUploading={onUploading}
+        hint="লম্বা ৯:১৬ ছবি দিন (যেমন ৯০০×১৬০০ পিক্সেল)। অন্য মাপ দিলেও নিজে থেকে ক্রপ হয়ে ভরে যাবে।"
+      />
+
+      <BnEn label="ছোট লেবেল" bn={s.badge} en={s.badgeEn} onBn={(v) => onPatch({ badge: v })} onEn={(v) => onPatch({ badgeEn: v })} max={L.badge} placeholderBn="হট সেলিং" placeholderEn="Hot Selling" showEn={showEn} />
+      <BnEn label="প্রোডাক্টের নাম / শিরোনাম" bn={s.title} en={s.titleEn} onBn={(v) => onPatch({ title: v })} onEn={(v) => onPatch({ titleEn: v })} max={L.title} showEn={showEn} />
+      <BnEn
+        label="প্রোডাক্ট সম্পর্কে ছোট বিবরণ"
+        bn={s.desc}
+        en={s.descEn}
+        onBn={(v) => onPatch({ desc: v })}
+        onEn={(v) => onPatch({ descEn: v })}
+        max={L.desc}
+        softMax={L.descRecommended}
+        multiline
+        rows={5}
+        showEn={showEn}
+        help={
+          descLen > L.descRecommended
+            ? `⚠️ ${L.descRecommended} অক্ষরের বেশি — মোবাইলে সারিটা অনেক লম্বা হবে ও ছবি বেশি ক্রপ হতে পারে। ১৫০–২৫০ অক্ষর সবচেয়ে সুন্দর দেখায়।`
+            : `সর্বোচ্চ ${L.desc} অক্ষর। ১৫০–২৫০ অক্ষর সবচেয়ে সুন্দর দেখায়। নতুন লাইনে লিখলে সাইটেও নতুন লাইনে দেখাবে।`
+        }
+      />
+      <EnToggle show={showEn} onToggle={() => setShowEn((v) => !v)} />
+
+      <Field label="দাম (ঐচ্ছিক)" help="০ বা ফাঁকা রাখলে সাইটে দাম দেখাবে না">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={s.price || ''}
+          onChange={(e) => onPatch({ price: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+          placeholder="যেমন: 1250"
+          className={FIELD_CLS}
+        />
+      </Field>
+
+      <BnEn label="বাটনের লেখা" bn={s.btn} en={s.btnEn} onBn={(v) => onPatch({ btn: v })} onEn={(v) => onPatch({ btnEn: v })} max={L.spotBtn} placeholderBn="বিস্তারিত দেখুন" placeholderEn="View details" showEn={showEn} />
+
+      <ProductLinkField value={s.link} onChange={(v) => onPatch({ link: v })} />
+
+      {!s.link.trim() && (
+        <Field label="লিংক ফাঁকা থাকলে কোন ক্যাটাগরিতে যাবে?">
+          <SelectBox value={s.catId} onChange={(v) => onPatch({ catId: v })}>
+            <option value="">সব পণ্য দেখাবে</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </SelectBox>
+        </Field>
+      )}
+    </div>
   );
 }
 
 // ── মূল পেজ ──────────────────────────────────────────────────────────────────
 
-export default function HomeShowcasePageClient({ config, categories, products }: Props) {
+type OpenId = 'heading' | `card-${number}` | `spot-${number}` | null;
+
+// সার্ভার থেকে আসা কনফিগে স্পটলাইটের `link` ফাঁকা কিন্তু আগে প্রোডাক্ট বাছা থাকলে আইডি দিয়ে ভরে দেওয়া
+function withLinks(c: ShowcaseConfig): ShowcaseConfig {
+  return {
+    ...c,
+    spotlights: c.spotlights.map((s) => ({ ...s, link: s.link || (s.productId ? String(s.productId) : '') })),
+  };
+}
+
+export default function HomeShowcasePageClient({ config, categories, collectionCounts }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [cfg, setCfg] = useState<ShowcaseConfig>(config);
+  const [cfg, setCfg] = useState<ShowcaseConfig>(() => withLinks(config));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(withLinks(config)));
   const [saving, setSaving] = useState(false);
   const [uploads, setUploads] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [openId, setOpenId] = useState<OpenId>(null); // সবগুলো প্রথমে বন্ধ
+
+  const dirty = JSON.stringify(cfg) !== savedSnapshot;
+  const toggle = (id: Exclude<OpenId, null>) => setOpenId((cur) => (cur === id ? null : id));
+
+  // সেভ না করে পেজ ছাড়তে গেলে ব্রাউজারের সতর্কবার্তা
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   const onUploading = (d: 1 | -1) => setUploads((n) => Math.max(0, n + d));
 
@@ -271,6 +700,8 @@ export default function HomeShowcasePageClient({ config, categories, products }:
     setCfg((c) => ({ ...c, cards: c.cards.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) }));
   const patchSpot = (i: number, patch: Partial<ShowcaseSpotlight>) =>
     setCfg((c) => ({ ...c, spotlights: c.spotlights.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) }));
+
+  const [headingEn, setHeadingEn] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -281,6 +712,7 @@ export default function HomeShowcasePageClient({ config, categories, products }:
         showToast(res.message || '❌ ব্যর্থ হয়েছে');
         return;
       }
+      setSavedSnapshot(JSON.stringify(cfg));
       showToast('✅ হোম শোকেস সেভ হয়েছে — লাইভ সাইটে আপডেট হচ্ছে');
       router.refresh();
     } catch {
@@ -311,25 +743,13 @@ export default function HomeShowcasePageClient({ config, categories, products }:
     }
   }
 
-  const catSelect = (value: string, onChange: (v: string) => void) => (
-    <Field label="কোন ক্যাটাগরিতে যাবে?">
-      <SelectBox value={value} onChange={onChange}>
-        <option value="">সব পণ্য দেখাবে (ফাঁকা)</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </SelectBox>
-    </Field>
-  );
-
-  const saveDisabled = saving || uploads > 0;
+  const saveDisabled = saving || uploads > 0 || !dirty;
+  const { counts, ready } = collectionCounts;
 
   return (
-    <div className="pb-6">
+    <div className="pb-4">
       {/* ══ ১. টুলবার ══ */}
-      <div className={`mb-4 ${CARD} p-3.5 sm:p-4`}>
+      <div className={`mb-3 ${CARD} p-3.5 sm:p-4`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/15 text-brand-light sm:h-10 sm:w-10">
@@ -341,31 +761,21 @@ export default function HomeShowcasePageClient({ config, categories, products }:
             </span>
             <div className="min-w-0">
               <div className="font-body text-[14px] font-black text-ink">হোম শোকেস</div>
-              <div className="font-body text-[11px] font-semibold text-muted">৪টি ক্যাটাগরি কার্ড ও ২টি স্পটলাইট প্রোডাক্ট ম্যানেজ করুন</div>
+              <div className="font-body text-[11px] font-semibold text-muted">৪টি কালেকশন কার্ড ও ২টি স্পটলাইট প্রোডাক্ট ম্যানেজ করুন — যেটা এডিট করবেন সেটা ক্লিক করে খুলুন</div>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setConfirmReset(true)}
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-border-base/80 bg-white px-4 font-body text-[13px] font-extrabold text-ink transition-all duration-brand hover:border-brand-light active:scale-[0.98] sm:flex-none"
-            >
-              <Svg className="h-3.5 w-3.5">
-                <path d="M3 12a9 9 0 1 0 2.6-6.4" />
-                <path d="M3 3v6h6" />
-              </Svg>
-              ডিফল্টে রিসেট
-            </button>
-            <button
-              type="button"
-              disabled={saveDisabled}
-              onClick={handleSave}
-              className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60 sm:flex-none"
-            >
-              {saving ? 'সেভ হচ্ছে...' : uploads > 0 ? 'আপলোড চলছে...' : 'সব সেভ করুন'}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmReset(true)}
+            className="flex h-11 items-center justify-center gap-2 self-start rounded-full border border-border-base/80 bg-white px-4 font-body text-[12.5px] font-extrabold text-ink transition-all duration-brand hover:border-brand-light active:scale-[0.98] sm:self-auto"
+          >
+            <Svg className="h-3.5 w-3.5">
+              <path d="M3 12a9 9 0 1 0 2.6-6.4" />
+              <path d="M3 3v6h6" />
+            </Svg>
+            ডিফল্টে রিসেট
+          </button>
         </div>
 
         <div className="mt-3.5 flex items-center justify-between gap-3 rounded-2xl bg-surface-muted px-3.5 py-2.5">
@@ -378,185 +788,146 @@ export default function HomeShowcasePageClient({ config, categories, products }:
       </div>
 
       {/* ══ ২. হেডিং ══ */}
-      <div className={`mb-4 ${CARD} p-4 sm:p-5`}>
-        <SectionHeading hint="ক্যাটাগরি কার্ডের উপরের শিরোনাম — প্রথম লাইন ধূসর, দ্বিতীয় লাইনের শব্দটা ইটালিক হাইলাইট">সেকশনের হেডিং</SectionHeading>
-        <div className="grid gap-4 md:grid-cols-2">
-          <BnEn
-            label="প্রথম লাইন"
-            bn={cfg.heading.lead}
-            en={cfg.heading.leadEn}
-            onBn={(v) => patchHeading({ lead: v })}
-            onEn={(v) => patchHeading({ leadEn: v })}
-            max={L.headingLead}
-          />
-          <BnEn
-            label="হাইলাইট শব্দ (ইটালিক)"
-            bn={cfg.heading.hl}
-            en={cfg.heading.hlEn}
-            onBn={(v) => patchHeading({ hl: v })}
-            onEn={(v) => patchHeading({ hlEn: v })}
-            max={L.headingHl}
-          />
-        </div>
+      <div className="mb-3">
+        <Accordion
+          open={openId === 'heading'}
+          onToggle={() => toggle('heading')}
+          thumb={
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center bg-brand-light/15 text-brand-light">
+              <Svg className="h-5 w-5">
+                <path d="M4 7V5h16v2M12 5v14M9 19h6" />
+              </Svg>
+            </span>
+          }
+          title="সেকশনের হেডিং"
+          subtitle={`${cfg.heading.lead} — ${cfg.heading.hl}`}
+        >
+          <p className="font-body text-[11.5px] font-medium text-muted">কালেকশন কার্ডের উপরের শিরোনাম — প্রথম লাইন ধূসর, দ্বিতীয় লাইনের শব্দটা ইটালিক হাইলাইট।</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <BnEn
+              label="প্রথম লাইন"
+              bn={cfg.heading.lead}
+              en={cfg.heading.leadEn}
+              onBn={(v) => patchHeading({ lead: v })}
+              onEn={(v) => patchHeading({ leadEn: v })}
+              max={L.headingLead}
+              showEn={headingEn}
+            />
+            <BnEn
+              label="হাইলাইট শব্দ (ইটালিক)"
+              bn={cfg.heading.hl}
+              en={cfg.heading.hlEn}
+              onBn={(v) => patchHeading({ hl: v })}
+              onEn={(v) => patchHeading({ hlEn: v })}
+              max={L.headingHl}
+              placeholderBn="যেমন: কিউরেটেড কালেকশন"
+              showEn={headingEn}
+            />
+          </div>
+          <EnToggle show={headingEn} onToggle={() => setHeadingEn((v) => !v)} />
+        </Accordion>
       </div>
 
-      {/* ══ ৩. ক্যাটাগরি কার্ড ══ */}
-      <div className="mb-4">
+      {/* ══ ৩. কালেকশন কার্ড ══ */}
+      <div className="mb-3">
         <div className="px-1">
-          <SectionHeading hint="মোবাইলে ২×২, ল্যাপটপে এক সারিতে ৪টা। কার্ডে ক্লিক করলে ওই ক্যাটাগরির আলাদা পেজে যাবে">ক্যাটাগরি কার্ড (৪টি)</SectionHeading>
+          <SectionHeading hint="মোবাইলে ২×২, ল্যাপটপে এক সারিতে ৪টা। কার্ডে ক্লিক করলে ওই কালেকশনের আলাদা পেজে যাবে">কালেকশন কার্ড (৪টি)</SectionHeading>
         </div>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {cfg.cards.map((c, i) => (
-            <div key={i} className={`${TILE} p-3.5 sm:p-4`}>
-              <div className="mb-3 flex items-center gap-2 font-body text-[12px] font-black uppercase tracking-wide text-brand-light">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-light/15 text-[11px]">{i + 1}</span>
-                কার্ড #{i + 1}
-              </div>
-              <div className="flex flex-col gap-4 sm:flex-row">
-                {/* লাইভ প্রিভিউ — মূল সাইটের কার্ডের মতো সোজা কোণা */}
-                <div className="mx-auto w-32 shrink-0 sm:mx-0">
-                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-800">
-                    {isImgSrc(c.img) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.img} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                    ) : (
-                      <ImgPlaceholder />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-1.5 pb-2.5 text-center text-white">
-                      <span className="text-[9px] font-medium leading-tight text-white/90">{c.lead}</span>
-                      <span className="line-clamp-2 text-[12px] font-bold italic leading-tight">{c.title || '—'}</span>
-                      <span className="mt-1.5 rounded-full bg-white px-2 py-0.5 text-[8px] font-bold text-ink">{c.btn || '—'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="min-w-0 flex-1 space-y-4">
-                  <ImageField value={c.img} onChange={(url) => patchCard(i, { img: url })} onUploading={onUploading} />
-                  <BnEn label="ছোট প্রথম লাইন" bn={c.lead} en={c.leadEn} onBn={(v) => patchCard(i, { lead: v })} onEn={(v) => patchCard(i, { leadEn: v })} max={L.cardLead} placeholderBn="দেখুন" placeholderEn="Explore" />
-                  <BnEn label="শিরোনাম (ইটালিক)" bn={c.title} en={c.titleEn} onBn={(v) => patchCard(i, { title: v })} onEn={(v) => patchCard(i, { titleEn: v })} max={L.cardTitle} placeholderBn="টি ডব্লিউ এস" placeholderEn="TWS Earbuds" />
-                  <BnEn label="বাটনের লেখা" bn={c.btn} en={c.btnEn} onBn={(v) => patchCard(i, { btn: v })} onEn={(v) => patchCard(i, { btnEn: v })} max={L.cardBtn} placeholderBn="এখনই কিনুন" placeholderEn="Shop" />
-                  {catSelect(c.catId, (v) => patchCard(i, { catId: v }))}
-                </div>
-              </div>
-            </div>
-          ))}
+        {!ready && (
+          <div className="mb-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3 font-body text-[12px] font-semibold leading-relaxed text-amber-800">
+            কালেকশনের জন্য ডাটাবেজে একটা নতুন কলাম লাগবে। Supabase → SQL Editor-এ <span className="font-extrabold">_migration_reference/002_product_collections.sql</span> একবার চালান, তারপর প্রোডাক্টে কালেকশন বাছা যাবে।
+          </div>
+        )}
+        <div className="flex flex-col gap-2.5">
+          {cfg.cards.map((c, i) => {
+            const id = `card-${i}` as const;
+            return (
+              <Accordion
+                key={c.collectionId}
+                open={openId === id}
+                onToggle={() => toggle(id)}
+                thumb={<Thumb src={c.img} />}
+                title={`কার্ড #${i + 1} — ${c.title || '—'}`}
+                subtitle={ready ? `${counts[c.collectionId] ?? 0}টি প্রোডাক্ট` : 'গোনা যায়নি'}
+              >
+                <CardEditor
+                  c={c}
+                  onPatch={(p) => patchCard(i, p)}
+                  onUploading={onUploading}
+                  countReady={ready}
+                  onProductsChanged={() => router.refresh()}
+                />
+              </Accordion>
+            );
+          })}
         </div>
       </div>
 
       {/* ══ ৪. স্পটলাইট ══ */}
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="px-1">
-          <SectionHeading hint="প্রথমটায় বামে ছবি-ডানে লেখা, দ্বিতীয়টায় বামে লেখা-ডানে ছবি। মোবাইলেও ডান-বাম থাকে, তাই লেখা ছোট রাখুন">স্পটলাইট প্রোডাক্ট (২টি)</SectionHeading>
+          <SectionHeading hint="লম্বা ৯:১৬ ছবি ও পাশে প্রোডাক্টের তথ্য। প্রথমটায় বামে ছবি-ডানে লেখা, দ্বিতীয়টায় বামে লেখা-ডানে ছবি">স্পটলাইট প্রোডাক্ট (২টি)</SectionHeading>
         </div>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {cfg.spotlights.map((s, i) => (
-            <div key={i} className={`${TILE} p-3.5 sm:p-4`}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 font-body text-[12px] font-black uppercase tracking-wide text-brand-light">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-light/15 text-[11px]">{i + 1}</span>
-                  স্পটলাইট #{i + 1}
-                  <span className="font-semibold normal-case tracking-normal text-muted">({i === 0 ? 'ছবি বামে' : 'ছবি ডানে'})</span>
-                </div>
-                <Switch checked={s.enabled} onChange={(v) => patchSpot(i, { enabled: v })} label={`স্পটলাইট ${i + 1} চালু/বন্ধ`} />
-              </div>
-
-              <div className={`space-y-4 transition-opacity duration-brand ${s.enabled ? '' : 'opacity-50'}`}>
-                {/* প্রিভিউ — মোবাইলের ডান-বাম লেআউটের ছোট নমুনা */}
-                <div className={`grid overflow-hidden bg-[#F0F8FF] ${i === 1 ? 'grid-cols-[1fr_44%]' : 'grid-cols-[44%_1fr]'}`}>
-                  <div className={`relative min-h-[120px] bg-slate-800 ${i === 1 ? 'order-2' : 'order-1'}`}>
-                    {isImgSrc(s.img) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.img} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                    ) : (
-                      <ImgPlaceholder />
-                    )}
-                  </div>
-                  <div className={`flex flex-col justify-center gap-1 p-2.5 ${i === 1 ? 'order-1' : 'order-2'}`}>
-                    <span className="w-fit rounded-full border border-brand-light/40 bg-white px-1.5 py-px text-[7px] font-bold uppercase text-brand-light">{s.badge || '—'}</span>
-                    <span className="line-clamp-3 text-[11px] font-bold leading-snug text-ink">{s.title || '—'}</span>
-                    <span className="line-clamp-3 text-[8.5px] leading-snug text-muted">{s.desc}</span>
-                    {s.price > 0 && <span className="text-[10px] font-bold text-ink">৳{s.price.toLocaleString('en-US')}</span>}
-                    <span className="mt-0.5 w-fit rounded-full bg-brand-light px-2 py-0.5 text-[8px] font-bold text-white">{s.btn || '—'}</span>
-                  </div>
-                </div>
-
-                <ImageField value={s.img} onChange={(url) => patchSpot(i, { img: url })} onUploading={onUploading} hint="ছবির ফ্রেম মোটামুটি চৌকো/৪:৫ হলে সবচেয়ে ভালো দেখায়, তবে যেকোনো মাপ চলবে" />
-                <BnEn label="ব্যাজ" bn={s.badge} en={s.badgeEn} onBn={(v) => patchSpot(i, { badge: v })} onEn={(v) => patchSpot(i, { badgeEn: v })} max={L.badge} placeholderBn="হট সেলিং" placeholderEn="Hot Selling" />
-                <BnEn label="শিরোনাম" bn={s.title} en={s.titleEn} onBn={(v) => patchSpot(i, { title: v })} onEn={(v) => patchSpot(i, { titleEn: v })} max={L.title} />
-                <BnEn label="ছোট বিবরণ" bn={s.desc} en={s.descEn} onBn={(v) => patchSpot(i, { desc: v })} onEn={(v) => patchSpot(i, { descEn: v })} max={L.desc} multiline />
-
-                <Field label="দাম (ঐচ্ছিক)" help="০ বা ফাঁকা রাখলে সাইটে দাম দেখাবে না">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    value={s.price || ''}
-                    onChange={(e) => patchSpot(i, { price: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
-                    placeholder="যেমন: 1250"
-                    className={FIELD_CLS}
-                  />
-                </Field>
-
-                <BnEn label="বাটনের লেখা" bn={s.btn} en={s.btnEn} onBn={(v) => patchSpot(i, { btn: v })} onEn={(v) => patchSpot(i, { btnEn: v })} max={L.spotBtn} placeholderBn="এখনই অর্ডার করুন" placeholderEn="Order now" />
-
-                <div>
-                  <div className="mb-2 font-body text-[12.5px] font-extrabold text-ink">ক্লিক করলে কোথায় যাবে</div>
-                  <div className="mb-3 flex rounded-full bg-surface-muted p-1">
-                    {([
-                      { id: 'product', title: 'প্রোডাক্ট পেজ' },
-                      { id: 'category', title: 'ক্যাটাগরি' },
-                    ] as { id: SpotlightLinkType; title: string }[]).map((lt) => {
-                      const active = s.linkType === lt.id;
-                      return (
-                        <button
-                          key={lt.id}
-                          type="button"
-                          onClick={() => patchSpot(i, { linkType: lt.id })}
-                          className={`h-10 flex-1 rounded-full font-body text-[12px] font-extrabold transition-all duration-brand active:scale-[0.98] ${
-                            active ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.4)]' : 'text-ink'
-                          }`}
-                        >
-                          {lt.title}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {s.linkType === 'product' ? (
-                    <ProductPicker
-                      products={products}
-                      productId={s.productId}
-                      productName={s.productName}
-                      onPick={(p) => patchSpot(i, { productId: p.id, productName: p.name })}
-                      onClear={() => patchSpot(i, { productId: undefined, productName: undefined })}
-                    />
-                  ) : (
-                    catSelect(s.catId, (v) => patchSpot(i, { catId: v }))
-                  )}
-                  {s.linkType === 'product' && !s.productId && (
-                    <p className="mt-2 font-body text-[11px] font-semibold text-danger">প্রোডাক্ট না বাছলে সাইটে এটা ক্যাটাগরি লিংক হিসেবে কাজ করবে</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="flex flex-col gap-2.5">
+          {cfg.spotlights.map((s, i) => {
+            const id = `spot-${i}` as const;
+            const linkSummary = s.link.trim() ? `প্রোডাক্ট: ${s.link.trim()}` : 'লিংক দেওয়া নেই';
+            return (
+              <Accordion
+                key={i}
+                open={openId === id}
+                onToggle={() => toggle(id)}
+                thumb={<Thumb src={s.img} className="h-11 w-[25px] sm:w-[25px]" />}
+                title={`স্পটলাইট #${i + 1} — ${s.title || '—'}`}
+                subtitle={`${i === 0 ? 'ছবি বামে' : 'ছবি ডানে'} · ${linkSummary}`}
+                right={
+                  <span className="pr-2">
+                    <Switch checked={s.enabled} onChange={(v) => patchSpot(i, { enabled: v })} label={`স্পটলাইট ${i + 1} চালু/বন্ধ`} />
+                  </span>
+                }
+              >
+                <SpotlightEditor s={s} i={i} categories={categories} onPatch={(p) => patchSpot(i, p)} onUploading={onUploading} />
+              </Accordion>
+            );
+          })}
         </div>
       </div>
 
-      {/* ══ ৫. নিচের সেভ বাটন ══ */}
-      <button
-        type="button"
-        disabled={saveDisabled}
-        onClick={handleSave}
-        className="flex h-[52px] w-full items-center justify-center rounded-full bg-brand-light font-body text-[15px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
-      >
-        {saving ? 'সেভ হচ্ছে...' : uploads > 0 ? 'আপলোড চলছে...' : 'সব সেভ করুন'}
-      </button>
+      {/* ══ ৫. স্থায়ী সেভ বার — স্ক্রল করলেও নিচে লেগে থাকে (মোবাইলে আঙুলের নাগালে) ══ */}
+      <div className="sticky bottom-3 z-20 mt-4">
+        <div className="flex items-center gap-3 rounded-full border border-white/90 bg-white/95 p-2 pl-4 shadow-sh2 backdrop-blur">
+          <div className="min-w-0 flex-1 font-body text-[12px] font-extrabold">
+            {uploads > 0 ? (
+              <span className="text-muted">ছবি আপলোড চলছে...</span>
+            ) : dirty ? (
+              <span className="flex items-center gap-1.5 text-amber-700">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                সেভ না করা পরিবর্তন আছে
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-muted">
+                <Svg className="h-3.5 w-3.5 text-brand-light" sw={3}>
+                  <polyline points="20 6 9 17 4 12" />
+                </Svg>
+                সব সেভ করা আছে
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={saveDisabled}
+            onClick={handleSave}
+            className="flex h-11 shrink-0 items-center justify-center rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
+          >
+            {saving ? 'সেভ হচ্ছে...' : 'সব সেভ করুন'}
+          </button>
+        </div>
+      </div>
 
       {confirmReset && (
         <ConfirmDialog
           title="ডিফল্টে রিসেট করবেন?"
-          message="কার্ড ও স্পটলাইটের সব লেখা, ছবি ও লিংক ডিফল্ট ডেমোতে ফিরে যাবে। বর্তমান সব পরিবর্তন মুছে যাবে।"
+          message="কালেকশন কার্ড ও স্পটলাইটের সব লেখা, ছবি ও লিংক ডিফল্ট ডেমোতে ফিরে যাবে। বর্তমান সব পরিবর্তন মুছে যাবে। (প্রোডাক্টের কালেকশন বাছাই অক্ষত থাকবে।)"
           confirmLabel="হ্যাঁ, রিসেট করুন"
           busyLabel="রিসেট হচ্ছে..."
           busy={busy}

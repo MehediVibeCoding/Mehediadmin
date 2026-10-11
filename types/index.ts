@@ -141,6 +141,9 @@ export interface Product {
   old: number;
   cat: string; // primary category id — backward compat, সবসময় cats[0]
   cats: string[]; // multi-category id লিস্ট
+  // 🆕 কালেকশন id লিস্ট (gift/premium/unique/cute) — ক্যাটাগরি থেকে আলাদা সিস্টেম। কলাম তৈরি
+  // হওয়ার আগে (SQL চালানোর আগে) এটা undefined থাকতে পারে, তাই ঐচ্ছিক।
+  collections?: string[] | null;
   stock: number;
   warranty: string;
   imgs: string[]; // প্রতিটা এন্ট্রি হয় image URL, নয়তো emoji fallback (📦)
