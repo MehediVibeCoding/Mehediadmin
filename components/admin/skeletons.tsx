@@ -545,6 +545,42 @@ export function HeroCardsSkeleton() {
   );
 }
 
+export function HomeShowcaseSkeleton() {
+  return (
+    <div>
+      <SkHeaderCard right="buttons" gap="gap-3" />
+      <div className={`mb-4 ${CARD} p-4`}>
+        <SkHeading w="w-32" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Sk className="h-12 w-full !rounded-2xl" />
+          <Sk className="h-12 w-full !rounded-2xl" />
+        </div>
+      </div>
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {rep(4).map((i) => (
+          <div key={i} className={`flex gap-3 ${TILE} p-3.5`}>
+            <Sk className="h-40 w-28 shrink-0 !rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2.5">
+              <Sk className="h-11 w-full !rounded-2xl" />
+              <Sk className="h-11 w-full !rounded-2xl" />
+              <Sk className="h-11 w-full !rounded-2xl" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {rep(2).map((i) => (
+          <div key={i} className={`${TILE} space-y-2.5 p-3.5`}>
+            <Sk className="h-28 w-full !rounded-xl" />
+            <Sk className="h-11 w-full !rounded-2xl" />
+            <Sk className="h-11 w-full !rounded-2xl" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function GuideTemplatesSkeleton() {
   return (
     <div>
