@@ -5,11 +5,11 @@ import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { ALLOWED_IMAGE_MIME, verifyImageMagicBytes, MAGIC_BYTE_MISMATCH_MESSAGE } from '@/lib/uploadValidation';
+import { uploadToR2 } from '@/lib/r2';
 import {
   COLLECTION_IDS, DEFAULT_SHOWCASE, SHOWCASE_SETTING_KEY, normalizeShowcase, parseProductRef, type ShowcaseConfig,
 } from '@/lib/constants/homeShowcase';
 
-const STORAGE_BUCKET = 'product-images'; // hero-cards/products মডিউলের bucket-ই পুনর্ব্যবহার, নতুন bucket তৈরি হয়নি
 
 export interface HomeShowcaseActionResult {
   ok: boolean;
@@ -187,17 +187,5 @@ export async function uploadHomeShowcaseImage(
   if (!(await verifyImageMagicBytes(file, file.type))) {
     return { ok: false, message: MAGIC_BYTE_MISMATCH_MESSAGE };
   }
-  const supabase = createServiceRoleClient();
-  const path = `home-showcase/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-    cacheControl: '3600',
-    upsert: false,
-  });
-  if (error) return { ok: false, message: error.message };
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-  return { ok: true, url: publicUrl };
+  return uploadToR2(file, 'home-showcase', ext);
 }

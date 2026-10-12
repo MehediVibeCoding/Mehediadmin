@@ -7,6 +7,7 @@ import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray, isValidPositiveIntId } from '@/lib/security';
 import { validateImageUpload } from '@/lib/uploadValidation';
+import { uploadToR2 } from '@/lib/r2';
 import { requireAdmin } from '@/lib/auth-guard';
 import { fetchAllRows } from '@/lib/fetchAllRows';
 import { adminCached, invalidateProductsData, PRODUCTS_TAG } from '@/lib/adminCache';
@@ -20,7 +21,6 @@ const GUIDE_TABLE = 'guide_pages';
 const GUIDE_TEMPLATES_TABLE = 'guide_page_templates';
 
 const TABLE = 'custom_products';
-const STORAGE_BUCKET = 'product-images';
 // ড্র্যাগ-সর্টে নতুন sort_order মানগুলো এই ব্যবধানে বসে — মাঝে নতুন প্রোডাক্ট
 // ঢোকানোর (ভবিষ্যতে দরকার হলে) জায়গা রাখতে। নতুন প্রোডাক্ট তৈরির সময়ও এই
 // ব্যবধানেই পরের মান বসে (নিচে createProduct দ্রষ্টব্য)।
@@ -716,18 +716,5 @@ export async function uploadProductImage(
   // 🛡️ অডিট ফিক্স: ফাইলের নাম না, আসল MIME টাইপ ও magic bytes চেক করে ext বসানো হচ্ছে
   const validated = await validateImageUpload(file);
   if (!validated.ok) return { ok: false, message: validated.message };
-  const supabase = createServiceRoleClient();
-  const ext = validated.ext;
-  const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-    cacheControl: '3600',
-    upsert: false,
-  });
-  if (error) return { ok: false, message: error.message };
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-  return { ok: true, url: publicUrl };
+  return uploadToR2(file, 'products', validated.ext!);
 }
