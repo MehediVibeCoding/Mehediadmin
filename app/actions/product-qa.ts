@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { sanitizeInput, isValidPositiveIntId } from '@/lib/security';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 import type { ProductQuestion, ProductQuestionAnswer, ProductQuestionWithAnswers } from '@/types';
 
 const Q_TABLE = 'product_questions';
@@ -14,17 +15,21 @@ const PATH = '/reviews-qa';
 // প্রশ্নের উত্তর admin দিলে এই নামেই সেভ হবে (spec অনুযায়ী)
 const ADMIN_AUTHOR_NAME = 'Vangcur টিম';
 
+// 🔒 A2 ফিক্স — আগে এখানে `.select('*')` দিয়ে কোনো limit/range ছাড়াই আনা হতো।
+// Supabase ডিফল্টে ১,০০০ সারির পর নীরবে কেটে দেয় — প্রশ্ন desc (নতুন-আগে) বলে
+// পুরনো প্রশ্ন বাদ পড়ত, কিন্তু উত্তর asc (পুরনো-আগে) বলে উল্টো **নতুন উত্তর বাদ
+// পড়ত** (অ্যাডমিন সাম্প্রতিক নিজের দেওয়া উত্তরই দেখতে পেত না, দুবার উত্তর দেওয়ার
+// ঝুঁকি)। fetchAllRows() ব্যাচে ব্যাচে সব সারি টেনে আনে, তাই আর কিছু হারায় না।
 export async function listProductQuestions(): Promise<ProductQuestionWithAnswers[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
 
-  const [{ data: questions, error: qErr }, { data: answers, error: aErr }] = await Promise.all([
-    supabase.from(Q_TABLE).select('*').order('created_at', { ascending: false }),
-    supabase.from(A_TABLE).select('*').order('created_at', { ascending: true }),
+  const [questions, answers] = await Promise.all([
+    fetchAllRows<ProductQuestion>(supabase, Q_TABLE, '*', 'created_at', false),
+    fetchAllRows<ProductQuestionAnswer>(supabase, A_TABLE, '*', 'created_at', true),
   ]);
-  if (qErr || !questions) return [];
 
-  const rows = questions as ProductQuestion[];
+  const rows = questions;
 
   // product_questions টেবিলে প্রোডাক্টের নাম নেই, শুধু id — custom_products
   // থেকে জয়েন করে অ্যাডমিন UI-তে দেখানোর জন্য নাম বসানো হচ্ছে
@@ -41,13 +46,11 @@ export async function listProductQuestions(): Promise<ProductQuestionWithAnswers
   }
 
   const answersByQuestion = new Map<number, ProductQuestionAnswer[]>();
-  if (!aErr) {
-    (answers as ProductQuestionAnswer[] | null || []).forEach((a) => {
-      const list = answersByQuestion.get(a.question_id) || [];
-      list.push(a);
-      answersByQuestion.set(a.question_id, list);
-    });
-  }
+  answers.forEach((a) => {
+    const list = answersByQuestion.get(a.question_id) || [];
+    list.push(a);
+    answersByQuestion.set(a.question_id, list);
+  });
 
   return rows.map((q) => ({
     ...q,

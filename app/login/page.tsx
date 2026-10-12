@@ -1,43 +1,48 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { useRef, useState } from 'react';
+import { login } from '@/app/actions/auth';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { Field, FIELD_CLS } from '@/components/common/FormField';
 import { AuthBackdrop } from '@/components/common/AuthBackdrop';
+import TurnstileWidget, { type TurnstileHandle } from '@/components/auth/TurnstileWidget';
 
+// 🔒 A1 ফিক্স — আগে এই পেজ নিজেই সরাসরি supabase.auth.signInWithPassword() ডাকত
+// (ব্রাউজার থেকে, মাঝে কোনো সার্ভার কোড ছাড়াই)। এখন app/actions/auth.ts-এর
+// login() Server Action দিয়ে যায় — সেখানে রেট-লিমিট, Turnstile ভেরিফাই ও সফল
+// অ্যাডমিন-লগইনে Telegram এলার্ট হয়।
 export default function LoginPage() {
-  const router = useRouter();
+  const turnstileRef = useRef<TurnstileHandle>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const turnstileConfigured = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // সাইট-কী কনফিগার না থাকলে widget-ই রেন্ডার হয় না (TurnstileWidget দেখুন),
+    // তখন ১০ সেকেন্ড অকারণ অপেক্ষা না করে সরাসরি খালি টোকেন পাঠানো হয়
+    // (server-এও সিক্রেট কী না থাকলে verify একইভাবে স্কিপ হয়)।
+    const turnstileToken = turnstileConfigured
+      ? await (turnstileRef.current?.waitForToken() ?? Promise.resolve(''))
+      : '';
+
+    // সফল হলে login() ভেতরেই redirect('/') কল করে — Next.js এই থ্রো-করা
+    // রিডাইরেক্ট ধরে স্বয়ংক্রিয়ভাবে নেভিগেট করায়, তাই এর পরের লাইনে আসে না।
+    const result = await login(email, password, turnstileToken);
 
     setLoading(false);
 
-    if (authError) {
-      // ইচ্ছাকৃতভাবে generic message — কোনো hint দেওয়া হচ্ছে না
-      setError('ভুল ইমেইল বা পাসওয়ার্ড।');
-      return;
+    if (result?.error) {
+      setError(result.error);
+      turnstileRef.current?.reset();
     }
-
-    // middleware.ts এখন real admin check করবে; মিলে গেলে redirect হবে,
-    // না মিললে আবার /login-এ ফেরত পাঠাবে।
-    router.push('/');
-    router.refresh();
   }
 
   return (
@@ -140,6 +145,10 @@ export default function LoginPage() {
                 </button>
               </div>
             </Field>
+          </div>
+
+          <div className="mt-4">
+            <TurnstileWidget ref={turnstileRef} active={true} />
           </div>
 
           {error && (

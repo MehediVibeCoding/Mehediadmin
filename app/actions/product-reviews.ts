@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
 import { sanitizeInput, isValidPositiveIntId } from '@/lib/security';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 import type { ProductReview } from '@/types';
 
 const TABLE = 'product_reviews';
@@ -35,15 +36,13 @@ async function attachProductNames(
   }));
 }
 
+// 🔒 A2 ফিক্স — আগে এখানে `.select('*')` দিয়ে limit/range ছাড়া আনা হতো, Supabase
+// ডিফল্টে ১,০০০ সারির পর নীরবে কেটে দিত (desc order বলে পুরনো রিভিউ বাদ পড়ত)।
 export async function listProductReviews(): Promise<ProductReview[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return attachProductNames(supabase, (data || []) as ProductReview[]);
+  const rows = await fetchAllRows<ProductReview>(supabase, TABLE, '*', 'created_at', false);
+  return attachProductNames(supabase, rows);
 }
 
 export interface ReviewActionResult {

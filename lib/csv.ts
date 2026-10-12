@@ -47,11 +47,21 @@ export function ordersToCsvRows(orders: Order[]): string[][] {
   ];
 }
 
+// 🔒 A10 ফিক্স: CSV ফর্মুলা-ইনজেকশনের দ্বিতীয় স্তর — সেলের মান =, +, -, @
+// দিয়ে শুরু হলে Excel/Google Sheets সেটাকে ফর্মুলা হিসেবে চালানোর চেষ্টা
+// করতে পারে (যেমন প্রোডাক্টের নামে `=HYPERLINK(...)` বসালে)। শুরুতে একটা `'`
+// বসালে স্প্রেডশিট অ্যাপ সেটাকে প্লেইন টেক্সট ধরে, আসল মান অপরিবর্তিত থাকে।
+// (উৎসে sanitizePlainName/ঠিকানার শুরুর =+-@ ছাঁটা ইত্যাদি দিয়ে আগে থেকেই
+// আংশিক ঠেকানো হয়েছে — এটা শুধু দ্বিতীয়, স্বাধীন স্তর।)
+function csvSafeCell(raw: unknown): string {
+  const s = String(raw ?? '');
+  const guarded = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  return `"${guarded.replace(/"/g, '""')}"`;
+}
+
 // legacy downloadCsvRows() — BOM সহ CSV, ব্রাউজারে সরাসরি ডাউনলোড ট্রিগার করে
 export function downloadCsvRows(rows: string[][], filenamePrefix: string): void {
-  const csv = rows
-    .map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n');
+  const csv = rows.map((r) => r.map(csvSafeCell).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
   a.download = `${filenamePrefix}_${new Date().toISOString().slice(0, 10)}.csv`;

@@ -2,18 +2,19 @@
 
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray, isValidPositiveIntId } from '@/lib/security';
 import { validateImageUpload } from '@/lib/uploadValidation';
 import { requireAdmin } from '@/lib/auth-guard';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 import { adminCached, invalidateProductsData, PRODUCTS_TAG } from '@/lib/adminCache';
 import { PAGE_SIZE } from '@/lib/constants/pagination';
 import type { Product, ProductFaq, ProductInfoBox, ProductListRow, ProductSpecs } from '@/types';
 import { parseInfoBoxes, parseFeatureBlocks } from '@/lib/smart-parser';
 import { revalidateGuidePage } from '@/lib/revalidateGuidePage';
 import { guidePageUrlPath } from '@/types/guides';
-import { COLLECTION_IDS } from '@/lib/constants/homeShowcase';
 
 const GUIDE_TABLE = 'guide_pages';
 const GUIDE_TEMPLATES_TABLE = 'guide_page_templates';
@@ -153,15 +154,23 @@ export interface ProductPickerRow {
 
 // অফার-পিকারের মতো ড্রপডাউনে "সব প্রোডাক্ট" দরকার হয় (শুধু id/name/price/ছবি) —
 // পেজিনেশন ছাড়া, কিন্তু আগের মতো পুরো বর্ণনা/স্পেক/ফিচার/FAQ টেনে আনে না।
+//
+// 🔒 A3 ফিক্স — আগে এখানে `.select()`-এ কোনো limit/range ছিল না, তাই Supabase
+// ডিফল্টে ১,০০০ প্রোডাক্টের পর বাকিগুলো নীরবে বাদ পড়ত (অফার-পিকার ড্রপডাউনে
+// ১,০০১তম প্রোডাক্টের পর থেকে কোনো প্রোডাক্টই বাছাই করা যেত না)। এখন fetchAllRows()
+// ব্যাচে ব্যাচে সব প্রোডাক্ট টেনে আনে। (ড্রপডাউন-UI অপরিবর্তিত রাখা হলো — সার্চ-করা
+// পিকারে বদলানো একটা UX সিদ্ধান্ত, সেটা আলাদাভাবে জিজ্ঞেস করে করা হবে যদি দরকার হয়।)
 export async function listProductsForPicker(): Promise<ProductPickerRow[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('id, name, price, imgs')
-    .order('sort_order', { ascending: true });
-  if (error) throw new Error('প্রোডাক্ট লোড ব্যর্থ: ' + error.message);
-  return (data || []).map((p) => ({
+  const rows = await fetchAllRows<{ id: number; name: string; price: number; imgs: unknown }>(
+    supabase,
+    TABLE,
+    'id, name, price, imgs',
+    'sort_order',
+    true,
+  );
+  return rows.map((p) => ({
     id: Number(p.id),
     name: String(p.name ?? ''),
     price: Number(p.price) || 0,
@@ -212,8 +221,6 @@ export interface ProductFormInput {
   name: string;
   nameBn: string;
   cats: string[];
-  // 🆕 কালেকশন id লিস্ট (gift/premium/unique/cute) — ক্যাটাগরি (cats) থেকে সম্পূর্ণ আলাদা সিস্টেম
-  collections: string[];
   price: number;
   old: number;
   stock: number;
@@ -240,22 +247,6 @@ export interface ProductFormInput {
   colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
   colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
 }
-
-// 🆕 কালেকশন: ক্লায়েন্ট থেকে আসা মান বিশ্বাস করা হয় না — শুধু পরিচিত id রাখা হয় (ডুপ্লিকেট বাদ, স্থায়ী ক্রমে)
-function cleanCollections(v: unknown): string[] {
-  if (!Array.isArray(v)) return [];
-  const given = new Set(v.filter((x): x is string => typeof x === 'string'));
-  return COLLECTION_IDS.filter((id) => given.has(id));
-}
-
-// custom_products.collections কলাম (_migration_reference/002_product_collections.sql) এখনো তৈরি না হলে
-// ডাটাবেজ এই ধরনের ত্রুটি দেয়
-function isMissingCollectionsColumn(message: string): boolean {
-  return /collections/i.test(message) && /(column|schema cache)/i.test(message);
-}
-
-const COLLECTIONS_SQL_MESSAGE =
-  'কালেকশন সেভ করতে আগে ডাটাবেজে SQL চালাতে হবে (_migration_reference/002_product_collections.sql) — প্রোডাক্ট সেভ হয়নি';
 
 function parseTechSpecs(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -351,7 +342,6 @@ export async function createProduct(
   const supabase = createServiceRoleClient();
   const imgs = input.imgs.filter(Boolean);
   const desc = sanitizeInput(input.desc);
-  const collections = cleanCollections(input.collections);
 
   // নতুন প্রোডাক্ট সবসময় তালিকার শেষে বসে (sort_order = বর্তমান সর্বোচ্চ + গ্যাপ)।
   // 🚀 আগে পুরো order array ডাটাবেজ থেকে এনে push করে আবার পুরোটা লিখতে হতো;
@@ -371,7 +361,6 @@ export async function createProduct(
     old: input.old || input.price,
     cat: input.cats[0] || 'rgb',
     cats: input.cats,
-    collections,
     stock: Number.isFinite(input.stock) ? input.stock : 0,
     warranty: sanitizeInput(input.warranty), // খালি থাকলে খালিই সেভ হয় — মেইন সাইটে ওয়ারেন্টি অংশ দেখাবে না
     imgs: imgs.length ? imgs : ['📦'],
@@ -396,22 +385,19 @@ export async function createProduct(
     sort_order: nextSortOrder,
   };
 
-  let { data, error } = await supabase.from(TABLE).insert([row]).select().single();
-  if (error && isMissingCollectionsColumn(error.message)) {
-    // কলাম এখনো নেই: কালেকশন না বাছা থাকলে আগের মতোই সেভ চলবে, বাছা থাকলে স্পষ্ট বার্তা দিয়ে থামবে
-    if (collections.length) return { status: 'error', message: COLLECTIONS_SQL_MESSAGE };
-    const { collections: omitted, ...rowWithoutCollections } = row;
-    void omitted;
-    ({ data, error } = await supabase.from(TABLE).insert([rowWithoutCollections]).select().single());
-  }
-  if (error || !data) return { status: 'error', message: error?.message || 'সেভ ব্যর্থ হয়েছে' };
+  const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
+  if (error) return { status: 'error', message: error.message };
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(data.id, unitProfit);
 
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
@@ -429,7 +415,6 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   const supabase = createServiceRoleClient();
   const imgs = input.imgs.filter(Boolean);
   const desc = sanitizeInput(input.desc);
-  const collections = cleanCollections(input.collections);
   // ✅ 'closing' column ইচ্ছাকৃতভাবে এখানে টাচ করা হচ্ছে না — legacy ফর্মে
   // এটার কোনো ম্যানুয়াল এডিট ফিল্ড নেই (শুধু AI Parse করলে সেট হয়), আর
   // legacy-তে edit করার সময় hidden field থেকে খালি ভ্যালু গিয়ে বিদ্যমান
@@ -442,7 +427,6 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     old: input.old || input.price,
     cat: input.cats[0] || 'rgb',
     cats: input.cats,
-    collections,
     stock: Number.isFinite(input.stock) ? input.stock : 0,
     warranty: sanitizeInput(input.warranty),
     imgs: imgs.length ? imgs : ['📦'],
@@ -465,22 +449,19 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
   };
 
-  let { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
-  if (error && isMissingCollectionsColumn(error.message)) {
-    // কলাম এখনো নেই: কালেকশন না বাছা থাকলে আগের মতোই সেভ চলবে, বাছা থাকলে স্পষ্ট বার্তা দিয়ে থামবে
-    if (collections.length) return { status: 'error', message: COLLECTIONS_SQL_MESSAGE };
-    const { collections: omitted, ...rowWithoutCollections } = row;
-    void omitted;
-    ({ data, error } = await supabase.from(TABLE).update(rowWithoutCollections).eq('id', id).select().single());
-  }
-  if (error || !data) return { status: 'error', message: error?.message || 'সেভ ব্যর্থ হয়েছে' };
+  const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
+  if (error) return { status: 'error', message: error.message };
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(id, unitProfit);
 
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { status: 'ok', product: { ...data, unit_profit: unitProfit } as Product };
 }
 
@@ -530,7 +511,11 @@ export async function linkColorVariant(
 
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { ok: true, groupId };
 }
 
@@ -541,7 +526,11 @@ export async function unlinkColorVariant(productId: number): Promise<{ ok: boole
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { ok: true };
 }
 export async function deleteProduct(id: number): Promise<{ ok: boolean; message?: string }> {
@@ -572,7 +561,11 @@ export async function deleteProduct(id: number): Promise<{ ok: boolean; message?
 
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
 
   // ডিলিট হওয়া সাব পেজগুলোর লাইভ URL রিভ্যালিডেট করা — best-effort, ব্যর্থ হলেও প্রোডাক্ট
   // ডিলিট আটকাবে না (revalidateGuidePage নিজেই ৫ সেকেন্ড টাইমআউট + সাইলেন্ট ফেইল হ্যান্ডল করে)
@@ -600,6 +593,16 @@ export async function deleteProduct(id: number): Promise<{ ok: boolean; message?
 // 📒 stock_logs অডিট: অ্যাডমিন নিজে ম্যানুয়ালি স্টক সংখ্যা বদলালে (টেবিলের
 // ইনলাইন পপওভার থেকে) তার হিস্টরি রাখা হয় — কে, কবে, আগের-পরের সংখ্যা সহ।
 // আগে old stock এনে নতুনটার সাথে ডিফ করা হয় যাতে change_qty সঠিক ধনাত্মক/ঋণাত্মক হয়।
+//
+// 🔒 A5 ফিক্স (lost-update) — আগে এখানে শুধু "পড়ো, তারপর পরম মান বসাও" হতো।
+// অ্যাডমিন পেজ খুলে স্টক ৫০ টাইপ করার মাঝেই যদি কোনো গ্রাহকের অর্ডার
+// (checkout.ts-এর decrement_product_stock RPC) স্টক ৫০→৪৮ কমায়, অ্যাডমিনের
+// সেভ সেই কমানো চুপচাপ মুছে আবার ৫০-এ ফিরিয়ে দিত (ওভারসেল)। এখন UPDATE-এ
+// `.eq('stock', previousStock)` — অপটিমিস্টিক-লক শর্ত — যোগ করা হলো: মাঝে কেউ
+// স্টক বদলে দিলে এই শর্ত মেলে না, ০ সারি আপডেট হয়, আর অ্যাডমিনকে রিফ্রেশ করে
+// আবার চেষ্টা করতে বলা হয় (ডাটাবেজে সরাসরি `UPDATE ... WHERE stock = :old
+// RETURNING` চালিয়ে এই আচরণ টেস্ট করে নিশ্চিত হওয়া হয়েছে — ভুল পুরনো-মানে ০
+// সারি, সঠিক পুরনো-মানে ১ সারি)।
 export async function updateStock(id: number, stock: number): Promise<{ ok: boolean; message?: string }> {
   const { email: adminEmail } = await requireAdmin();
   if (!isValidPositiveIntId(id)) return { ok: false, message: 'প্রোডাক্ট আইডি সঠিক নয়' };
@@ -608,22 +611,41 @@ export async function updateStock(id: number, stock: number): Promise<{ ok: bool
 
   const { data: before } = await supabase.from(TABLE).select('stock').eq('id', id).single();
   const previousStock = before && Number.isFinite(before.stock) ? Number(before.stock) : null;
+  if (previousStock === null) return { ok: false, message: 'প্রোডাক্ট খুঁজে পাওয়া যায়নি' };
 
-  const { error } = await supabase.from(TABLE).update({ stock }).eq('id', id);
-  if (error) return { ok: false, message: error.message };
-
-  if (previousStock !== null && previousStock !== stock) {
-    await supabase.from('stock_logs').insert({
-      product_id: id,
-      change_qty: stock - previousStock,
-      reason: 'manual_admin_edit',
-      changed_by: adminEmail,
-    });
+  if (previousStock === stock) {
+    // কিছুই বদলায়নি — আপডেট/লগ করার দরকার নেই
+    return { ok: true };
   }
+
+  const { data: updated, error } = await supabase
+    .from(TABLE)
+    .update({ stock })
+    .eq('id', id)
+    .eq('stock', previousStock) // অপটিমিস্টিক লক
+    .select('id');
+  if (error) return { ok: false, message: error.message };
+  if (!updated || updated.length === 0) {
+    return {
+      ok: false,
+      message: 'এই প্রোডাক্টের স্টক এর মধ্যে অন্য কোথাও (যেমন নতুন অর্ডার) বদলে গেছে — পেজ রিফ্রেশ করে আবার চেষ্টা করুন।',
+    };
+  }
+
+  await supabase.from('stock_logs').insert({
+    product_id: id,
+    change_qty: stock - previousStock,
+    reason: 'manual_admin_edit',
+    changed_by: adminEmail,
+  });
 
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { ok: true };
 }
 
@@ -638,7 +660,11 @@ export async function updateBadge(id: number, badge: string): Promise<{ ok: bool
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { ok: true };
 }
 
@@ -664,7 +690,11 @@ export async function reorderProducts(updates: ReorderUpdate[]): Promise<{ ok: b
   if (error) return { ok: false, message: error.message };
   revalidatePath('/products');
   invalidateProductsData();
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — আগে এখানে সরাসরি await করা হতো, প্রতিটা সেভে অ্যাডমিনের UI
+  // ৪ সেকেন্ড (+ ব্যর্থ হলে আরও ৪ সেকেন্ড রিট্রাই) আটকে থাকত। after() দিয়ে
+  // রেসপন্সের পরে ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে — অ্যাডমিন সাথে সাথে পরের কাজে
+  // যেতে পারবে, লাইভ সাইটের ক্যাশ তাও কয়েক সেকেন্ডের মধ্যেই রিফ্রেশ হবে।
+  after(() => { revalidateVangcurCatalog(); });
   return { ok: true };
 }
 

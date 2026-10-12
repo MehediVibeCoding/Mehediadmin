@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
@@ -52,7 +53,8 @@ async function persistHeroCards(cards: HeroCard[]): Promise<void> {
     await supabase.from('store_settings').insert({ setting_key: SETTING_KEY, setting_value: JSON.stringify(cards) });
   }
   revalidatePath('/design/hero-cards');
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে, সেভ বাটন অকারণে কয়েক সেকেন্ড আটকে থাকবে না
+  after(() => { revalidateVangcurCatalog(); });
 }
 
 export interface HeroCardActionResult {

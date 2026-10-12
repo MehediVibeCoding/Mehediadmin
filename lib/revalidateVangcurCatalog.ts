@@ -77,8 +77,17 @@ async function attempt(
       res.status === 503 ? 'Vangcur-এ GUIDE_REVALIDATE_SECRET_KEY সেট করা নেই' :
       res.status === 429 ? 'রেট লিমিট' :
       res.status === 404 ? 'ঠিকানা ভুল, বা Vangcur-এ /api/revalidate-catalog ডিপ্লয় হয়নি' : '';
-    // শুধু সার্ভার-সাইড/সাময়িক ত্রুটিতে আবার চেষ্টা; ৪xx-এ আবার চেষ্টা বৃথা
-    return { ok: false, status: res.status, note: [hint, msg].filter(Boolean).join(' | '), retry: res.status >= 500 };
+    // 🔒 A4 ফিক্স: আগে শুধু ৫xx/নেটওয়ার্ক ত্রুটিতে রিট্রাই হতো — ৪২৯ (মূল সাইটের
+    // /api/ লিমিটার প্রতি ১০ সেকেন্ডে ৩০-এর বেশি কল এলে দেয়) কখনো রিট্রাই হতো না,
+    // ফলে বাল্ক এডিটের সময় ক্যাশ পুরনো থেকে যেত। ৪২৯-ও এখন রিট্রাই-যোগ্য (attempt()
+    // কলার সাইডে, নিচে retryDelayMs অনুযায়ী একটু অপেক্ষা করে পাঠানো হয়)। বাকি ৪xx
+    // (৪০১/৪০৪ ইত্যাদি) এখনো রিট্রাই হয় না — সেগুলো কনফিগ-ভুল, আবার চেষ্টায় ঠিক হবে না।
+    return {
+      ok: false,
+      status: res.status,
+      note: [hint, msg].filter(Boolean).join(' | '),
+      retry: res.status >= 500 || res.status === 429,
+    };
   } catch (e) {
     const aborted = e instanceof Error && e.name === 'AbortError';
     return { ok: false, note: aborted ? `${TIMEOUT_MS}ms-এ সাড়া নেই` : `নেটওয়ার্ক ত্রুটি: ${e instanceof Error ? e.message : String(e)}`, retry: true };
@@ -122,6 +131,11 @@ export async function revalidateVangcurCatalog(): Promise<CatalogSyncResult> {
 
   let result = await attempt(url, secret);
   if (!result.ok && result.retry) {
+    // ৪২৯-এ সাথে সাথে আবার পাঠালে একই উইন্ডোতে আবার রেট-লিমিট ছোঁয়ার সম্ভাবনা বেশি —
+    // একটু থেমে পাঠানো (৫xx/নেটওয়ার্ক ত্রুটিতে সাথে সাথেই রিট্রাই, আগের মতোই)
+    if (result.status === 429) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
     result = await attempt(url, secret); // একবারই রিট্রাই
   }
 

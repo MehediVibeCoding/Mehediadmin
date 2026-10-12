@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput } from '@/lib/security';
@@ -57,7 +58,8 @@ async function persistOfferConfig(cfg: OfferConfig): Promise<void> {
     await supabase.from('store_settings').insert({ setting_key: SETTING_KEY, setting_value: JSON.stringify(cfg) });
   }
   revalidatePath('/offers-mgmt');
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে, সেভ বাটন অকারণে কয়েক সেকেন্ড আটকে থাকবে না
+  after(() => { revalidateVangcurCatalog(); });
 }
 
 export interface OfferActionResult {

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { revalidateVangcurCatalog } from '@/lib/revalidateVangcurCatalog';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth-guard';
@@ -56,7 +57,8 @@ async function persistCategories(cats: CategoryOption[]): Promise<void> {
   }
   revalidatePath('/design/categories');
   revalidatePath('/products'); // Products-এর ক্যাটাগরি dropdown/ফিল্টার এর উপর নির্ভরশীল
-  await revalidateVangcurCatalog();
+  // 🔒 A4 ফিক্স — ব্যাকগ্রাউন্ডে পাঠানো হচ্ছে, সেভ বাটন অকারণে কয়েক সেকেন্ড আটকে থাকবে না
+  after(() => { revalidateVangcurCatalog(); });
 }
 
 export interface CategoryActionResult {

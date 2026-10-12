@@ -60,8 +60,14 @@ const CSV_HEADERS = [
   'IP',
 ];
 
+// 🔒 A10 ফিক্স: CSV ফর্মুলা-ইনজেকশনের দ্বিতীয় স্তর — lib/csv.ts-এর
+// csvSafeCell()-এর সাথে হুবহু একই লজিক (দেখো সেখানকার কমেন্ট)। Edge
+// runtime-এ চলা এই রুটে আলাদা ফাইল থেকে import না করে ইচ্ছাকৃতভাবে ইনলাইন
+// রাখা হলো — ছোট, স্বনির্ভর ফাংশন, নতুন ডিপেন্ডেন্সি-চেইন তৈরি করার দরকার নেই।
 function csvEscape(v: unknown): string {
-  return `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const s = String(v ?? '');
+  const guarded = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  return `"${guarded.replace(/"/g, '""')}"`;
 }
 
 function orderToCsvLine(o: Order): string {
