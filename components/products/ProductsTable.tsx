@@ -336,7 +336,7 @@ export default function ProductsTable({
           <button
             type="button"
             onClick={onAdd}
-            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.4)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] lg:h-10 lg:w-auto lg:text-[12.5px]"
+            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] lg:h-10 lg:w-auto lg:text-[12.5px]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-3.5 w-3.5">
               <path d="M12 5v14M5 12h14" />
@@ -355,7 +355,7 @@ export default function ProductsTable({
                 onClick={() => onCatChange(c.id)}
                 className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                   active
-                    ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
+                    ? 'border-brand-light bg-brand-light text-white'
                     : c.count === 0 && c.id !== 'all'
                       ? 'border-border-base/70 bg-surface-muted/60 text-muted'
                       : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
@@ -469,7 +469,7 @@ export default function ProductsTable({
                         aria-expanded={isOpen}
                         className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                           isOpen
-                            ? 'border-brand-light bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)]'
+                            ? 'border-brand-light bg-brand-light text-white'
                             : 'border-brand-light/40 bg-brand-light/10 text-ink'
                         }`}
                       >
@@ -523,7 +523,7 @@ export default function ProductsTable({
                           <button
                             type="button"
                             onClick={() => onEdit(p.id)}
-                            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)] transition-all duration-brand active:scale-[0.98]"
+                            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white transition-all duration-brand active:scale-[0.98]"
                           >
                             <PencilIcon />
                             এডিট করুন
@@ -641,7 +641,7 @@ export default function ProductsTable({
                                 onClick={() => onEdit(p.id)}
                                 title="এডিট করুন"
                                 aria-label="এডিট করুন"
-                                className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)] transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
+                                className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
                               >
                                 <PencilIcon />
                               </button>

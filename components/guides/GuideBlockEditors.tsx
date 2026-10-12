@@ -496,7 +496,7 @@ export function GuideBlockListEditor({ blocks, onChange }: { blocks: GuideBlock[
             <option key={t} value={t}>{BLOCK_TYPE_LABELS[t]}</option>
           ))}
         </select>
-        <button type="button" onClick={addBlock} className="rounded-full bg-brand-light px-4 py-2 text-[12.5px] font-extrabold text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)] transition-all duration-brand hover:bg-brand-light-hover active:scale-95">
+        <button type="button" onClick={addBlock} className="rounded-full bg-brand-light px-4 py-2 text-[12.5px] font-extrabold text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-95">
           + ব্লক যোগ করুন
         </button>
       </div>

@@ -9,6 +9,7 @@ import { sanitizeInput, sanitizeInputArray, isValidPositiveIntId } from '@/lib/s
 import { validateImageUpload } from '@/lib/uploadValidation';
 import { uploadToR2 } from '@/lib/r2';
 import { requireAdmin } from '@/lib/auth-guard';
+import { COLLECTION_IDS } from '@/lib/constants/homeShowcase';
 import { fetchAllRows } from '@/lib/fetchAllRows';
 import { adminCached, invalidateProductsData, PRODUCTS_TAG } from '@/lib/adminCache';
 import { PAGE_SIZE } from '@/lib/constants/pagination';
@@ -246,6 +247,18 @@ export interface ProductFormInput {
   closing?: string; // শুধু AI Parse ফ্লো থেকে আসে — ম্যানুয়াল ফর্মে কোনো ফিল্ড নেই (legacy-তেও নেই)
   colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
   colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
+  collections: string[]; // হোম-শোকেস কালেকশন id (gift / premium / unique / cute) — custom_products.collections (text[])
+}
+
+// কালেকশন কলাম (_migration_reference/002_product_collections.sql) এখনো না বানানো থাকলে সেভ যেন না ভাঙে —
+// তখন কালেকশন বাদ দিয়ে বাকি সব সেভ হয়।
+function isMissingCollectionsColumn(message: string): boolean {
+  return /collections/i.test(message) && /(column|schema cache)/i.test(message);
+}
+
+function cleanCollections(input: ProductFormInput): string[] {
+  const ids = (COLLECTION_IDS as readonly string[]);
+  return Array.from(new Set((input.collections || []).filter((c): c is string => typeof c === 'string' && ids.includes(c))));
 }
 
 function parseTechSpecs(raw: string): Record<string, string> {
@@ -385,8 +398,11 @@ export async function createProduct(
     sort_order: nextSortOrder,
   };
 
-  const { data, error } = await supabase.from(TABLE).insert([row]).select().single();
-  if (error) return { status: 'error', message: error.message };
+  let { data, error } = await supabase.from(TABLE).insert([{ ...row, collections: cleanCollections(input) }]).select().single();
+  if (error && isMissingCollectionsColumn(error.message)) {
+    ({ data, error } = await supabase.from(TABLE).insert([row]).select().single());
+  }
+  if (error || !data) return { status: 'error', message: error?.message || 'সেভ ব্যর্থ' };
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(data.id, unitProfit);
@@ -449,8 +465,11 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
   };
 
-  const { data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single();
-  if (error) return { status: 'error', message: error.message };
+  let { data, error } = await supabase.from(TABLE).update({ ...row, collections: cleanCollections(input) }).eq('id', id).select().single();
+  if (error && isMissingCollectionsColumn(error.message)) {
+    ({ data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single());
+  }
+  if (error || !data) return { status: 'error', message: error?.message || 'সেভ ব্যর্থ' };
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(id, unitProfit);

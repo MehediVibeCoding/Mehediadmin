@@ -188,7 +188,7 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
                   type="button"
                   onClick={() => setTab(t.key)}
                   className={`h-10 flex-1 rounded-full px-1 font-body text-[12.5px] font-extrabold transition-all duration-brand ${
-                    tab === t.key ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.4)]' : 'text-muted hover:text-ink'
+                    tab === t.key ? 'bg-brand-light text-white' : 'text-muted hover:text-ink'
                   }`}
                 >
                   {t.label}
@@ -226,7 +226,7 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
                 <button
                   type="button"
                   onClick={handleParse}
-                  className="mt-3.5 h-12 w-full rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98]"
+                  className="mt-3.5 h-12 w-full rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98]"
                 >
                   পার্স করুন
                 </button>
@@ -287,7 +287,7 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
                 type="button"
                 disabled={saving}
                 onClick={handleSave}
-                className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+                className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
               >
                 {saving ? 'সেভ হচ্ছে...' : 'ড্রাফট সেভ করুন'}
               </button>
@@ -297,8 +297,8 @@ export default function GuideEditorModal({ page, onClose, onSaved }: { page: Gui
                 onClick={handlePublishToggle}
                 className={`h-12 rounded-full font-body text-[13.5px] font-black text-white transition-all duration-brand active:scale-[0.98] disabled:opacity-50 ${
                   page.is_published
-                    ? 'bg-amber-500 shadow-[0_6px_18px_rgba(245,158,11,0.4)]'
-                    : 'bg-success shadow-[0_6px_18px_rgba(16,185,129,0.4)]'
+                    ? 'bg-amber-500'
+                    : 'bg-success'
                 }`}
               >
                 {publishing ? '...' : page.is_published ? 'আনপাবলিশ করুন' : 'পাবলিশ করুন'}

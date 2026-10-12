@@ -40,7 +40,7 @@ export default function QuickActions() {
           href="/products"
           className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-light text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)]">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-light text-white">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -99,6 +99,78 @@ export default function QuickActions() {
           <span className="min-w-0 flex-1">
             <span className="block font-body text-[13.5px] font-extrabold text-ink">পেন্ডিং অর্ডারসমূহ</span>
             <span className="block font-body text-[11px] font-medium text-muted">রিভিউর অপেক্ষায় থাকা অর্ডার</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-light">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+
+        <Link
+          href="/traffic"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-violet-50 text-violet-600">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">ভিজিটর ও ট্রাফিক রিপোর্ট</span>
+            <span className="block font-body text-[11px] font-medium text-muted">কারা আসছে, কোথা থেকে</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-light">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+
+        <Link
+          href="/coupons"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-orange-50 text-orange-500">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.59 13.41 11 3H4v7l9.59 9.59a2 2 0 0 0 2.82 0l4.18-4.18a2 2 0 0 0 0-2.82Z" /><circle cx="7.5" cy="7.5" r="1.5" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">কুপন ম্যানেজ করুন</span>
+            <span className="block font-body text-[11px] font-medium text-muted">ছাড় তৈরি ও বন্ধ করুন</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-light">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+
+        <Link
+          href="/bkash-transactions"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-rose-50 text-rose-500">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="3" /><path d="M2 10h20" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">বিকাশ লেনদেন</span>
+            <span className="block font-body text-[11px] font-medium text-muted">অব্যবহৃত SMS মিলিয়ে নিন</span>
+          </span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-light">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+
+        <Link
+          href="/reviews-qa"
+          className="group flex items-center gap-3 rounded-2xl p-2.5 transition-all duration-brand hover:bg-brand-bg/25 active:scale-[0.98]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-emerald-50 text-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-body text-[13.5px] font-extrabold text-ink">রিভিউ ও প্রশ্নোত্তর</span>
+            <span className="block font-body text-[11px] font-medium text-muted">কাস্টমারের প্রশ্নের উত্তর দিন</span>
           </span>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted/60 transition-transform duration-brand group-hover:translate-x-0.5 group-hover:text-brand-light">
             <polyline points="9 18 15 12 9 6" />

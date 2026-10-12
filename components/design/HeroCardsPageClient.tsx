@@ -210,7 +210,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
             <button
               type="button"
               onClick={openAdd}
-              className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-brand-light px-5 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] sm:h-10 sm:flex-none sm:text-[12.5px]"
+              className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-brand-light px-5 font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] sm:h-10 sm:flex-none sm:text-[12.5px]"
             >
               <Svg className="h-3.5 w-3.5" sw={3}>
                 <path d="M12 5v14M5 12h14" />
@@ -273,7 +273,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
                 <span className="absolute left-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-black/50 px-1.5 text-[10px] font-black text-white">
                   {i + 1}
                 </span>
-                <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.5)]">
+                <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-brand-light text-white">
                   <Svg className="h-3.5 w-3.5">
                     <path d="M12 20h9" />
                     <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
@@ -416,7 +416,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
                           type="button"
                           onClick={() => setEditor({ ...editor, linkType: lt.id })}
                           className={`h-10 flex-1 rounded-full font-body text-[11.5px] font-extrabold transition-all duration-brand active:scale-[0.98] ${
-                            active ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.4)]' : 'text-ink'
+                            active ? 'bg-brand-light text-white' : 'text-ink'
                           }`}
                         >
                           {lt.title}
@@ -519,7 +519,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
                   type="button"
                   disabled={saving || uploading}
                   onClick={handleSave}
-                  className="h-12 rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
+                  className="h-12 rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
                 >
                   {saving ? 'সেভ হচ্ছে...' : 'কার্ড সেভ করুন'}
                 </button>

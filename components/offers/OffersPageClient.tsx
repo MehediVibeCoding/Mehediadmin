@@ -438,7 +438,7 @@ export default function OffersPageClient({ config, products }: Props) {
                   type="button"
                   disabled={saving}
                   onClick={handleSave}
-                  className="flex h-12 flex-[2] items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+                  className="flex h-12 flex-[2] items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
                 >
                   {saving ? 'সেভ হচ্ছে...' : 'সেভ করুন'}
                 </button>

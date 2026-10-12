@@ -219,7 +219,7 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
                 <button
                   type="button"
                   onClick={() => onView(o.id)}
-                  className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)] transition-all duration-brand active:scale-[0.98]"
+                  className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white transition-all duration-brand active:scale-[0.98]"
                 >
                   বিস্তারিত দেখুন
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">

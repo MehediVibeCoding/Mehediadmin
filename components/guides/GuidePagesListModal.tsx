@@ -192,7 +192,7 @@ export default function GuidePagesListModal({
                 type="button"
                 onClick={() => setCreating(true)}
                 disabled={availableTemplates.length === 0}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-3.5 w-3.5">
                   <path d="M12 5v14M5 12h14" />
@@ -228,7 +228,7 @@ export default function GuidePagesListModal({
                     type="button"
                     disabled={saving}
                     onClick={handleCreate}
-                    className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
                   >
                     {saving ? 'তৈরি হচ্ছে...' : 'তৈরি করুন'}
                   </button>

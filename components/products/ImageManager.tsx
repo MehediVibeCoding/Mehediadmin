@@ -160,7 +160,7 @@ export default function ImageManager({ images, onChange }: Props) {
                     type="button"
                     onClick={() => fileInputs.current[idx]?.click()}
                     disabled={uploadingIdx === idx}
-                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-brand-light px-4 font-body text-[12.5px] font-extrabold text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)] transition-all duration-brand active:scale-95 disabled:opacity-60"
+                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-brand-light px-4 font-body text-[12.5px] font-extrabold text-white transition-all duration-brand active:scale-95 disabled:opacity-60"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

@@ -76,7 +76,7 @@ export default function Pagination({ page, total, pageSize = PAGE_SIZE, onPageCh
               aria-current={it === page ? 'page' : undefined}
               className={`flex h-9 min-w-9 items-center justify-center rounded-xl px-2 text-[12.5px] font-extrabold transition-all duration-brand active:scale-95 ${
                 it === page
-                  ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.38)]'
+                  ? 'bg-brand-light text-white'
                   : 'border border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
               }`}
             >

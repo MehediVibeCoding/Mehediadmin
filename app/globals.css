@@ -117,14 +117,13 @@
   100% { transform: translateX(220%) skewX(-20deg); }
 }
 
-/* ৩. কার্ড হোভার গ্লো — ডেস্কটপ (Card Hover Glow) */
+/* ৩. কার্ড হোভার — ডেস্কটপ। কোনো রঙিন শ্যাডো/গ্লো নেই, শুধু বর্ডারের হালকা স্কাই-ব্লু টিন্ট */
 @media (hover: hover) and (pointer: fine) {
   .card-hover-glow {
-    transition: box-shadow 250ms cubic-bezier(.4,0,.2,1), transform 250ms cubic-bezier(.4,0,.2,1);
+    transition: border-color 250ms cubic-bezier(.4,0,.2,1);
   }
   .card-hover-glow:hover {
-    box-shadow: 0 8px 30px rgba(68, 167, 252, 0.22);
-    transform: translateY(-2px);
+    border-color: rgba(68, 167, 252, 0.45);
   }
 }
 
@@ -257,7 +256,7 @@ html {
    ২) হালকা সাদা গ্রেডিয়েন্ট ও উপরের-বামে আলোর ছটা
    ৩) ::before — গ্রেডিয়েন্ট রিম (কিনারা): উপরে-বামে ও নিচে-ডানে উজ্জ্বল, মাঝে প্রায় স্বচ্ছ
    ৪) ::after — উপরে স্পেকুলার শিন (চকচকে আলোর ফালি)
-   ৫) বাইরে নরম স্কাই-ব্লু শ্যাডো। শুধু স্কাই-ব্লু (#44A7FC) টোন।
+   ৫) রঙিন বাইরের শ্যাডো/গ্লো নেই। শুধু স্কাই-ব্লু (#44A7FC) টোন।
    ══════════════════════════════════════════════════════════════════════ */
 .liquid-glass-bar {
   background:
@@ -266,9 +265,8 @@ html {
   -webkit-backdrop-filter: blur(26px) saturate(2.1) brightness(1.05);
   backdrop-filter: blur(26px) saturate(2.1) brightness(1.05);
   box-shadow:
-    0 4px 14px rgba(26, 26, 26, 0.10),
+    0 2px 10px rgba(26, 26, 26, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0 rgba(68, 167, 252, 0.16),
     inset 0 0 26px rgba(255, 255, 255, 0.30);
 }
 .liquid-glass-bar::before,
@@ -315,10 +313,8 @@ html {
 .liquid-glass-lens {
   background: linear-gradient(180deg, #7CC4FF 0%, #44A7FC 52%, #2E92EE 100%);
   box-shadow:
-    0 10px 22px -4px rgba(68, 167, 252, 0.58),
-    0 2px 6px rgba(46, 146, 238, 0.35),
     inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
-    inset 0 -4px 8px rgba(30, 120, 215, 0.45),
+    inset 0 -4px 8px rgba(30, 120, 215, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   will-change: transform;
 }
@@ -352,10 +348,8 @@ html {
   backdrop-filter: blur(12px) saturate(1.8);
   border: 1px solid rgba(255, 255, 255, 0.92);
   box-shadow:
-    0 14px 26px -6px rgba(68, 167, 252, 0.58),
-    0 3px 8px rgba(46, 146, 238, 0.25),
     inset 0 2px 2px rgba(255, 255, 255, 0.95),
-    inset 0 -4px 8px rgba(68, 167, 252, 0.35),
+    inset 0 -4px 8px rgba(68, 167, 252, 0.30),
     0 0 0 5px rgba(255, 255, 255, 0.30);
 }
 .liquid-glass-orb[data-active='true'] {
@@ -363,9 +357,8 @@ html {
     radial-gradient(circle at 32% 20%, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 46%),
     linear-gradient(180deg, #7CC4FF 0%, #44A7FC 55%, #2E92EE 100%);
   box-shadow:
-    0 14px 28px -6px rgba(68, 167, 252, 0.62),
     inset 0 2px 2px rgba(255, 255, 255, 0.8),
-    inset 0 -4px 8px rgba(30, 120, 215, 0.5),
+    inset 0 -4px 8px rgba(30, 120, 215, 0.4),
     0 0 0 5px rgba(255, 255, 255, 0.30);
 }
 
@@ -410,11 +403,70 @@ html {
   .sk::after { animation: none; display: none; }
 }
 
-/* পেজ বদলের হালকা ফেড — শুধু opacity, তাই লেআউট নড়ে না */
+/* পেজ বদলের হালকা ফেড — শুধু opacity, তাই লেআউট নড়ে না।
+   `backwards` (both নয়): অ্যানিমেশন শেষে স্ট্যাকিং কনটেক্সট থাকে না, তাই ভেতরের fixed মডাল (z-60)
+   নিচের ডক বারের (z-40) উপরে ঠিকমতো বসে। */
 @keyframes pageFade {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 .page-fade {
-  animation: pageFade 0.18s ease-out both;
+  animation: pageFade 0.18s ease-out backwards;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   মডাল খোলা থাকলে ফ্লোটিং বার লুকানো
+   ──────────────────────────────────────────────────────────────────────
+   Sidebar-এর useAnyModalOpen() <html data-modal-open="true"> বসায়।
+   মোবাইলে ডক বার ও ভাসমান বাল্ক-বার মডালের সেভ/বাতিল বাটন ঢেকে দিত।
+   ══════════════════════════════════════════════════════════════════════ */
+.hide-when-modal {
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(.32, .72, 0, 1), visibility 0s linear 0s;
+}
+html[data-modal-open='true'] .hide-when-modal {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 140ms ease, visibility 0s linear 140ms;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ড্যাশবোর্ড ইনসাইট ক্যারাউসেল — সোয়াইপ/ক্লিক করে একের পর এক কার্ড
+   ══════════════════════════════════════════════════════════════════════ */
+.insight-track {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+}
+.insight-track[data-dragging='true'] {
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+  cursor: grabbing;
+  user-select: none;
+}
+.insight-slide {
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.bar-grow {
+  transform-origin: left center;
+  animation: barGrow 0.6s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes colGrow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+.col-grow {
+  transform-origin: center bottom;
+  animation: colGrow 0.6s cubic-bezier(.22, 1, .36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar-grow, .col-grow { animation: none; }
+  .insight-track { scroll-behavior: auto; }
 }

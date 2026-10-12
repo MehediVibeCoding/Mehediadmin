@@ -204,7 +204,7 @@ function RejectReviewModal({
               type="button"
               disabled={busy || !reason.trim()}
               onClick={() => onConfirm(reason)}
-              className="flex h-12 items-center justify-center gap-2 rounded-full bg-danger font-body text-[13.5px] font-black text-white shadow-[0_4px_14px_rgba(230,57,70,0.35)] transition-all duration-brand hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+              className="flex h-12 items-center justify-center gap-2 rounded-full bg-danger font-body text-[13.5px] font-black text-white transition-all duration-brand hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
             >
               {busy ? 'বাতিল হচ্ছে...' : 'রিজেক্ট করুন'}
             </button>
@@ -318,7 +318,7 @@ function ReviewCardItem({
               type="button"
               disabled={busy}
               onClick={() => onApprove(r.id)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-success px-4 font-body text-[12px] font-black text-white shadow-[0_3px_10px_rgba(16,185,129,0.32)] transition-all duration-brand hover:opacity-90 active:scale-95 disabled:opacity-50"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-success px-4 font-body text-[12px] font-black text-white transition-all duration-brand hover:opacity-90 active:scale-95 disabled:opacity-50"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
                 <polyline points="20 6 9 17 4 12" />
@@ -505,7 +505,7 @@ export default function ReviewsPanel({ reviews, onReviewsChange }: Props) {
                 onClick={() => changeFilter(t.key)}
                 className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                   active
-                    ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
+                    ? 'border-brand-light bg-brand-light text-white'
                     : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
                 }`}
               >

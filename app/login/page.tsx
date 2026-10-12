@@ -54,7 +54,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-[420px]">
         <form
           onSubmit={handleLogin}
-          className="animate-sheet-up rounded-[28px] border border-white/90 bg-white p-6 shadow-[0_24px_70px_rgba(68,167,252,0.24)] sm:p-8"
+          className="animate-sheet-up rounded-[28px] border border-white/90 bg-white p-6 sm:p-8"
         >
           <div className="mb-6 flex flex-col items-center text-center">
             <BrandLogo className="h-[76px] w-auto" priority />
@@ -163,7 +163,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
+            className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
           >
             {loading && (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="animate-spin" aria-hidden="true">

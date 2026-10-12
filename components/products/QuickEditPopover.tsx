@@ -229,7 +229,7 @@ export default function QuickEditPopover({ productName, productId, kind, initial
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_4px_14px_rgba(68,167,252,0.4)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
+            className="h-12 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
           >
             {saving ? 'সেভ হচ্ছে...' : 'সেভ করুন'}
           </button>

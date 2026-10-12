@@ -88,7 +88,7 @@ export default function RawSmsModal({ payment, onClose }: Props) {
             type="button"
             onClick={copySms}
             disabled={!payment.raw_sms}
-            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)] transition-all duration-brand active:scale-[0.98] disabled:opacity-50"
+            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white transition-all duration-brand active:scale-[0.98] disabled:opacity-50"
           >
             মেসেজ কপি করুন
           </button>

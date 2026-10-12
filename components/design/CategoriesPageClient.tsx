@@ -143,7 +143,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
           <button
             type="button"
             onClick={openAdd}
-            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.4)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] sm:h-10 sm:w-auto sm:text-[12.5px]"
+            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] sm:h-10 sm:w-auto sm:text-[12.5px]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="h-3.5 w-3.5">
               <path d="M12 5v14M5 12h14" />
@@ -272,7 +272,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
                   onClick={() => openEdit(c)}
                   title="ক্যাটাগরি এডিট করুন"
                   aria-label="ক্যাটাগরি এডিট করুন"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.36)] transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                     <path d="M12 20h9" />
@@ -408,7 +408,7 @@ export default function CategoriesPageClient({ categories, productCounts }: Prop
                   type="button"
                   disabled={saving || !editor.name.trim() || !editor.id.trim()}
                   onClick={handleSave}
-                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
                 >
                   {saving ? (
                     'সেভ হচ্ছে...'

@@ -45,7 +45,7 @@ export default function ProductReviewsQnAPageClient({ initialReviews, initialQue
                 type="button"
                 onClick={() => setTab(key)}
                 className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-full font-body text-[13px] font-extrabold transition-all duration-brand active:scale-[0.98] ${
-                  active ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.4)]' : 'text-muted hover:text-ink'
+                  active ? 'bg-brand-light text-white' : 'text-muted hover:text-ink'
                 }`}
               >
                 {TAB_LABELS[key]}

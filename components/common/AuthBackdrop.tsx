@@ -27,7 +27,7 @@ type TileProps = {
 function IconTile({ pos, scale = 1, rotate = 0, iconClass, children }: TileProps) {
   return (
     <div
-      className={`absolute items-center justify-center rounded-[30%] bg-white/30 text-brand-light/65 shadow-[0_14px_34px_-14px_rgba(0,88,199,0.30)] ring-1 ring-white/75 dark:bg-white/[0.035] dark:text-sky-300/45 dark:shadow-none dark:ring-white/10 ${iconClass}`}
+      className={`absolute items-center justify-center rounded-[30%] bg-white/30 text-brand-light/65 ring-1 ring-white/75 dark:bg-white/[0.035] dark:text-sky-300/45 dark:shadow-none dark:ring-white/10 ${iconClass}`}
       style={{
         ...pos,
         width: `calc(${BASE} * ${scale})`,

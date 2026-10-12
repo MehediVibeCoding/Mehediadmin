@@ -50,7 +50,7 @@ const config: Config = {
         sh1: '0 1px 4px rgba(0,0,0,.07)',
         sh2: '0 4px 18px rgba(0,0,0,.10)',
         sh3: '0 8px 36px rgba(0,0,0,.13)',
-        glass: '0 8px 32px rgba(68,167,252,.12), 0 1.5px 4px rgba(68,167,252,.06)',
+        glass: '0 1px 4px rgba(0,0,0,.07)',
       },
       borderRadius: {
         brand: '12px',

@@ -228,7 +228,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
                   type="button"
                   onClick={() => switchTab(id)}
                   className={`h-10 flex-1 rounded-full font-body text-[13px] font-extrabold transition-all duration-brand ${
-                    tab === id ? 'bg-brand-light text-white shadow-[0_4px_12px_rgba(68,167,252,0.4)]' : 'text-muted hover:text-ink'
+                    tab === id ? 'bg-brand-light text-white' : 'text-muted hover:text-ink'
                   }`}
                 >
                   {label}
@@ -665,7 +665,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
                 type="button"
                 disabled={saving}
                 onClick={() => handleSave(false)}
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
+                className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
               >
                 {saving ? (
                   'সেভ হচ্ছে...'

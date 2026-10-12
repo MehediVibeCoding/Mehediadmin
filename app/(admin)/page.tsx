@@ -4,7 +4,8 @@ import StatGrid from '@/components/dashboard/StatGrid';
 import RecentOrders from '@/components/dashboard/RecentOrders';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RevenueChart from '@/components/dashboard/RevenueChart';
-import OrderStatusDonut from '@/components/dashboard/OrderStatusDonut';
+import InsightCarousel from '@/components/dashboard/InsightCarousel';
+import { TrafficProvider } from '@/components/dashboard/TrafficProvider';
 import LowStockAlert from '@/components/dashboard/LowStockAlert';
 import PageErrorBox from '@/components/common/PageErrorBox';
 
@@ -22,17 +23,18 @@ export default async function DashboardPage() {
     });
 
     return (
+      <TrafficProvider>
       <div className="pb-4">
         {/* ১. ওয়েলকাম + তারিখ + লাইভ আবহাওয়া — একটাই কার্ডে */}
         <WeatherWidget dateLabel={today} />
 
-        {/* ২. কালারফুল প্যাস্টেল গ্লাস স্ট্যাটাস গ্রিড — একটা হিরো কার্ড + কমপ্যাক্ট টাইলস */}
-        <StatGrid stats={data.stats} />
+        {/* ২. নিট প্রফিট হিরো + ছয় মেট্রিকের একটাই বোর্ড */}
+        <StatGrid stats={data.stats} insights={data.insights} />
 
-        {/* ৩. রেভিনিউ ট্রেন্ড চার্ট ও অর্ডার-অবস্থা ডোনাট পাশাপাশি */}
+        {/* ৩. রেভিনিউ ট্রেন্ড চার্ট ও সোয়াইপযোগ্য ইনসাইট কার্ড (প্রথমটা অর্ডার অবস্থা) */}
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.9fr_1.1fr]">
           <RevenueChart revenueByDate={data.revenueByDate} />
-          <OrderStatusDonut stats={data.stats} />
+          <InsightCarousel stats={data.stats} insights={data.insights} actions={data.actions} />
         </div>
 
         {/* ৪. সর্বশেষ অর্ডারসমূহ ও কুইক অ্যাকশন প্যানেল */}
@@ -44,6 +46,7 @@ export default async function DashboardPage() {
         {/* ৫. কম স্টক সতর্কতা লিস্ট */}
         <LowStockAlert items={data.lowStock} />
       </div>
+      </TrafficProvider>
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

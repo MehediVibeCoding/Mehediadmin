@@ -151,7 +151,7 @@ export default function OrdersToolbar({
                 onClick={() => onSelectFilter(s)}
                 className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                   active
-                    ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
+                    ? 'border-brand-light bg-brand-light text-white'
                     : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
                 }`}
               >
@@ -188,7 +188,7 @@ export default function OrdersToolbar({
              ডেস্কটপে টুলবারের নিচে ইনলাইন ══ */}
       {selectedCount > 0 && (
         <div
-          className="animate-sheet-up fixed inset-x-3 z-[45] mx-auto max-w-[420px] rounded-[22px] border border-brand-light/35 bg-white p-3 shadow-[0_10px_36px_rgba(68,167,252,0.28)] lg:static lg:mb-4 lg:max-w-none lg:animate-none lg:shadow-sh1"
+          className="hide-when-modal animate-sheet-up fixed inset-x-3 z-[45] mx-auto max-w-[420px] rounded-[22px] border border-brand-light/35 bg-white p-3 lg:static lg:mb-4 lg:max-w-none lg:animate-none lg:shadow-sh1"
           style={{ bottom: 'calc(92px + env(safe-area-inset-bottom, 0px))' }}
         >
           <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export default function OrdersToolbar({
                 type="button"
                 onClick={onConfirmBulk}
                 disabled={bulkBusy}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-brand-light px-4 font-body text-[12px] font-black text-white shadow-[0_4px_12px_rgba(68,167,252,0.38)] transition-all duration-brand hover:bg-brand-light-hover active:scale-95 disabled:opacity-60"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-brand-light px-4 font-body text-[12px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-95 disabled:opacity-60"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />

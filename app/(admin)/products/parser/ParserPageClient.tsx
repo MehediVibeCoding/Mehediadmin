@@ -172,7 +172,7 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
         type="button"
         onClick={handleParse}
         disabled={loading}
-        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
+        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60"
       >
         {loading ? (
           STATUS_MESSAGES[statusIdx]

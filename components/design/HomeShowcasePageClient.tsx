@@ -917,7 +917,7 @@ export default function HomeShowcasePageClient({ config, categories, collectionC
             type="button"
             disabled={saveDisabled}
             onClick={handleSave}
-            className="flex h-11 shrink-0 items-center justify-center rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
+            className="flex h-11 shrink-0 items-center justify-center rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
           >
             {saving ? 'সেভ হচ্ছে...' : 'সব সেভ করুন'}
           </button>

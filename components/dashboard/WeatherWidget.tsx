@@ -252,35 +252,35 @@ export default function WeatherWidget({ dateLabel, name = 'Mehedi' }: WeatherWid
   }, []);
 
   return (
-    <section className="relative mb-5 overflow-hidden rounded-[24px] border border-white/90 bg-gradient-to-br from-brand-bg/70 via-white to-white p-4 shadow-sh1 sm:p-5">
-      {/* ডেকোরেটিভ ওয়াটারমার্ক মেঘ — স্থির (অ্যানিমেশন নেই), ডানদিকের ফাঁকা জায়গা ভরায় */}
+    <section className="relative mb-4 overflow-hidden rounded-[24px] border border-white/90 bg-gradient-to-br from-brand-bg/70 via-white to-white p-3.5 shadow-sh1 sm:mb-5 sm:p-5">
+      {/* ডেকোরেটিভ ওয়াটারমার্ক মেঘ — স্থির (অ্যানিমেশন নেই) */}
       <svg
         aria-hidden="true"
-        width="190"
-        height="190"
+        width="150"
+        height="150"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
         strokeWidth="0.9"
-        className="pointer-events-none absolute -bottom-12 -right-8 text-brand-light opacity-[0.12]"
+        className="pointer-events-none absolute -bottom-10 -right-6 text-brand-light opacity-[0.10] sm:-bottom-12 sm:-right-8 sm:h-[190px] sm:w-[190px]"
       >
         <path d="M17.5 19H9a5 5 0 0 1-1-9.9 5.5 5.5 0 0 1 10.5 2.4A4 4 0 0 1 17.5 19Z" />
       </svg>
 
       <div className="relative z-10">
-        {/* ═ উপরের সারি: স্বাগতম বার্তা + আজকের তারিখ ═ */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        {/* ═ উপরের অংশ: স্বাগতম বার্তা + আজকের তারিখ (মোবাইলে "Hi" লাইনের ডানে, তাই বাড়তি সারি লাগে না) ═ */}
+        <div className="flex items-start justify-between gap-2.5 sm:gap-4">
           <div className="min-w-0">
-            <p className="font-body text-[13px] font-extrabold text-[#0F6FC6]">Hi {name},</p>
-            <h1 className="mt-0.5 font-body text-[21px] font-black leading-tight tracking-tight text-ink sm:text-[26px]">
+            <p className="font-body text-[12px] font-extrabold text-[#0F6FC6] sm:text-[13px]">Hi {name},</p>
+            <h1 className="mt-0.5 font-body text-[18px] font-black leading-tight tracking-tight text-ink sm:text-[26px]">
               Welcome to <span className="text-brand-light">Vangcur</span> Dashboard
             </h1>
           </div>
 
-          <div className="inline-flex h-9 shrink-0 items-center gap-2 self-start rounded-full border border-brand-light/40 bg-brand-light/10 px-3.5">
+          <div className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-brand-light/40 bg-brand-light/10 px-2.5 sm:h-9 sm:gap-2 sm:px-3.5">
             <svg
-              width="15"
-              height="15"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -295,22 +295,22 @@ export default function WeatherWidget({ dateLabel, name = 'Mehedi' }: WeatherWid
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span className="font-body text-[12px] font-extrabold text-ink">{dateLabel}</span>
+            <span className="max-w-[118px] truncate font-body text-[10.5px] font-extrabold text-ink sm:max-w-none sm:text-[12px]">{dateLabel}</span>
           </div>
         </div>
 
-        {/* ═ নিচের সারি: আবহাওয়া + তিনটা স্ট্যাট চিপ ═ */}
-        <div className="mt-4 flex flex-col gap-3.5 border-t border-brand-light/20 pt-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3.5">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-brand-light text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)]">
-              <WeatherIcon code={data.code} className="h-7 w-7" />
+        {/* ═ নিচের অংশ: আবহাওয়া + তিনটা মান একটাই স্ট্রিপে ═ */}
+        <div className="mt-3 flex flex-col gap-2.5 border-t border-brand-light/20 pt-3 lg:mt-4 lg:flex-row lg:items-center lg:justify-between lg:gap-3.5 lg:pt-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-light text-white sm:h-14 sm:w-14 sm:rounded-[18px]">
+              <WeatherIcon code={data.code} className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-2.5">
-                <span className="font-body text-[30px] font-black leading-none tracking-tight text-ink">{data.temp}</span>
-                <span className="font-body text-[13px] font-extrabold text-ink/80">{data.desc}</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-body text-[26px] font-black leading-none tracking-tight text-ink sm:text-[30px]">{data.temp}</span>
+                <span className="font-body text-[12.5px] font-extrabold text-ink/80 sm:text-[13px]">{data.desc}</span>
               </div>
-              <span className="mt-1.5 flex items-center gap-1 font-body text-[11.5px] font-semibold text-muted">
+              <span className="mt-1 flex items-center gap-1 font-body text-[11px] font-semibold text-muted sm:mt-1.5 sm:text-[11.5px]">
                 <svg
                   width="12"
                   height="12"
@@ -331,7 +331,7 @@ export default function WeatherWidget({ dateLabel, name = 'Mehedi' }: WeatherWid
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 lg:flex lg:shrink-0 lg:items-stretch">
+          <div className="grid grid-cols-3 divide-x divide-brand-light/20 rounded-2xl border border-border-base/70 bg-white/80 lg:min-w-[330px] lg:shrink-0">
             <StatChip label="অনুভূত" value={data.feels} tone="muted">
               <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
             </StatChip>
@@ -360,7 +360,7 @@ function StatChip({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-border-base/70 bg-white/80 px-3 py-2 lg:min-w-[104px]">
+    <div className="flex min-w-0 items-center justify-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2">
       <svg
         width="15"
         height="15"
@@ -375,9 +375,9 @@ function StatChip({
       >
         {children}
       </svg>
-      <div className="min-w-0">
-        <div className="truncate font-body text-[10px] font-extrabold uppercase tracking-wide text-muted">{label}</div>
-        <div className="truncate font-body text-[14px] font-black leading-tight text-ink">{value}</div>
+      <div className="min-w-0 text-center sm:text-left">
+        <div className="truncate font-body text-[9.5px] font-extrabold uppercase tracking-wide text-muted sm:text-[10px]">{label}</div>
+        <div className="truncate font-body text-[13.5px] font-black leading-tight text-ink sm:text-[14px]">{value}</div>
       </div>
     </div>
   );

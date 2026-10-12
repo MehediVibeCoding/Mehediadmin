@@ -72,8 +72,8 @@ export default function ConfirmDialog({
             onClick={onConfirm}
             className={`h-12 rounded-full font-body text-[13.5px] font-extrabold text-white transition-all duration-brand active:scale-[0.98] disabled:opacity-60 ${
               danger
-                ? 'bg-danger shadow-[0_4px_14px_rgba(239,68,68,0.35)] hover:opacity-90'
-                : 'bg-brand-light shadow-[0_4px_14px_rgba(68,167,252,0.38)] hover:bg-brand-light-hover'
+                ? 'bg-danger hover:opacity-90'
+                : 'bg-brand-light hover:bg-brand-light-hover'
             }`}
           >
             {busy ? busyLabel : confirmLabel}

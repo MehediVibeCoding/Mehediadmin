@@ -104,7 +104,7 @@ export default function BkashToolbar({
               onClick={() => onSelectFilter(t.key)}
               className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                 active
-                  ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
+                  ? 'border-brand-light bg-brand-light text-white'
                   : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
               }`}
             >

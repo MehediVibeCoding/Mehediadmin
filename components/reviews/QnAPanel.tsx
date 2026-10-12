@@ -125,7 +125,7 @@ function AnswerQuestionModal({
               type="button"
               disabled={busy || !answer.trim()}
               onClick={() => onConfirm(answer)}
-              className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white shadow-[0_4px_14px_rgba(68,167,252,0.4)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
+              className="flex h-12 items-center justify-center gap-2 rounded-full bg-brand-light font-body text-[13.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-50"
             >
               {busy ? (
                 'সাবমিট হচ্ছে...'
@@ -313,7 +313,7 @@ export default function QnAPanel({ questions, onQuestionsChange }: Props) {
                 onClick={() => changeFilter(t.key)}
                 className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 ${
                   active
-                    ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
+                    ? 'border-brand-light bg-brand-light text-white'
                     : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
                 }`}
               >
@@ -441,7 +441,7 @@ export default function QnAPanel({ questions, onQuestionsChange }: Props) {
                   <button
                     type="button"
                     onClick={() => setAnswerTarget(q)}
-                    className="flex h-10 items-center gap-1.5 rounded-full bg-brand-light px-5 font-body text-[12.5px] font-black text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)] transition-all duration-brand hover:bg-brand-light-hover active:scale-95"
+                    className="flex h-10 items-center gap-1.5 rounded-full bg-brand-light px-5 font-body text-[12.5px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-95"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                       <path d="M12 20h9" />

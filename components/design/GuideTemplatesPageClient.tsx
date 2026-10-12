@@ -100,7 +100,7 @@ export default function GuideTemplatesPageClient({ initialTemplates }: { initial
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] sm:h-10 sm:w-auto sm:text-[12.5px]"
+            className="flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-brand-light px-6 font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] sm:h-10 sm:w-auto sm:text-[12.5px]"
           >
             <Svg className="h-3.5 w-3.5" sw={3}>
               <path d="M12 5v14M5 12h14" />
@@ -119,7 +119,7 @@ export default function GuideTemplatesPageClient({ initialTemplates }: { initial
                 onClick={() => setFilter(c.id)}
                 className={`flex h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 font-body text-[12px] font-extrabold transition-all duration-brand active:scale-95 lg:h-9 ${
                   active
-                    ? 'border-brand-light bg-brand-light text-white shadow-[0_4px_14px_rgba(68,167,252,0.36)]'
+                    ? 'border-brand-light bg-brand-light text-white'
                     : 'border-border-base/80 bg-white text-ink hover:border-brand-light hover:text-brand-light'
                 }`}
               >
@@ -312,7 +312,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
             <button type="button" onClick={onClose} disabled={saving} className="h-12 rounded-full bg-surface-muted font-body text-[13.5px] font-extrabold text-ink transition-all duration-brand hover:bg-border-base active:scale-[0.98] disabled:opacity-60">
               বাতিল
             </button>
-            <button type="button" disabled={saving} onClick={handleCreate} className="h-12 rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60">
+            <button type="button" disabled={saving} onClick={handleCreate} className="h-12 rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60">
               {saving ? 'তৈরি হচ্ছে...' : 'তৈরি করুন'}
             </button>
           </div>
@@ -465,7 +465,7 @@ function EditTemplateModal({
             <button type="button" onClick={onClose} disabled={saving} className="h-12 rounded-full bg-surface-muted font-body text-[13.5px] font-extrabold text-ink transition-all duration-brand hover:bg-border-base active:scale-[0.98] disabled:opacity-60">
               বাতিল
             </button>
-            <button type="button" disabled={saving} onClick={handleSave} className="h-12 rounded-full bg-brand-light font-body text-[14px] font-black text-white shadow-[0_6px_18px_rgba(68,167,252,0.42)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60">
+            <button type="button" disabled={saving} onClick={handleSave} className="h-12 rounded-full bg-brand-light font-body text-[14px] font-black text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98] disabled:opacity-60">
               {saving ? 'সেভ হচ্ছে...' : 'সেভ করুন'}
             </button>
           </div>

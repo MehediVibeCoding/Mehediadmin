@@ -1,224 +1,216 @@
+'use client';
+
 import Link from 'next/link';
 import type { DashboardStats } from '@/app/actions/dashboard';
+import type { DashboardInsights } from '@/lib/dashboardInsights';
+import { useDashboardTraffic } from '@/components/dashboard/TrafficProvider';
+import { DeltaPill, Sparkline, fmtNum, fmtTaka, pctChange } from '@/components/dashboard/insights/charts';
 
-interface CardConfig {
+interface Metric {
   id: string;
   label: string;
   value: string;
-  note?: string;
+  note: React.ReactNode;
   href: string;
-  isLive?: boolean;
-  cardBg: string;
-  borderColor: string;
-  shadowColor: string;
-  iconBg: string;
-  iconColor: string;
-  valueColor?: string;
+  tone: string; // আইকন চিপের রং
+  dot?: boolean; // অ্যাকশন লাগলে ছোট স্থির ডট
   icon: React.ReactNode;
 }
 
-export default function StatGrid({ stats }: { stats: DashboardStats }) {
-  const cards: CardConfig[] = [
+const Icon = ({ children }: { children: React.ReactNode }) => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {children}
+  </svg>
+);
+
+export default function StatGrid({ stats, insights }: { stats: DashboardStats; insights: DashboardInsights }) {
+  const { status, data, live } = useDashboardTraffic();
+
+  // ── আজকের ভিজিটর: GA4/Cloudflare থেকে; না এলে কারণসহ ফাঁকা অবস্থা ──
+  let visitorValue = '—';
+  let visitorNote: React.ReactNode = 'লোড হচ্ছে...';
+  if (status === 'ready' && data) {
+    if (data.source === null) {
+      visitorNote = 'অ্যানালিটিক্স সংযুক্ত নয়';
+    } else {
+      visitorValue = fmtNum(data.todayUsers ?? 0);
+      const delta = data.yesterdayUsers !== null && data.todayUsers !== null ? pctChange(data.todayUsers, data.yesterdayUsers) : null;
+      visitorNote =
+        data.source === 'ga4' && live?.ok ? (
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
+            <span className="truncate">এখন {fmtNum(live.last30)} জন অনলাইনে</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <DeltaPill value={delta} /> <span className="truncate">গতকালের তুলনায়</span>
+          </span>
+        );
+    }
+  } else if (status === 'error') {
+    visitorNote = 'ডাটা আনা যায়নি';
+  }
+
+  const orderDelta = insights.today.orders - insights.today.yesterdayOrders;
+
+  const metrics: Metric[] = [
     {
       id: 'orders',
       label: 'মোট অর্ডার',
-      value: String(stats.totalOrders),
+      value: fmtNum(stats.totalOrders),
+      note: insights.today.orders > 0 ? `আজ ${fmtNum(insights.today.orders)}টি নতুন` : 'আজ এখনো নতুন নেই',
       href: '/orders',
-      isLive: stats.pendingCount > 0,
-      cardBg: 'bg-gradient-to-br from-[#EBF5FF] via-white to-white',
-      borderColor: 'border-blue-200/70 hover:border-brand-light/60',
-      shadowColor: 'shadow-[0_6px_24px_rgba(68,167,252,0.12)]',
-      iconBg: 'bg-brand-light/15',
-      iconColor: 'text-brand-light',
-      valueColor: 'text-brand-light',
+      tone: 'bg-brand-light/15 text-brand-light',
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon>
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
           <path d="M3 6h18" />
           <path d="M16 10a4 4 0 0 1-8 0" />
-        </svg>
+        </Icon>
       ),
     },
     {
       id: 'pending',
       label: 'পেন্ডিং অর্ডার',
-      value: String(stats.pendingCount),
+      value: fmtNum(stats.pendingCount),
+      note: stats.pendingCount > 0 ? 'কনফার্ম করা বাকি' : 'সব ঠিক আছে',
       href: '/orders?status=pending',
-      cardBg: 'bg-gradient-to-br from-[#FFFBEB] via-white to-white',
-      borderColor: 'border-amber-200/70 hover:border-amber-300',
-      shadowColor: 'shadow-[0_6px_24px_rgba(245,158,11,0.10)]',
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-warn',
-      valueColor: 'text-warn',
+      tone: 'bg-amber-50 text-warn',
+      dot: stats.pendingCount > 0,
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon>
           <circle cx="12" cy="12" r="9" />
           <polyline points="12 6 12 12 16 14" />
-        </svg>
+        </Icon>
       ),
     },
     {
-      id: 'profit',
-      label: 'নিট প্রফিট',
-      value: `৳${Math.round(stats.netProfit).toLocaleString('en-US')}`,
-      note: `রেভিনিউ: ৳${Math.round(stats.confirmedRevenue).toLocaleString('en-US')}`,
-      href: '/profit',
-      cardBg: 'bg-gradient-to-br from-[#ECFDF5] via-white to-white',
-      borderColor: 'border-emerald-200/70 hover:border-emerald-300',
-      shadowColor: 'shadow-[0_6px_24px_rgba(16,185,129,0.10)]',
-      iconBg: 'bg-emerald-100',
-      iconColor: 'text-success',
-      valueColor: 'text-success',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="12" y1="1" x2="12" y2="23" />
-          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-        </svg>
+      id: 'today',
+      label: 'আজকের অর্ডার',
+      value: fmtNum(insights.today.orders),
+      note: (
+        <span className="flex items-center gap-1.5">
+          <DeltaPill value={orderDelta} suffix="টি" />
+          <span className="truncate">{fmtTaka(insights.today.revenue)}</span>
+        </span>
       ),
-    },
-    {
-      id: 'customers',
-      label: 'মোট কাস্টমার',
-      value: String(stats.uniqueCustomers),
-      href: '/customers',
-      cardBg: 'bg-gradient-to-br from-[#EEF2FF] via-white to-white',
-      borderColor: 'border-indigo-200/70 hover:border-indigo-300',
-      shadowColor: 'shadow-[0_6px_24px_rgba(99,102,241,0.10)]',
-      iconBg: 'bg-indigo-100',
-      iconColor: 'text-indigo-600',
+      href: '/orders',
+      tone: 'bg-orange-50 text-orange-500',
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
+        <Icon>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </Icon>
       ),
     },
     {
       id: 'visitors',
       label: 'আজকের ভিজিটর',
-      value: stats.todayVisitors === null ? '—' : String(stats.todayVisitors),
-      note:
-        stats.todayVisitors === null
-          ? 'অ্যানালিটিক্স সংযুক্ত নয়'
-          : (stats.totalVisitors ?? 0) > 0
-            ? `+ ${stats.totalVisitors}টি সর্বমোট`
-            : undefined,
+      value: visitorValue,
+      note: visitorNote,
       href: '/traffic',
-      cardBg: 'bg-gradient-to-br from-[#FAF5FF] via-white to-white',
-      borderColor: 'border-purple-200/70 hover:border-purple-300',
-      shadowColor: 'shadow-[0_6px_24px_rgba(168,85,247,0.10)]',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600',
+      tone: 'bg-violet-50 text-violet-600',
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon>
           <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
           <circle cx="12" cy="12" r="3" />
-        </svg>
+        </Icon>
+      ),
+    },
+    {
+      id: 'customers',
+      label: 'মোট কাস্টমার',
+      value: fmtNum(stats.uniqueCustomers),
+      note: insights.customers.total > 0 ? `৩০ দিনে ${fmtNum(insights.customers.total)} জন কিনেছে` : 'কাস্টমার তালিকা দেখুন',
+      href: '/customers',
+      tone: 'bg-rose-50 text-rose-500',
+      icon: (
+        <Icon>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </Icon>
       ),
     },
     {
       id: 'delivered',
       label: 'ডেলিভার্ড',
-      value: String(stats.deliveredCount),
-      note: stats.confirmedCount > 0 ? `+ ${stats.confirmedCount}টি কনফার্মড` : undefined,
-      href: '/orders?status=confirmed',
-      cardBg: 'bg-gradient-to-br from-[#F0FDFA] via-white to-white',
-      borderColor: 'border-teal-200/70 hover:border-teal-300',
-      shadowColor: 'shadow-[0_6px_24px_rgba(20,184,166,0.10)]',
-      iconBg: 'bg-teal-100',
-      iconColor: 'text-teal-600',
+      value: fmtNum(stats.deliveredCount),
+      note: stats.confirmedCount > 0 ? `+ ${fmtNum(stats.confirmedCount)}টি কনফার্মড` : 'কনফার্মড অর্ডার নেই',
+      href: '/orders?status=delivered',
+      tone: 'bg-emerald-50 text-success',
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon>
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
           <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
+        </Icon>
       ),
     },
   ];
 
-  const hero = cards.find((c) => c.id === 'profit')!;
-  const tiles = cards.filter((c) => c.id !== 'profit');
+  const weekDelta = pctChange(insights.week.revenue, insights.week.prevRevenue);
+  const revenueSeries = insights.daily14.map((d) => d.revenue);
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_1.9fr]">
-      {/* হিরো কার্ড — সবচেয়ে গুরুত্বপূর্ণ মেট্রিক (নিট প্রফিট), গ্র্যাডিয়েন্ট সলিড ব্যাকগ্রাউন্ড */}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_1.95fr]">
+      {/* ═ হিরো: নিট প্রফিট — কোনো শ্যাডো নেই, সলিড স্কাই-ব্লু গ্রেডিয়েন্ট + রেভিনিউ স্পার্কলাইন ═ */}
       <Link
-        href={hero.href}
-        className="group relative flex min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-brand-light to-brand-light-hover p-5 shadow-[0_10px_28px_rgba(68,167,252,0.38)] transition-all duration-brand hover:-translate-y-0.5 active:scale-[0.99]"
+        href="/profit"
+        className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-[24px] bg-gradient-to-br from-brand-light to-brand-light-hover p-4 transition-transform duration-brand active:scale-[0.99] sm:p-5"
       >
-        {/* নরম আলোর ছটা — স্থির গ্রেডিয়েন্ট (ব্লার/অ্যানিমেশন নেই) */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.34),transparent_55%)]"
-        />
-        {/* ডেকোরেটিভ ওয়াটারমার্ক আইকন — খালি জায়গা এলিগেন্টভাবে পূরণ করে */}
-        <svg
-          aria-hidden="true"
-          width="120"
-          height="120"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="1.2"
-          className="pointer-events-none absolute -right-5 -top-5 opacity-[0.14]"
-        >
-          <line x1="12" y1="1" x2="12" y2="23" />
-          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-        </svg>
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_0%,rgba(255,255,255,0.30),transparent_55%)]" />
 
-        <div className="relative z-10 flex items-center gap-2.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-white/20 text-white">
-            {hero.icon}
+        <div className="relative z-10 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white">
+              <Icon>
+                <line x1="12" y1="1" x2="12" y2="23" />
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </Icon>
+            </span>
+            <span className="font-body text-[12px] font-extrabold uppercase tracking-wider text-white/90">নিট প্রফিট</span>
           </div>
-          <span className="font-body text-[12px] font-extrabold uppercase tracking-wider text-white/85">
-            {hero.label}
-          </span>
+          {weekDelta !== null && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 font-body text-[10.5px] font-extrabold text-white">
+              {weekDelta > 0 ? '▲' : weekDelta < 0 ? '▼' : '•'} {Math.abs(weekDelta)}% এই সপ্তাহে
+            </span>
+          )}
         </div>
 
-        <div className="relative z-10">
-          <div className="font-body text-[30px] font-black leading-tight tracking-tight text-white sm:text-[34px]">
-            {hero.value}
+        <div className="relative z-10 mt-2 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-body text-[30px] font-black leading-none tracking-tight text-white sm:text-[34px]">
+              {fmtTaka(stats.netProfit)}
+            </div>
+            <div className="mt-1.5 font-body text-[11.5px] font-semibold text-white/85">
+              রেভিনিউ: {fmtTaka(stats.confirmedRevenue)}
+            </div>
           </div>
-          {hero.note && (
-            <div className="mt-0.5 font-body text-[11.5px] font-semibold text-white/80">{hero.note}</div>
-          )}
+          <div className="w-[42%] max-w-[150px] shrink-0 opacity-95">
+            <Sparkline values={revenueSeries} stroke="#FFFFFF" className="h-11 w-full" strokeWidth={2.2} />
+            <div className="text-right font-body text-[9.5px] font-bold uppercase tracking-wide text-white/75">১৪ দিনের বিক্রি</div>
+          </div>
         </div>
       </Link>
 
-      {/* বাকি ৫টা মেট্রিক — কমপ্যাক্ট টাইল গ্রিড, কোনো ফাঁকা জায়গা ছাড়াই */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {tiles.map((card) => (
+      {/* ═ মেট্রিক বোর্ড: ছয়টা মেট্রিক একটাই ফলকে, চুলের মতো সরু বিভাজনরেখায় — আলাদা আলাদা কার্ড নয় ═ */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[24px] border border-white/90 bg-border-base/60 shadow-sh1 lg:grid-cols-3">
+        {metrics.map((m) => (
           <Link
-            key={card.id}
-            href={card.href}
-            className={`group relative flex items-center gap-2.5 overflow-hidden rounded-2xl border p-3.5 transition-all duration-brand hover:-translate-y-0.5 ${card.cardBg} ${card.borderColor} ${card.shadowColor}`}
+            key={m.id}
+            href={m.href}
+            className="group relative flex min-h-[88px] items-center gap-3 bg-white px-3.5 py-3 transition-colors duration-brand active:bg-brand-bg/30 sm:px-4 lg:hover:bg-brand-bg/20"
           >
-            {card.isLive && (
-              <span className="absolute right-3 top-3 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warn opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-warn" />
-              </span>
-            )}
-
-            <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-transform duration-brand group-hover:scale-110 ${card.iconBg} ${card.iconColor}`}
-            >
-              {card.icon}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-body text-[10px] font-extrabold uppercase tracking-wider text-muted/85">
-                {card.label}
-              </div>
-              <div className={`truncate font-body text-[17px] font-black leading-tight tracking-tight text-ink ${card.valueColor ? 'group-hover:' + card.valueColor : ''}`}>
-                {card.value}
-              </div>
-              {card.note && (
-                <div className="truncate font-body text-[9.5px] font-semibold text-muted/75">{card.note}</div>
-              )}
-            </div>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${m.tone}`}>{m.icon}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-body text-[10px] font-extrabold uppercase tracking-wider text-muted">{m.label}</span>
+              <span className="block truncate font-body text-[22px] font-black leading-tight tracking-tight text-ink">{m.value}</span>
+              <span className="block truncate font-body text-[10.5px] font-semibold text-muted">{m.note}</span>
+            </span>
+            {m.dot && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-warn ring-4 ring-amber-100" aria-hidden="true" />}
           </Link>
         ))}
       </div>

@@ -8,7 +8,7 @@ interface Props {
 export default function PageHeader({ icon, title, subtitle }: Props) {
   return (
     <div className="mb-5 mt-1 flex flex-col items-center gap-1.5 text-center md:mb-6">
-      <div className="mb-0.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-light text-white shadow-[0_6px_18px_rgba(68,167,252,0.38)]">
+      <div className="mb-0.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-light text-white">
         <svg
           viewBox="0 0 24 24"
           fill="none"

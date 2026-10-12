@@ -278,7 +278,7 @@ export default function DateRangePicker({
             <button
               type="button"
               onClick={apply}
-              className="mt-3.5 h-11 w-full rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white shadow-[0_4px_14px_rgba(68,167,252,0.38)] transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98]"
+              className="mt-3.5 h-11 w-full rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-[0.98]"
             >
               {applyLabel}
             </button>

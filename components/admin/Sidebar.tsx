@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSoundMuted } from '@/components/admin/useSoundMuted';
+import { useAnyModalOpen } from '@/components/admin/useAnyModalOpen';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
 import { clearOrdersCache } from '@/lib/clientOrdersCache';
@@ -274,12 +275,14 @@ const DOCK_SLOTS: DockSlot[] = [
   },
   {
     kind: 'tab',
-    href: '/customers',
-    label: 'কাস্টমার',
+    href: '/',
+    label: 'ড্যাশবোর্ড',
     icon: (
       <>
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
+        <rect x="3" y="3" width="7" height="7" rx="2" />
+        <rect x="14" y="3" width="7" height="7" rx="2" />
+        <rect x="14" y="14" width="7" height="7" rx="2" />
+        <rect x="3" y="14" width="7" height="7" rx="2" />
       </>
     ),
   },
@@ -420,7 +423,7 @@ function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boo
       aria-current={active ? 'page' : undefined}
       className={`${ITEM_BASE} ${
         active
-          ? 'bg-brand-light text-white shadow-[0_3px_10px_rgba(68,167,252,0.35)]'
+          ? 'bg-brand-light text-white'
           : 'text-ink/75 hover:bg-brand-light/10 hover:text-ink'
       }`}
     >
@@ -515,8 +518,8 @@ function DesktopSidebar({ activeHref, onLogout }: { activeHref: string; onLogout
         }}
         className={`desktop-glass-rail fixed bottom-3 left-3 top-3 z-50 flex flex-col overflow-hidden rounded-[26px] border border-white/80 backdrop-blur-xl backdrop-saturate-150 transition-[width,box-shadow,background-color] duration-[440ms] ease-[cubic-bezier(.32,.72,0,1)] will-change-[width] [contain:layout_style] motion-reduce:transition-none ${
           expanded
-            ? 'w-[260px] bg-white/95 shadow-[0_16px_48px_rgba(68,167,252,0.22)]'
-            : 'w-[72px] bg-white/80 shadow-[0_8px_28px_rgba(68,167,252,0.12)]'
+            ? 'w-[260px] bg-white/95'
+            : 'w-[72px] bg-white/80'
         }`}
       >
         {/* লোগো: সরু অবস্থায় V মার্ক, চওড়া অবস্থায় পুরো লোগো — একই বক্সে ক্রস-ফেড */}
@@ -613,6 +616,8 @@ function MobileDock({
   onOpenMenu: () => void;
 }) {
   const routeSlot = DOCK_SLOTS.findIndex((s) => s.kind !== 'menu' && s.href === activeHref);
+  // মডাল/বটম-শীট খুললে ডক নিচে নেমে লুকায় (সেভ/বাতিল বাটন ঢাকা পড়ে না), বন্ধ হলে ফিরে আসে
+  const modalOpen = useAnyModalOpen();
 
   // ট্যাপ করার মুহূর্তেই লেন্স সরানোর জন্য "আশাবাদী" স্লট; রুট বদলালে বা ১.৫ সেকেন্ড পর মুছে যায়
   const [pending, setPending] = useState<number | null>(null);
@@ -651,7 +656,11 @@ function MobileDock({
   return (
     <nav
       aria-label="নিচের মেনু"
-      className="liquid-glass-bar fixed left-1/2 z-40 w-[calc(100%-24px)] max-w-[420px] -translate-x-1/2 rounded-full p-1.5 md:hidden"
+      aria-hidden={modalOpen || undefined}
+      inert={modalOpen}
+      className={`liquid-glass-bar fixed left-1/2 z-40 w-[calc(100%-24px)] max-w-[420px] -translate-x-1/2 rounded-full p-1.5 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.32,.72,0,1)] md:hidden ${
+        modalOpen ? 'pointer-events-none translate-y-[170%] opacity-0' : 'translate-y-0 opacity-100'
+      }`}
       style={{ bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="relative z-10 grid grid-cols-5 items-center">
@@ -862,7 +871,7 @@ function MobileDrawer({
                       aria-current={active ? 'page' : undefined}
                       className={`flex min-h-[48px] items-center gap-3 rounded-2xl px-2.5 py-1.5 font-body text-[13.5px] font-bold transition-all duration-brand active:scale-[0.98] ${
                         active
-                          ? 'bg-brand-light text-white shadow-[0_6px_18px_rgba(68,167,252,0.38)]'
+                          ? 'bg-brand-light text-white'
                           : 'text-ink/85 hover:bg-brand-light/10'
                       }`}
                     >
