@@ -113,10 +113,12 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
 
   return (
     <>
-      {/* ═══════════ মোবাইল + ট্যাবলেট: অর্ডার কার্ড (<1024px) ═══════════ */}
+      {/* ═══════════ মোবাইল + ট্যাবলেট: চিকন অর্ডার সারি (<1024px) ═══════════
+          একটা সারি = তিন লাইন। পুরো সারি ট্যাপ করলেই বিস্তারিত খোলে (আলাদা বাটন নেই)।
+          অ্যাডভান্স/কুপন/ডায়মন্ড ইত্যাদির পুরো হিসাব বিস্তারিতের ভেতরে। */}
       <div className="lg:hidden">
         {/* এই পেজের সব সিলেক্ট */}
-        <div className="mb-2.5 flex items-center justify-between rounded-2xl border border-white/90 bg-white px-2 py-0.5 shadow-sh1">
+        <div className="mb-2 flex items-center justify-between rounded-2xl border border-white/90 bg-white px-2 py-0 shadow-sh1">
           <label className="flex cursor-pointer items-center gap-1 font-body text-[12.5px] font-extrabold text-ink">
             <Checkbox checked={allChecked} onChange={onToggleSelectAll} label="এই পেজের সবগুলো সিলেক্ট করুন" />
             সব সিলেক্ট করুন
@@ -124,107 +126,83 @@ export default function OrdersTable({ orders, selectedIds, onToggleSelect, onTog
           <span className="pr-2 font-body text-[11.5px] font-semibold text-muted">এই পেজে {orders.length}টি</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {orders.map((o) => {
-            const advancePaid = getOrderAdvance(o);
             const due = getOrderDueCOD(o);
-            const tier2 = isAdvanceTier2(o);
             const hasCoupon = !!o.coupon_code || (o.discount_amount || 0) > 0;
             const diamondAction = needsDiamondAction(o);
             const isSelected = selectedIds.has(o.id);
+            const overpaid = o.overpaid_amount || 0;
 
             return (
               <article
                 key={o.id}
                 data-order-id={o.id}
-                className={`flex flex-col rounded-[22px] border bg-white p-3.5 shadow-sh1 transition-all duration-brand ${
+                className={`flex items-stretch overflow-hidden rounded-[18px] border bg-white shadow-sh1 transition-all duration-brand ${
                   isSelected ? 'border-brand-light ring-2 ring-brand-light/25' : 'border-white/90'
                 } ${focusedId === o.id ? 'ring-2 ring-brand-light/60' : ''}`}
               >
-                {/* হেডার: চেকবক্স · অর্ডার নং · স্ট্যাটাস */}
-                <div className="flex items-center gap-1.5">
+                <div className={`flex w-11 shrink-0 items-center justify-center border-r border-border-base/50 ${isSelected ? 'bg-brand-light/10' : ''}`}>
                   <Checkbox checked={isSelected} onChange={() => onToggleSelect(o.id)} label={`${o.order_num} সিলেক্ট করুন`} />
-                  <button
-                    type="button"
-                    onClick={() => onView(o.id)}
-                    className="inline-flex items-center rounded-lg border border-brand-light/30 bg-brand-light/10 px-2.5 py-1.5 font-body text-[13px] font-black leading-none tracking-tight text-brand-light transition-all duration-brand active:scale-95"
-                    title="অর্ডার বিস্তারিত দেখুন"
-                  >
-                    {o.order_num}
-                  </button>
-                  <div className="ml-auto">
-                    <StatusPill status={o.status} verification={o.payment_verified ? o.verification_method : null} />
-                  </div>
                 </div>
 
-                {/* তারিখ + ব্যাজ */}
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 pl-0.5">
-                  <span className="inline-flex items-center gap-1.5 font-body text-[11.5px] font-semibold text-muted">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="4.5" width="18" height="16.5" rx="3" />
-                      <path d="M3 9.5h18" />
-                      <path d="M8 2.5v4M16 2.5v4" />
-                    </svg>
-                    {fmtDate(o.created_at)}
-                  </span>
-                  <RiskBadge risk={o.risk} />
-                  {diamondAction && <DiamondBadge />}
-                  {hasCoupon && <CouponBadge code={o.coupon_code} amount={o.discount_amount || 0} />}
-                  {(o.overpaid_amount || 0) > 0 && (
-                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-body text-[10.5px] font-extrabold text-emerald-700">
-                      +৳{o.overpaid_amount} এক্সট্রা
-                    </span>
-                  )}
-                </div>
-
-                {/* গ্রাহক */}
-                <div className="mt-3 flex items-center gap-3 rounded-2xl bg-surface-muted/70 p-2.5">
-                  <Avatar name={o.customer_name} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-body text-[14px] font-extrabold leading-tight text-ink">{o.customer_name || '—'}</div>
-                    <button
-                      type="button"
-                      onClick={() => copyTxt(o.customer_phone || '')}
-                      className="mt-1 inline-flex items-center gap-1.5 font-body text-[12.5px] font-semibold text-muted transition-colors active:text-brand-light"
-                      title="কপি করতে ট্যাপ করুন"
-                    >
-                      {o.customer_phone || '—'}
-                      <CopyIcon />
-                    </button>
-                  </div>
-                </div>
-
-                {/* টাকার হিসাব — তিনটা সমান টাইল */}
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  <div className="min-w-0 rounded-xl border border-border-base/70 px-2.5 py-2">
-                    <div className="font-body text-[10px] font-bold uppercase tracking-wide text-muted">মোট বিল</div>
-                    <div className="mt-0.5 truncate font-body text-[14px] font-black text-ink">{money(o.total)}</div>
-                  </div>
-                  <div className="min-w-0 rounded-xl border border-border-base/70 px-2.5 py-2">
-                    <div className="flex items-center gap-1 font-body text-[10px] font-bold uppercase tracking-wide text-muted">
-                      অ্যাডভান্স
-                      {tier2 && (
-                        <span className="rounded-full bg-purple-50 px-1.5 text-[9px] font-black leading-[14px] text-purple-700">5%</span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 truncate font-body text-[14px] font-black text-success">{money(advancePaid)}</div>
-                  </div>
-                  <div className="min-w-0 rounded-xl border border-border-base/70 px-2.5 py-2">
-                    <div className="font-body text-[10px] font-bold uppercase tracking-wide text-muted">বাকি (COD)</div>
-                    <div className="mt-0.5 truncate font-body text-[14px] font-black text-danger">{money(due)}</div>
-                  </div>
-                </div>
-
-                {/* বিস্তারিত বাটন */}
                 <button
                   type="button"
                   onClick={() => onView(o.id)}
-                  className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-brand-light font-body text-[13px] font-extrabold text-white transition-all duration-brand active:scale-[0.98]"
+                  className="min-w-0 flex-1 px-3 py-2.5 text-left transition-colors duration-brand active:bg-brand-bg/25"
+                  aria-label={`${o.order_num} — বিস্তারিত দেখুন`}
                 >
-                  বিস্তারিত দেখুন
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                  {/* লাইন ১: নম্বর · ট্রাস্ট · স্ট্যাটাস */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-body text-[14px] font-black leading-none tracking-tight text-ink">{o.order_num}</span>
+                    <RiskBadge risk={o.risk} />
+                    <span className="ml-auto shrink-0">
+                      <StatusPill status={o.status} verification={o.payment_verified ? o.verification_method : null} />
+                    </span>
+                  </div>
+
+                  {/* লাইন ২: নাম · ফোন */}
+                  <div className="mt-1.5 flex min-w-0 items-baseline gap-2">
+                    <span className="min-w-0 truncate font-body text-[13px] font-extrabold leading-tight text-ink">{o.customer_name || '—'}</span>
+                    <span className="shrink-0 font-body text-[11.5px] font-semibold text-muted">{o.customer_phone || '—'}</span>
+                  </div>
+
+                  {/* লাইন ৩: তারিখ + ছোট ট্যাগ · টাকা */}
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5 font-body text-[11px] font-semibold text-muted">
+                      <span className="shrink-0">{fmtDate(o.created_at)}</span>
+                      {diamondAction && (
+                        <span
+                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/10 text-brand-light"
+                          title="ডায়মন্ড মেম্বার: ১ দিনে কুরিয়ারে হ্যান্ডওভার + সারপ্রাইজ গিফট"
+                          aria-label="ডায়মন্ড মেম্বার"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 3h12l4 6-10 12L2 9z" />
+                            <path d="M2 9h20M12 21 8 9l4-6 4 6z" />
+                          </svg>
+                        </span>
+                      )}
+                      {hasCoupon && (
+                        <span
+                          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-orange-200/80 bg-orange-50 text-orange-600"
+                          title={`কুপন ${o.coupon_code || ''} (-${money(o.discount_amount || 0)})`}
+                          aria-label="কুপন ব্যবহার হয়েছে"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                          </svg>
+                        </span>
+                      )}
+                      {overpaid > 0 && (
+                        <span className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-700">+৳{overpaid}</span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-baseline gap-2 font-body">
+                      <span className="text-[14px] font-black leading-none text-ink">{money(o.total)}</span>
+                      <span className="text-[11px] font-extrabold leading-none text-danger">বাকি {money(due)}</span>
+                    </div>
+                  </div>
                 </button>
               </article>
             );

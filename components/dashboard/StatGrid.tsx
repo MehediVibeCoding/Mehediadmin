@@ -151,15 +151,19 @@ export default function StatGrid({ stats, insights }: { stats: DashboardStats; i
     },
   ];
 
+  // নতুন ক্রম: আজকের কাজের সংখ্যাগুলো আগে, সারাজীবনের মোট সংখ্যা পরে
+  const ORDER = ['today', 'pending', 'visitors', 'orders', 'customers', 'delivered'];
+  metrics.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+
   const weekDelta = pctChange(insights.week.revenue, insights.week.prevRevenue);
   const revenueSeries = insights.daily14.map((d) => d.revenue);
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_1.95fr]">
+    <div className="grid grid-cols-1 gap-3">
       {/* ═ হিরো: নিট প্রফিট — কোনো শ্যাডো নেই, সলিড স্কাই-ব্লু গ্রেডিয়েন্ট + রেভিনিউ স্পার্কলাইন ═ */}
       <Link
         href="/profit"
-        className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-[24px] bg-gradient-to-br from-brand-light to-brand-light-hover p-4 transition-transform duration-brand active:scale-[0.99] sm:p-5"
+        className="group relative flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[24px] bg-gradient-to-br from-brand-light to-brand-light-hover p-5 transition-transform duration-brand active:scale-[0.99] sm:p-6"
       >
         <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_0%,rgba(255,255,255,0.30),transparent_55%)]" />
 
@@ -196,19 +200,21 @@ export default function StatGrid({ stats, insights }: { stats: DashboardStats; i
         </div>
       </Link>
 
-      {/* ═ মেট্রিক বোর্ড: ছয়টা মেট্রিক একটাই ফলকে, চুলের মতো সরু বিভাজনরেখায় — আলাদা আলাদা কার্ড নয় ═ */}
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[24px] border border-white/90 bg-border-base/60 shadow-sh1 lg:grid-cols-3">
+      {/* ═ মেট্রিক বোর্ড: ছয়টা মেট্রিক একটাই ফলকে, সরু বিভাজনরেখায়। প্রতিটা টাইল = আইকন+লেবেল (উপরে), বড় সংখ্যা, ছোট নোট ═ */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[24px] border border-white/90 bg-border-base/60 shadow-sh1 sm:grid-cols-3">
         {metrics.map((m) => (
           <Link
             key={m.id}
             href={m.href}
-            className="group relative flex min-h-[88px] items-center gap-3 bg-white px-3.5 py-3 transition-colors duration-brand active:bg-brand-bg/30 sm:px-4 lg:hover:bg-brand-bg/20"
+            className="group relative flex min-h-[112px] flex-col justify-between gap-2 bg-white px-3.5 py-3.5 transition-colors duration-brand active:bg-brand-bg/30 sm:px-4 lg:hover:bg-brand-bg/20"
           >
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${m.tone}`}>{m.icon}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-body text-[10px] font-extrabold uppercase tracking-wider text-muted">{m.label}</span>
-              <span className="block truncate font-body text-[22px] font-black leading-tight tracking-tight text-ink">{m.value}</span>
-              <span className="block truncate font-body text-[10.5px] font-semibold text-muted">{m.note}</span>
+            <span className="flex items-center gap-2">
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${m.tone}`}>{m.icon}</span>
+              <span className="min-w-0 truncate font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted">{m.label}</span>
+            </span>
+            <span className="block">
+              <span className="block truncate font-body text-[28px] font-black leading-none tracking-tight text-ink">{m.value}</span>
+              <span className="mt-1.5 block truncate font-body text-[11px] font-semibold text-muted">{m.note}</span>
             </span>
             {m.dot && <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-warn ring-4 ring-amber-100" aria-hidden="true" />}
           </Link>

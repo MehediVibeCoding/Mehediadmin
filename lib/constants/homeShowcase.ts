@@ -3,7 +3,8 @@
 // হোম পেজের "কালেকশন কার্ড (৪টি)" ও "স্পটলাইট প্রোডাক্ট (২টি)" সেকশনের টাইপ, ডিফল্ট ও সানিটাইজার।
 // store_settings key: 'vc_home_showcase' (JSON) — মূল সাইট (Vangcur) ঠিক এই key থেকেই পড়ে।
 //
-// ⚠️ এই ফাইলের টাইপ ও ডিফল্ট Vangcur-এর lib/showcaseData.ts-এর সাথে হুবহু মিল রাখতে হবে।
+// ⚠️ এই ফাইলের টাইপ, লিমিট, ডিফল্ট ও normalizeShowcase() Vangcur-এর lib/showcaseData.ts-এর সাথে হুবহু মিল রাখতে হবে।
+// (না মিললে অ্যাডমিন থেকে সেভ করলে মূল সাইটের product/features/note ফিল্ড হারিয়ে যায়।)
 // একটা বদলালে অন্যটাও বদলান।
 //
 // কালেকশন কীভাবে কাজ করে:
@@ -32,6 +33,10 @@ export const SHOWCASE_LIMITS = {
   descRecommended: 250, // এর বেশি হলে মোবাইলে ছবি বেশি ক্রপ হতে পারে — অ্যাডমিনে সতর্কবার্তা দেখায়
   spotBtn: 22,
   link: 300,
+  product: 60,
+  feature: 60,
+  featureCount: 8,
+  note: 160,
 } as const;
 
 export interface ShowcaseHeading {
@@ -63,6 +68,15 @@ export interface ShowcaseSpotlight {
   titleEn: string;
   desc: string;
   descEn: string;
+  /** ঐচ্ছিক — ছবির নিচে-বামে গ্লাস চিপে বসা প্রোডাক্টের নাম */
+  product: string;
+  productEn: string;
+  /** ঐচ্ছিক — টিক-চিহ্নসহ ফিচার তালিকা (সর্বোচ্চ featureCount টা) */
+  features: string[];
+  featuresEn: string[];
+  /** ঐচ্ছিক — তালিকার নিচের শেষ লাইন */
+  note: string;
+  noteEn: string;
   /** ঐচ্ছিক — ০ বা ফাঁকা হলে দাম দেখাবে না */
   price: number;
   btn: string;
@@ -107,10 +121,32 @@ export const DEFAULT_SHOWCASE: ShowcaseConfig = {
       img: IMG_SQUARE,
       badge: 'হট সেলিং',
       badgeEn: 'Hot Selling',
-      title: 'সবার পছন্দের হট সেলিং গ্যাজেট',
-      titleEn: 'Our most loved hot-selling gadget',
-      desc: 'গ্রাহকদের সবচেয়ে বেশি অর্ডার পাওয়া প্রোডাক্ট — সেরা মানে, দ্রুত হোম ডেলিভারিতে।',
-      descEn: 'The product our customers order the most — great quality, fast home delivery.',
+      title: 'আপনার রুমকেও এরকম Pinterest স্টাইলে বানাতে চান?',
+      titleEn: 'Want your room to look this Pinterest-worthy too?',
+      desc: 'এই লাইটটা একবার ঘরে জ্বললে, কেউ চোখ ফিরাতে পারবেন না—সত্যি!',
+      descEn: 'Once this light glows in your room, nobody will be able to look away — really!',
+      product: 'RGB Neon Light – 16 Fit / 5 Meter',
+      productEn: 'RGB Neon Light – 16 Fit / 5 Meter',
+      features: [
+        'রিমোট + অ্যাপে কন্ট্রোল',
+        '৯৬টা LED প্রতি মিটার!',
+        'Waterproof, Easy Setup',
+        'অসংখ্য কালার মোড',
+        'Bluetooth Connectivity',
+        'Safe + Durable + Premium Quality',
+        '৬ মাসের Replacement Warranty!',
+      ],
+      featuresEn: [
+        'Remote + app control',
+        '96 LEDs per metre!',
+        'Waterproof, easy setup',
+        'Countless colour modes',
+        'Bluetooth connectivity',
+        'Safe + durable + premium quality',
+        '6-month replacement warranty!',
+      ],
+      note: 'ঘর, গেমিং সেটআপ, ব্যাকগ্রাউন্ড ডেকোর—সবকিছুর জন্য পারফেক্ট।',
+      noteEn: 'Perfect for your room, gaming setup and background decor — everything.',
       price: 0,
       btn: 'বিস্তারিত দেখুন',
       btnEn: 'View details',
@@ -123,10 +159,30 @@ export const DEFAULT_SHOWCASE: ShowcaseConfig = {
       img: IMG_WIDE,
       badge: 'ইউনিক কালেকশন',
       badgeEn: 'Unique Pick',
-      title: 'ইউনিক গ্যাজেট, যা সবার চোখে পড়বে',
-      titleEn: 'A unique gadget that stands out',
-      desc: 'স্টাইলিশ আর কাজের গ্যাজেট এক জায়গায় — দেখলেই পছন্দ হয়ে যাবে।',
-      descEn: 'Stylish and useful gadgets in one place — you will love it at first sight.',
+      title: 'জ্যামে, ক্লাসরুমে বা লোডশেডিংয়ে—ঠান্ডা হাওয়া এখন হাতের মুঠোয়',
+      titleEn: 'In traffic, in class or in a power cut — cool air in the palm of your hand',
+      desc: 'সাধারণ ফ্যানের মতো বাতাস ছড়ায় না। হাই-স্পিড ব্রাশলেস মোটর আর এয়ার জেট ডাক্টে ঠান্ডা হাওয়া যায় সোজা আপনার মুখে।',
+      descEn: 'It does not scatter the air like an ordinary fan — the brushless motor and air-jet duct send cool air straight to your face.',
+      product: 'Xiaomi AISOLOVE F01 Handheld Turbo Fan',
+      productEn: 'Xiaomi AISOLOVE F01 Handheld Turbo Fan',
+      features: [
+        '৫টি স্পিড লেভেল — মৃদু থেকে তীব্র টার্বো',
+        '2000mAh রিচার্জেবল ব্যাটারি',
+        'High-Speed Jet Air Channel',
+        'Type-C চার্জ, পাওয়ার ব্যাংকেও চলে',
+        'মাত্র ১২৫ গ্রাম, পকেট-সাইজ',
+        'Low-Noise Brushless Motor (৩৯dB)',
+      ],
+      featuresEn: [
+        '5 speed levels — gentle to turbo',
+        '2000mAh rechargeable battery',
+        'High-speed jet air channel',
+        'Type-C charging, runs on a power bank too',
+        'Only 125 g, pocket-sized',
+        'Low-noise brushless motor (39 dB)',
+      ],
+      note: 'ক্লাস, লাইব্রেরি, বাস বা পড়ার টেবিল—ব্যক্তিগত স্বস্তির জন্য পারফেক্ট।',
+      noteEn: 'Class, library, bus or study desk — perfect for personal comfort.',
       price: 0,
       btn: 'বিস্তারিত দেখুন',
       btnEn: 'View details',
@@ -141,6 +197,14 @@ export const DEFAULT_SHOWCASE: ShowcaseConfig = {
 function str(v: unknown, fallback: string, max: number): string {
   if (typeof v !== 'string') return fallback;
   return v.trim().slice(0, max);
+}
+
+function strList(v: unknown, fallback: string[], maxItems: number, maxLen: number): string[] {
+  if (!Array.isArray(v)) return fallback;
+  return v
+    .map((x) => (typeof x === 'string' ? x.trim().slice(0, maxLen) : ''))
+    .filter(Boolean)
+    .slice(0, maxItems);
 }
 
 function imgUrl(v: unknown, fallback: string): string {
@@ -183,6 +247,12 @@ function normalizeSpotlight(raw: unknown, fb: ShowcaseSpotlight): ShowcaseSpotli
     titleEn: str(r.titleEn, fb.titleEn, L.title),
     desc: str(r.desc, fb.desc, L.desc),
     descEn: str(r.descEn, fb.descEn, L.desc),
+    product: str(r.product, fb.product, L.product),
+    productEn: str(r.productEn, fb.productEn, L.product),
+    features: strList(r.features, fb.features, L.featureCount, L.feature),
+    featuresEn: strList(r.featuresEn, fb.featuresEn, L.featureCount, L.feature),
+    note: str(r.note, fb.note, L.note),
+    noteEn: str(r.noteEn, fb.noteEn, L.note),
     price: Number.isFinite(priceNum) && priceNum > 0 ? Math.round(priceNum) : 0,
     btn: str(r.btn, fb.btn, L.spotBtn),
     btnEn: str(r.btnEn, fb.btnEn, L.spotBtn),

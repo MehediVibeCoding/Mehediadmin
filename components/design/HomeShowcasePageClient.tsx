@@ -556,6 +556,111 @@ function CardEditor({
 
 // ── স্পটলাইট এডিটর ──────────────────────────────────────────────────────────
 
+// টিক-চিহ্নসহ ফিচার তালিকা: প্রতিটা সারিতে বাংলা (ও "English" খোলা থাকলে ইংরেজি) ঘর + ওঠা/নামা/মোছা।
+// features ও featuresEn একই সূচকে (index) মেলানো থাকে — সারি সরালে/মুছলে দুটোতেই একসাথে।
+function FeatureListEditor({
+  bn, en, showEn, onChange,
+}: {
+  bn: string[];
+  en: string[];
+  showEn: boolean;
+  onChange: (bn: string[], en: string[]) => void;
+}) {
+  const count = Math.max(bn.length, en.length);
+  const rows = Array.from({ length: count }, (_, i) => ({ bn: bn[i] ?? '', en: en[i] ?? '' }));
+  const commit = (next: { bn: string; en: string }[]) =>
+    onChange(next.map((r) => r.bn), next.map((r) => r.en));
+  const iconBtn =
+    'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-base/80 bg-white text-ink transition-all duration-brand active:scale-90 disabled:opacity-35 lg:h-9 lg:w-9';
+
+  return (
+    <Field
+      label="ফিচার তালিকা (টিক-চিহ্নসহ)"
+      help={`সর্বোচ্চ ${L.featureCount}টা, প্রতিটা ${L.feature} অক্ষর পর্যন্ত। সাইটে ছোট ছোট টিক-লাইন হয়ে দেখাবে। ফাঁকা সারি সেভের সময় বাদ যায়।`}
+    >
+      <div className="space-y-2.5">
+        {rows.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border-base bg-surface-muted/50 px-4 py-4 text-center font-body text-[12px] font-semibold text-muted">
+            কোনো ফিচার নেই — নিচের বাটনে চেপে যোগ করুন
+          </div>
+        )}
+        {rows.map((r, i) => (
+          <div key={i} className="rounded-2xl border border-border-base/80 bg-white p-2.5">
+            <div className="flex items-start gap-2">
+              <span className="mt-3 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-light text-white" aria-hidden="true">
+                <Svg className="h-[10px] w-[10px]" sw={3.4}><path d="M5 12.5l4.5 4.5L19 7.5" /></Svg>
+              </span>
+              <div className="min-w-0 flex-1 space-y-2">
+                <input
+                  type="text"
+                  maxLength={L.feature}
+                  value={r.bn}
+                  onChange={(e) => commit(rows.map((x, k) => (k === i ? { ...x, bn: e.target.value } : x)))}
+                  placeholder="বাংলা — যেমন: রিমোট + অ্যাপে কন্ট্রোল"
+                  aria-label={`ফিচার ${i + 1} (বাংলা)`}
+                  className={FIELD_CLS}
+                />
+                {showEn && (
+                  <input
+                    type="text"
+                    maxLength={L.feature}
+                    value={r.en}
+                    onChange={(e) => commit(rows.map((x, k) => (k === i ? { ...x, en: e.target.value } : x)))}
+                    placeholder="English — e.g. Remote + app control"
+                    aria-label={`Feature ${i + 1} (English)`}
+                    className={FIELD_CLS}
+                  />
+                )}
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-end gap-1.5">
+              <button
+                type="button"
+                disabled={i === 0}
+                onClick={() => { const n = rows.slice(); [n[i - 1], n[i]] = [n[i], n[i - 1]]; commit(n); }}
+                aria-label="উপরে তুলুন"
+                title="উপরে তুলুন"
+                className={iconBtn}
+              >
+                <Svg className="h-3.5 w-3.5" sw={2.6}><path d="m18 15-6-6-6 6" /></Svg>
+              </button>
+              <button
+                type="button"
+                disabled={i === rows.length - 1}
+                onClick={() => { const n = rows.slice(); [n[i + 1], n[i]] = [n[i], n[i + 1]]; commit(n); }}
+                aria-label="নিচে নামান"
+                title="নিচে নামান"
+                className={iconBtn}
+              >
+                <Svg className="h-3.5 w-3.5" sw={2.6}><path d="m6 9 6 6 6-6" /></Svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => commit(rows.filter((_, k) => k !== i))}
+                aria-label="এই ফিচার মুছুন"
+                title="মুছুন"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand active:scale-90 lg:h-9 lg:w-9"
+              >
+                <Svg className="h-3.5 w-3.5" sw={2.4}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></Svg>
+              </button>
+            </div>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          disabled={rows.length >= L.featureCount}
+          onClick={() => commit([...rows, { bn: '', en: '' }])}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-brand-light/40 bg-brand-light/10 font-body text-[13px] font-extrabold text-ink transition-all duration-brand active:scale-[0.98] disabled:opacity-50"
+        >
+          <Svg className="h-3.5 w-3.5" sw={2.8}><path d="M12 5v14M5 12h14" /></Svg>
+          {rows.length >= L.featureCount ? `সর্বোচ্চ ${L.featureCount}টা হয়ে গেছে` : 'ফিচার যোগ করুন'}
+        </button>
+      </div>
+    </Field>
+  );
+}
+
 function SpotlightEditor({
   s, i, categories, onPatch, onUploading,
 }: {
@@ -568,43 +673,77 @@ function SpotlightEditor({
   const [showEn, setShowEn] = useState(false);
   const reverse = i === 1;
   const descLen = s.desc.length;
+  const chip = s.product || s.badge;
+  const shown = s.features.filter(Boolean).slice(0, 4);
 
   return (
     <div className={`space-y-4 transition-opacity duration-brand ${s.enabled ? '' : 'opacity-50'}`}>
-      {/* প্রিভিউ — সাইটের মোবাইল লেআউটের ছোট নমুনা (ছবি ৯:১৬) */}
-      <div className={`grid overflow-hidden bg-[#F0F8FF] ${reverse ? 'grid-cols-[1fr_42%]' : 'grid-cols-[42%_1fr]'}`}>
-        <div className={`relative overflow-hidden bg-slate-900 ${reverse ? 'order-2' : 'order-1'}`}>
-          <div className="aspect-[9/16] w-full" />
-          {isImgSrc(s.img) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.img} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          ) : (
-            <ImgPlaceholder />
-          )}
-        </div>
-        <div className={`flex min-w-0 flex-col justify-center gap-1.5 p-3 ${reverse ? 'order-1' : 'order-2'}`}>
-          {s.badge && (
-            <span className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-wider text-brand-light">
-              <span className="h-px w-3 bg-brand-light" />
-              {s.badge}
-            </span>
-          )}
-          <span className="break-words text-[12px] font-bold leading-snug text-ink">{s.title || '—'}</span>
-          <span className="whitespace-pre-line break-words text-[9px] leading-snug text-muted">{s.desc}</span>
-          {s.price > 0 && <span className="text-[11px] font-bold text-ink">৳{s.price.toLocaleString('en-US')}</span>}
-          <span className="mt-0.5 w-fit bg-brand-light px-2.5 py-1 text-[9px] font-bold text-white">{s.btn || '—'} →</span>
+      {/* প্রিভিউ — সাইটের ডেস্কটপ লেআউটের ছোট নমুনা (ছবি এক পাশে, লেখা অন্য পাশে) */}
+      <div className="overflow-hidden rounded-2xl border border-border-base/70">
+        <div className={`grid bg-gradient-to-br from-[#F0F8FF] to-white ${reverse ? 'grid-cols-[1fr_40%]' : 'grid-cols-[40%_1fr]'}`}>
+          <div className={`relative min-h-[150px] overflow-hidden bg-slate-200 ${reverse ? 'order-2' : 'order-1'}`}>
+            {isImgSrc(s.img) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.img} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <ImgPlaceholder />
+            )}
+          </div>
+          <div className={`flex min-w-0 flex-col justify-center gap-1.5 p-3 ${reverse ? 'order-1' : 'order-2'}`}>
+            {chip && (
+              <span className="inline-flex w-fit max-w-full items-center gap-1 rounded-full bg-brand-light/10 px-2 py-0.5 text-[8.5px] font-bold text-brand-light">
+                <span className="h-1 w-1 shrink-0 rounded-full bg-brand-light" />
+                <span className="truncate">{chip}</span>
+              </span>
+            )}
+            <span className="break-words text-[12px] font-extrabold leading-snug text-ink">{s.title || '—'}</span>
+            {s.desc && <span className="line-clamp-2 whitespace-pre-line break-words text-[9px] leading-snug text-muted">{s.desc}</span>}
+            {shown.length > 0 && (
+              <ul className="space-y-0.5">
+                {shown.map((f, k) => (
+                  <li key={k} className="flex items-start gap-1 text-[8.5px] font-medium leading-snug text-ink">
+                    <span className="mt-[1px] flex h-3 w-3 shrink-0 items-center justify-center rounded-full bg-brand-light text-white">
+                      <Svg className="h-[7px] w-[7px]" sw={3.6}><path d="M5 12.5l4.5 4.5L19 7.5" /></Svg>
+                    </span>
+                    <span className="min-w-0 break-words">{f}</span>
+                  </li>
+                ))}
+                {s.features.filter(Boolean).length > shown.length && (
+                  <li className="pl-4 text-[8px] font-bold text-muted">+ আরও {s.features.filter(Boolean).length - shown.length}টা</li>
+                )}
+              </ul>
+            )}
+            {s.note && <span className="border-l-2 border-brand-light/50 pl-1.5 text-[8.5px] italic leading-snug text-muted">{s.note}</span>}
+            {s.price > 0 && <span className="text-[11px] font-extrabold text-ink">৳{s.price.toLocaleString('en-US')}</span>}
+            <span className="mt-0.5 w-fit rounded-full bg-brand-light px-2.5 py-1 text-[9px] font-bold text-white">{s.btn || '—'} →</span>
+          </div>
         </div>
       </div>
+      <p className="font-body text-[11.5px] font-semibold leading-snug text-muted">
+        এই সেকশন মূল সাইটে শুধু ডেস্কটপ ও ট্যাবলেটে দেখায় (মোবাইলে লুকানো)। ছবি সারির পুরো উচ্চতা জুড়ে ক্রপ হয়ে বসে।
+      </p>
 
       <ImageField
         value={s.img}
         onChange={(url) => onPatch({ img: url })}
         onUploading={onUploading}
-        hint="লম্বা ৯:১৬ ছবি দিন (যেমন ৯০০×১৬০০ পিক্সেল)। অন্য মাপ দিলেও নিজে থেকে ক্রপ হয়ে ভরে যাবে।"
+        hint="যেকোনো মাপের ছবি চলবে — সারির উচ্চতা অনুযায়ী নিজে থেকে ক্রপ হয়ে ভরে যায়। লম্বাটে/চৌকো ছবি সবচেয়ে ভালো দেখায়।"
       />
 
-      <BnEn label="ছোট লেবেল" bn={s.badge} en={s.badgeEn} onBn={(v) => onPatch({ badge: v })} onEn={(v) => onPatch({ badgeEn: v })} max={L.badge} placeholderBn="হট সেলিং" placeholderEn="Hot Selling" showEn={showEn} />
-      <BnEn label="প্রোডাক্টের নাম / শিরোনাম" bn={s.title} en={s.titleEn} onBn={(v) => onPatch({ title: v })} onEn={(v) => onPatch({ titleEn: v })} max={L.title} showEn={showEn} />
+      <BnEn
+        label="প্রোডাক্টের নাম (লেখার উপরের চিপে)"
+        bn={s.product}
+        en={s.productEn}
+        onBn={(v) => onPatch({ product: v })}
+        onEn={(v) => onPatch({ productEn: v })}
+        max={L.product}
+        placeholderBn="যেমন: RGB Neon Light – 16 Fit / 5 Meter"
+        placeholderEn="e.g. RGB Neon Light – 16 Fit / 5 Meter"
+        showEn={showEn}
+        help="ফাঁকা রাখলে এর জায়গায় নিচের ছোট লেবেল দেখাবে।"
+      />
+      <BnEn label="ছোট লেবেল (প্রোডাক্টের নাম না থাকলে চিপে বসে)" bn={s.badge} en={s.badgeEn} onBn={(v) => onPatch({ badge: v })} onEn={(v) => onPatch({ badgeEn: v })} max={L.badge} placeholderBn="হট সেলিং" placeholderEn="Hot Selling" showEn={showEn} />
+      <BnEn label="শিরোনাম (বড় হেডিং)" bn={s.title} en={s.titleEn} onBn={(v) => onPatch({ title: v })} onEn={(v) => onPatch({ titleEn: v })} max={L.title} showEn={showEn} />
       <BnEn
         label="প্রোডাক্ট সম্পর্কে ছোট বিবরণ"
         bn={s.desc}
@@ -618,9 +757,30 @@ function SpotlightEditor({
         showEn={showEn}
         help={
           descLen > L.descRecommended
-            ? `⚠️ ${L.descRecommended} অক্ষরের বেশি — মোবাইলে সারিটা অনেক লম্বা হবে ও ছবি বেশি ক্রপ হতে পারে। ১৫০–২৫০ অক্ষর সবচেয়ে সুন্দর দেখায়।`
+            ? `⚠️ ${L.descRecommended} অক্ষরের বেশি — সারি অনেক লম্বা হয়ে যাবে। ১৫০–২৫০ অক্ষর সবচেয়ে সুন্দর দেখায়।`
             : `সর্বোচ্চ ${L.desc} অক্ষর। ১৫০–২৫০ অক্ষর সবচেয়ে সুন্দর দেখায়। নতুন লাইনে লিখলে সাইটেও নতুন লাইনে দেখাবে।`
         }
+      />
+
+      <FeatureListEditor
+        bn={s.features}
+        en={s.featuresEn}
+        showEn={showEn}
+        onChange={(bn, en) => onPatch({ features: bn, featuresEn: en })}
+      />
+
+      <BnEn
+        label="শেষ লাইন (তালিকার নিচে, ইটালিক)"
+        bn={s.note}
+        en={s.noteEn}
+        onBn={(v) => onPatch({ note: v })}
+        onEn={(v) => onPatch({ noteEn: v })}
+        max={L.note}
+        multiline
+        rows={2}
+        placeholderBn="যেমন: ঘর, গেমিং সেটআপ, ডেকোর—সবকিছুর জন্য পারফেক্ট।"
+        placeholderEn="e.g. Perfect for your room, gaming setup and decor."
+        showEn={showEn}
       />
       <EnToggle show={showEn} onToggle={() => setShowEn((v) => !v)} />
 
@@ -866,7 +1026,7 @@ export default function HomeShowcasePageClient({ config, categories, collectionC
       {/* ══ ৪. স্পটলাইট ══ */}
       <div className="mb-3">
         <div className="px-1">
-          <SectionHeading hint="লম্বা ৯:১৬ ছবি ও পাশে প্রোডাক্টের তথ্য। প্রথমটায় বামে ছবি-ডানে লেখা, দ্বিতীয়টায় বামে লেখা-ডানে ছবি">স্পটলাইট প্রোডাক্ট (২টি)</SectionHeading>
+          <SectionHeading hint="শুধু ডেস্কটপ/ট্যাবলেটে দেখায়। ছবির পাশে প্রোডাক্টের নাম, বিবরণ ও ফিচার। প্রথমটায় বামে ছবি-ডানে লেখা, দ্বিতীয়টায় উল্টো">স্পটলাইট প্রোডাক্ট (২টি)</SectionHeading>
         </div>
         <div className="flex flex-col gap-2.5">
           {cfg.spotlights.map((s, i) => {

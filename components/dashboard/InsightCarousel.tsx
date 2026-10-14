@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DashboardActionCounts, DashboardStats } from '@/app/actions/dashboard';
+import type { DashboardStats } from '@/app/actions/dashboard';
 import type { DashboardInsights } from '@/lib/dashboardInsights';
 import OrderStatusDonut from '@/components/dashboard/OrderStatusDonut';
+import BkashCard from '@/components/dashboard/insights/BkashCard';
+import SectionHeading from '@/components/common/SectionHeading';
 import {
-  ActionCenterCard,
   CustomersCard,
   FunnelCard,
   PerformanceCard,
@@ -23,15 +24,13 @@ const DRAG_THRESHOLD = 6; // এর বেশি নড়লে ক্লিক
 export default function InsightCarousel({
   stats,
   insights,
-  actions,
 }: {
   stats: DashboardStats;
   insights: DashboardInsights;
-  actions: DashboardActionCounts;
 }) {
   const slides: { key: string; label: string; node: React.ReactNode }[] = [
+    { key: 'bkash', label: 'বিকাশ হিসাব', node: <BkashCard /> },
     { key: 'status', label: 'অর্ডার অবস্থা', node: <OrderStatusDonut stats={stats} /> },
-    { key: 'actions', label: 'করণীয় তালিকা', node: <ActionCenterCard actions={actions} /> },
     { key: 'visitors', label: 'ভিজিটর ট্র্যাকিং', node: <VisitorsCard /> },
     { key: 'funnel', label: 'কনভার্শন ফানেল', node: <FunnelCard /> },
     { key: 'sources', label: 'ট্রাফিক উৎস ও ডিভাইস', node: <SourcesCard /> },
@@ -120,6 +119,7 @@ export default function InsightCarousel({
   /* ── মাউস দিয়ে টেনে সরানো (টাচে নেটিভ সোয়াইপ কাজ করে) ── */
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) return; // ডেস্কটপে কার্ডগুলো দুই কলামে সাজানো — টানার দরকার নেই
     const el = trackRef.current;
     if (!el) return;
     drag.current = { startX: e.clientX, startLeft: el.scrollLeft, moved: false };
@@ -173,6 +173,10 @@ export default function InsightCarousel({
 
   return (
     <section aria-roledescription="carousel" aria-label="ড্যাশবোর্ড ইনসাইট" className="flex h-full min-w-0 flex-col">
+      {/* ডেস্কটপে সোয়াইপ নেই — সব কার্ড দুই কলামে সাজানো; তাই একটা সেকশন হেডিং */}
+      <div className="hidden lg:block">
+        <SectionHeading hint="বিকাশ, অর্ডার, ভিজিটর ও বিক্রির সব হিসাব এক নজরে">বিশ্লেষণ</SectionHeading>
+      </div>
       <div
         ref={trackRef}
         tabIndex={0}
@@ -181,7 +185,7 @@ export default function InsightCarousel({
         onClickCapture={onClickCapture}
         onKeyDown={onKeyDown}
         onDragStart={(e) => e.preventDefault()}
-        className="insight-track no-scrollbar flex min-h-[348px] flex-1 cursor-grab gap-3 overflow-x-auto rounded-[24px] focus-visible:outline-none"
+        className="insight-track no-scrollbar flex min-h-[348px] flex-1 cursor-grab gap-3 overflow-x-auto rounded-[24px] focus-visible:outline-none lg:grid lg:min-h-0 lg:cursor-auto lg:grid-cols-2 lg:gap-5 lg:overflow-visible"
       >
         {slides.map((s, i) => (
           <div
@@ -189,7 +193,7 @@ export default function InsightCarousel({
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} / ${count} — ${s.label}`}
-            className="insight-slide w-full shrink-0 basis-full"
+            className="insight-slide w-full shrink-0 basis-full lg:w-auto lg:basis-auto lg:shrink"
           >
             {s.node}
           </div>
@@ -197,7 +201,7 @@ export default function InsightCarousel({
       </div>
 
       {/* নিয়ন্ত্রণ: ‹ ডট ›  — মোবাইলেও ≥৪৪px টাচ এরিয়া */}
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="mt-2 flex items-center justify-between gap-2 lg:hidden">
         <button
           type="button"
           onClick={() => goTo(index - 1)}

@@ -1,28 +1,37 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Customer, Order, OrderStatus } from '@/types';
 import { getCustomersPage, type CustomersPageResult } from '@/app/actions/customers';
+import { getBkashLinkedOrder } from '@/app/actions/bkash';
+import { updateOrderStatus } from '@/app/actions/orders';
+import { playChaChing } from '@/lib/sound';
 import { useToast } from '@/components/admin/Toast';
 import { useOrdersRealtime } from '@/components/admin/OrdersRealtimeProvider';
-import CustomersTable from '@/components/customers/CustomersTable';
+import CustomersTable, { customerKey } from '@/components/customers/CustomersTable';
+import CustomerDetail from '@/components/customers/CustomerDetail';
+import OrderDetailModal from '@/components/orders/OrderDetailModal';
 import Pagination, { PAGE_SIZE } from '@/components/common/Pagination';
 
 interface Props {
   initialPage: CustomersPageResult;
 }
 
-function StatTile({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+// একটাই কার্ডে তিনটা সংখ্যা — চিকন, যাতে নিচের তালিকার জন্য মোবাইলে বেশি জায়গা থাকে
+function SummaryStrip({ customers, orders, spent }: { customers: number; orders: number; spent: number }) {
+  const cells = [
+    { label: 'কাস্টমার', value: customers.toLocaleString('en-US') },
+    { label: 'অর্ডার', value: orders.toLocaleString('en-US') },
+    { label: 'মোট বিক্রি', value: '৳' + spent.toLocaleString('en-US') },
+  ];
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-[20px] border border-white/90 bg-white p-3 shadow-sh1 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-light/15 text-brand-light sm:h-10 sm:w-10">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-          {icon}
-        </svg>
-      </span>
-      <div className="min-w-0">
-        <div className="truncate font-body text-[10px] font-extrabold uppercase tracking-wider text-muted sm:text-[10.5px]">{label}</div>
-        <div className="truncate font-body text-[17px] font-black leading-tight tracking-tight text-ink sm:text-[20px]">{value}</div>
-      </div>
+    <div className="mb-3 grid grid-cols-3 divide-x divide-border-base/60 rounded-[22px] border border-white/90 bg-white py-3 shadow-sh1">
+      {cells.map((c) => (
+        <div key={c.label} className="min-w-0 px-3 text-center sm:px-5">
+          <div className="truncate font-body text-[10.5px] font-extrabold uppercase tracking-wider text-muted">{c.label}</div>
+          <div className="mt-0.5 truncate font-body text-[18px] font-black leading-tight tracking-tight text-ink sm:text-[22px]">{c.value}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -35,6 +44,11 @@ export default function CustomersPageClient({ initialPage }: Props) {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  const [selected, setSelected] = useState<Customer | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+  const [openingOrderId, setOpeningOrderId] = useState<string | null>(null);
+  const [detailRefresh, setDetailRefresh] = useState(0);
 
   const { showToast } = useToast();
   const showToastRef = useRef(showToast);
@@ -90,30 +104,39 @@ export default function CustomersPageClient({ initialPage }: Props) {
     load(paramsRef.current);
   }, [ordersVersion, load]);
 
+  async function openOrder(id: string) {
+    if (openingOrderId) return;
+    setOpeningOrderId(id);
+    try {
+      const o = await getBkashLinkedOrder(id);
+      if (o) setViewingOrder(o);
+      else showToastRef.current('❌ অর্ডার খুঁজে পাওয়া যায়নি');
+    } catch {
+      showToastRef.current('❌ অর্ডার লোড ব্যর্থ হয়েছে');
+    } finally {
+      setOpeningOrderId(null);
+    }
+  }
+
+  async function handleStatusChange(id: string, status: OrderStatus) {
+    const res = await updateOrderStatus(id, status);
+    if (res.status === 'ok') {
+      setViewingOrder((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
+      setDetailRefresh((v) => v + 1);
+      if (status === 'confirmed') playChaChing();
+      showToastRef.current('✅ স্ট্যাটাস আপডেট হয়েছে');
+    } else {
+      showToastRef.current('❌ ' + (res.message || 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
+    }
+  }
+
   const paginated = data.rows;
   const totalFiltered = data.total;
   const totals = data.totals;
 
   return (
     <div>
-      {/* সামারি টাইল */}
-      <div className="mb-4 grid grid-cols-3 gap-2.5 sm:gap-3">
-        <StatTile
-          label="মোট কাস্টমার"
-          value={totals.customers.toLocaleString('en-US')}
-          icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /></>}
-        />
-        <StatTile
-          label="মোট অর্ডার"
-          value={totals.orders.toLocaleString('en-US')}
-          icon={<><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /></>}
-        />
-        <StatTile
-          label="মোট বিক্রি"
-          value={'৳' + totals.spent.toLocaleString('en-US')}
-          icon={<><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></>}
-        />
-      </div>
+      <SummaryStrip customers={totals.customers} orders={totals.orders} spent={totals.spent} />
 
       {/* সার্চ */}
       <div className="mb-4 rounded-[24px] border border-white/90 bg-white p-3.5 shadow-sh1 sm:p-4">
@@ -154,7 +177,7 @@ export default function CustomersPageClient({ initialPage }: Props) {
       {/* মোবাইলে কার্ড সরাসরি ক্যানভাসে; ডেস্কটপে (≥1024px) একটাই সাদা কার্ডে টেবিল + পেজিনেশন */}
       <div className="lg:overflow-hidden lg:rounded-[24px] lg:border lg:border-white/90 lg:bg-white lg:shadow-sh1">
         <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-          <CustomersTable customers={paginated} />
+          <CustomersTable customers={paginated} onSelect={setSelected} selectedKey={selected ? customerKey(selected) : null} />
         </div>
         {totalFiltered > 0 && (
           <div className="mt-3 rounded-[20px] border border-white/90 bg-white p-3.5 shadow-sh1 lg:mt-0 lg:rounded-none lg:border-0 lg:border-t lg:border-border-base/60 lg:px-5 lg:shadow-none">
@@ -162,6 +185,22 @@ export default function CustomersPageClient({ initialPage }: Props) {
           </div>
         )}
       </div>
+
+      {selected && (
+        <CustomerDetail
+          customer={selected}
+          onClose={() => setSelected(null)}
+          onOpenOrder={openOrder}
+          openingOrderId={openingOrderId}
+          suspendEsc={!!viewingOrder}
+          refreshKey={detailRefresh}
+        />
+      )}
+
+      {/* কাস্টমার প্যানেলের পরে রেন্ডার — তাই একই z-index-এ উপরে বসে */}
+      {viewingOrder && (
+        <OrderDetailModal order={viewingOrder} onClose={() => setViewingOrder(null)} onStatusChange={handleStatusChange} />
+      )}
     </div>
   );
 }

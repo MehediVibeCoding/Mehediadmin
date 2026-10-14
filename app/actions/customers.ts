@@ -68,3 +68,92 @@ export async function getCustomersPage(params: CustomersPageParams): Promise<Cus
   const offset = (page - 1) * pageSize;
   return search ? fetchCustomersPage(search, pageSize, offset) : fetchCustomersPageCached('', pageSize, offset);
 }
+
+// ── কাস্টমার ডিটেইল (ভেতরে ঢুকলে) ─────────────────────────────────────────────
+// শুধু পড়ার অ্যাকশন — ডাটাবেজে কিছু লেখে না। কাস্টমারের চাবি = তালিকার RPC-র মতোই:
+// ফোন থাকলে ফোন (হুবহু মিল), না থাকলে নাম (ফোন ছাড়া অর্ডারগুলো)।
+export interface CustomerDetailOrder {
+  id: string;
+  order_num: string;
+  created_at: string;
+  status: string;
+  total: number;
+  itemCount: number;
+}
+
+export interface CustomerDetailProduct {
+  name: string;
+  /** মোট কত পিস (বাতিল/রিজেক্ট বাদে) */
+  qty: number;
+  /** কয়টা অর্ডারে */
+  orders: number;
+  emoji: string;
+}
+
+export interface CustomerDetailResult {
+  orders: CustomerDetailOrder[];
+  products: CustomerDetailProduct[];
+  addresses: { district: string; address: string }[];
+  firstOrderAt: string;
+}
+
+const DETAIL_MAX_ORDERS = 200;
+
+export async function getCustomerDetail(params: { phone: string; name: string }): Promise<CustomerDetailResult> {
+  await requireAdmin();
+  const phone = String(params.phone ?? '').trim().slice(0, 40);
+  const name = String(params.name ?? '').trim().slice(0, 120);
+  if (!phone && !name) return { orders: [], products: [], addresses: [], firstOrderAt: '' };
+
+  const supabase = createServiceRoleClient();
+  let q = supabase
+    .from('orders')
+    .select('id, order_num, created_at, status, total, items, customer_district, customer_address')
+    .order('created_at', { ascending: false })
+    .limit(DETAIL_MAX_ORDERS);
+  q = phone ? q.eq('customer_phone', phone) : q.eq('customer_name', name).or('customer_phone.is.null,customer_phone.eq.');
+
+  const { data, error } = await q;
+  if (error) throw new Error('কাস্টমারের অর্ডার লোড ব্যর্থ: ' + error.message);
+
+  const rows = (data || []) as Record<string, unknown>[];
+  const prod = new Map<string, CustomerDetailProduct>();
+  const addrSeen = new Set<string>();
+  const addresses: { district: string; address: string }[] = [];
+
+  const orders: CustomerDetailOrder[] = rows.map((r) => {
+    const status = String(r.status ?? 'pending');
+    const items = Array.isArray(r.items) ? (r.items as { name?: unknown; qty?: unknown; emoji?: unknown }[]) : [];
+    const counted = status !== 'cancelled' && status !== 'rejected';
+    for (const it of items) {
+      const n = String(it?.name ?? '').trim();
+      if (!n || !counted) continue;
+      const cur = prod.get(n) || { name: n, qty: 0, orders: 0, emoji: String(it?.emoji ?? '') };
+      cur.qty += Number(it?.qty) || 1;
+      cur.orders += 1;
+      prod.set(n, cur);
+    }
+    const district = String(r.customer_district ?? '').trim();
+    const address = String(r.customer_address ?? '').trim();
+    const key = (district + '|' + address).toLowerCase();
+    if ((district || address) && !addrSeen.has(key) && addresses.length < 3) {
+      addrSeen.add(key);
+      addresses.push({ district, address });
+    }
+    return {
+      id: String(r.id),
+      order_num: String(r.order_num ?? ''),
+      created_at: String(r.created_at ?? ''),
+      status,
+      total: Number(r.total) || 0,
+      itemCount: items.reduce((a, it) => a + (Number(it?.qty) || 1), 0),
+    };
+  });
+
+  return {
+    orders,
+    products: Array.from(prod.values()).sort((a, b) => b.qty - a.qty),
+    addresses,
+    firstOrderAt: orders.length ? orders[orders.length - 1].created_at : '',
+  };
+}

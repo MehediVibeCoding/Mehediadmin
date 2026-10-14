@@ -2,6 +2,7 @@ import { getDashboardData } from '@/app/actions/dashboard';
 import WeatherWidget from '@/components/dashboard/WeatherWidget';
 import StatGrid from '@/components/dashboard/StatGrid';
 import RecentOrders from '@/components/dashboard/RecentOrders';
+import TodoCard from '@/components/dashboard/TodoCard';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import InsightCarousel from '@/components/dashboard/InsightCarousel';
@@ -14,38 +15,46 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   try {
     const data = await getDashboardData();
-    const today = new Date().toLocaleDateString('bn-BD', {
-      timeZone: 'Asia/Dhaka',
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-
     return (
       <TrafficProvider>
-      <div className="pb-4">
-        {/* ১. ওয়েলকাম + তারিখ + লাইভ আবহাওয়া — একটাই কার্ডে */}
-        <WeatherWidget dateLabel={today} />
-
-        {/* ২. নিট প্রফিট হিরো + ছয় মেট্রিকের একটাই বোর্ড */}
-        <StatGrid stats={data.stats} insights={data.insights} />
-
-        {/* ৩. রেভিনিউ ট্রেন্ড চার্ট ও সোয়াইপযোগ্য ইনসাইট কার্ড (প্রথমটা অর্ডার অবস্থা) */}
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.9fr_1.1fr]">
-          <RevenueChart revenueByDate={data.revenueByDate} />
-          <InsightCarousel stats={data.stats} insights={data.insights} actions={data.actions} />
+        {/* ওয়েদার কার্ড পেজের একদম মাথায় — প্যানেলের উপরের প্যাডিং (pt-3 / md:pt-6) -mt দিয়ে মুছে লাগানো, উপরের কোণ সোজা */}
+        <div className="-mt-3 md:-mt-6">
+          <WeatherWidget />
         </div>
 
-        {/* ৪. সর্বশেষ অর্ডারসমূহ ও কুইক অ্যাকশন প্যানেল */}
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.9fr_1.1fr]">
-          <RecentOrders orders={data.recentOrders} />
-          <QuickActions />
-        </div>
+        {/*
+          মোবাইল ক্রম: আজ কী করতে হবে → প্রফিট+মেট্রিক → রেভিনিউ চার্ট → ইনসাইট (সোয়াইপ, বিকাশ প্রথম) → সর্বশেষ অর্ডার → দ্রুত কাজ → কম স্টক
+          ডেস্কটপ (≥১০২৪px): বাম কলাম প্রফিট/চার্ট, ডান কলামে করণীয়/দ্রুত কাজ; তারপর ইনসাইট দুই কলামে; সবশেষে অর্ডার ও কম স্টক।
+          DOM ক্রম = ডেস্কটপের পড়ার ক্রম; মোবাইলে order-* দিয়ে সাজানো।
+        */}
+        <div className="mt-4 grid grid-cols-1 gap-5 pb-4 lg:grid-cols-[1.45fr_1fr]">
+          <div className="order-2 min-w-0 lg:order-none">
+            <StatGrid stats={data.stats} insights={data.insights} />
+          </div>
+          <div className="order-1 min-w-0 lg:order-none">
+            <TodoCard actions={data.actions} />
+          </div>
 
-        {/* ৫. কম স্টক সতর্কতা লিস্ট */}
-        <LowStockAlert items={data.lowStock} />
-      </div>
+          <div className="order-3 min-w-0 lg:order-none [&>*]:h-full">
+            <RevenueChart revenueByDate={data.revenueByDate} />
+          </div>
+          <div className="order-6 min-w-0 lg:order-none [&>*]:h-full">
+            <QuickActions />
+          </div>
+
+          <div className="order-4 min-w-0 lg:order-none lg:col-span-2">
+            <InsightCarousel stats={data.stats} insights={data.insights} />
+          </div>
+
+          <div className={`order-5 min-w-0 lg:order-none [&>*]:h-full ${data.lowStock.length > 0 ? '' : 'lg:col-span-2'}`}>
+            <RecentOrders orders={data.recentOrders} />
+          </div>
+          {data.lowStock.length > 0 && (
+            <div className="order-7 min-w-0 lg:order-none [&>*]:h-full">
+              <LowStockAlert items={data.lowStock} />
+            </div>
+          )}
+        </div>
       </TrafficProvider>
     );
   } catch (err) {

@@ -212,34 +212,20 @@ function SkTableList({
 /* ═════════════════════════ ১. অর্ডার ═════════════════════════ */
 function OrderCardSk() {
   return (
-    <div className="flex flex-col rounded-[22px] border border-white/90 bg-white p-3.5 shadow-sh1">
-      <div className="flex items-center gap-1.5">
+    <div className="flex items-stretch overflow-hidden rounded-[18px] border border-white/90 bg-white shadow-sh1">
+      <div className="flex w-11 shrink-0 items-center justify-center border-r border-border-base/50">
         <Sk className="h-5 w-5 !rounded-md" />
-        <Sk className="h-5 w-20" />
-        <Sk className="ml-auto h-6 w-24 !rounded-full" />
       </div>
-      <div className="mt-2 flex items-center gap-2 pl-0.5">
-        <Sk className="h-4 w-24" />
-        <Sk className="h-4 w-28" />
-      </div>
-      <div className="mt-3 flex items-center gap-3 rounded-2xl bg-surface-muted/70 p-2.5">
-        <Sk className="h-10 w-10 shrink-0 !rounded-full" />
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Sk className="h-[17px] w-32" />
-          <Sk className="h-3.5 w-24" />
+      <div className="min-w-0 flex-1 space-y-2 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <Sk className="h-[18px] w-20" />
+          <Sk className="ml-auto h-6 w-20 !rounded-full" />
         </div>
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {rep(3).map((i) => (
-          <div key={i} className="rounded-xl border border-border-base/70 px-2.5 py-2">
-            <Sk className="h-3 w-12" />
-            <Sk className="mt-1 h-[18px] w-14" />
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex gap-2">
-        <Sk className="h-10 flex-1 !rounded-full" />
-        <Sk className="h-10 w-10 !rounded-full" />
+        <Sk className="h-4 w-44" />
+        <div className="flex items-center justify-between">
+          <Sk className="h-3.5 w-20" />
+          <Sk className="h-4 w-24" />
+        </div>
       </div>
     </div>
   );
@@ -273,14 +259,11 @@ export function OrdersSkeleton() {
 export function CustomersSkeleton() {
   return (
     <div>
-      <div className="mb-4 grid grid-cols-3 gap-2.5 sm:gap-3">
+      <div className="mb-3 grid grid-cols-3 divide-x divide-border-base/60 rounded-[22px] border border-white/90 bg-white py-3 shadow-sh1">
         {rep(3).map((i) => (
-          <div key={i} className={`flex min-w-0 flex-col gap-2 ${TILE} p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4`}>
-            <Sk className="h-9 w-9 shrink-0 !rounded-xl sm:h-10 sm:w-10" />
-            <div className="min-w-0 space-y-1.5">
-              <Sk className="h-3 w-14" />
-              <Sk className="h-[22px] w-16" />
-            </div>
+          <div key={i} className="flex flex-col items-center gap-1.5 px-3">
+            <Sk className="h-3 w-14" />
+            <Sk className="h-[22px] w-16" />
           </div>
         ))}
       </div>
@@ -288,24 +271,17 @@ export function CustomersSkeleton() {
       <SkTableList
         cols={['w-40', 'w-28', 'w-20', 'w-24', 'w-20']}
         rowH="h-[60px]"
-        mobileGrid="grid grid-cols-1 gap-3 md:grid-cols-2"
-        cards={rep(4).map((i) => (
-          <div key={i} className="rounded-[22px] border border-white/90 bg-white p-3.5 shadow-sh1">
-            <div className="flex items-center gap-3">
-              <Sk className="h-11 w-11 shrink-0 !rounded-full" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <Sk className="h-[19px] w-36" />
-                <Sk className="h-4 w-24" />
-              </div>
+        mobileGrid="overflow-hidden rounded-[22px] border border-white/90 bg-white shadow-sh1 divide-y divide-border-base/60"
+        cards={rep(8).map((i) => (
+          <div key={i} className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5">
+            <Sk className="h-10 w-10 shrink-0 !rounded-full" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Sk className="h-4 w-32" />
+              <Sk className="h-3.5 w-24" />
             </div>
-            <Sk className="mt-2.5 h-9 w-full !rounded-xl" />
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {rep(2).map((j) => (
-                <div key={j} className="rounded-xl border border-border-base/70 px-3 py-2">
-                  <Sk className="h-3 w-16" />
-                  <Sk className="mt-1 h-[18px] w-20" />
-                </div>
-              ))}
+            <div className="space-y-1.5">
+              <Sk className="ml-auto h-4 w-14" />
+              <Sk className="ml-auto h-3 w-16" />
             </div>
           </div>
         ))}
@@ -380,17 +356,7 @@ export function ParserSkeleton() {
 export function CouponsSkeleton() {
   return (
     <div>
-      <div className="mb-4 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-        {rep(4).map((i) => (
-          <div key={i} className={`flex min-w-0 flex-col justify-between ${TILE} p-3.5 sm:p-4`}>
-            <div className="flex items-center justify-between gap-2">
-              <Sk className="h-3.5 w-16" />
-              <Sk className="h-9 w-9 shrink-0 !rounded-xl" />
-            </div>
-            <Sk className="mt-2.5 h-[26px] w-20" />
-          </div>
-        ))}
-      </div>
+      <Sk className="mb-4 h-[132px] w-full !rounded-[24px]" />
       <SkSearchToolbar right="button" chips={['w-16', 'w-24', 'w-24', 'w-24']} />
       <SkTableList
         cols={['w-28', 'w-32', 'w-24', 'w-24', 'w-24', 'w-20', 'w-16']}
