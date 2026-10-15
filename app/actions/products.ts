@@ -8,6 +8,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sanitizeInput, sanitizeInputArray, isValidPositiveIntId } from '@/lib/security';
 import { validateImageUpload } from '@/lib/uploadValidation';
 import { uploadToR2 } from '@/lib/r2';
+import { sendRestockSignal } from '@/lib/hubBridge';
 import { requireAdmin } from '@/lib/auth-guard';
 import { COLLECTION_IDS } from '@/lib/constants/homeShowcase';
 import { fetchAllRows } from '@/lib/fetchAllRows';
@@ -465,6 +466,10 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     color_swatch: input.colorSwatch ? sanitizeInput(input.colorSwatch) : null,
   };
 
+  // 📣 Recovery Hub: এডিট ফর্ম থেকেও স্টক ০ → বেশি করা যায় — আগের স্টকটা আগে পড়ে রাখি
+  const { data: stockBefore } = await supabase.from(TABLE).select('stock').eq('id', id).maybeSingle();
+  const previousStock = stockBefore && Number.isFinite(Number(stockBefore.stock)) ? Number(stockBefore.stock) : null;
+
   let { data, error } = await supabase.from(TABLE).update({ ...row, collections: cleanCollections(input) }).eq('id', id).select().single();
   if (error && isMissingCollectionsColumn(error.message)) {
     ({ data, error } = await supabase.from(TABLE).update(row).eq('id', id).select().single());
@@ -473,6 +478,10 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
 
   const unitProfit = Number.isFinite(input.profit) ? input.profit : 200;
   await upsertProductCost(id, unitProfit);
+
+  if (previousStock !== null && previousStock <= 0 && row.stock > 0) {
+    after(() => { sendRestockSignal(id, row.stock); });
+  }
 
   revalidatePath('/products');
   invalidateProductsData();
@@ -657,6 +666,11 @@ export async function updateStock(id: number, stock: number): Promise<{ ok: bool
     reason: 'manual_admin_edit',
     changed_by: adminEmail,
   });
+
+  // 📣 Recovery Hub: স্টক ০ থেকে বাড়লে "স্টকে ফিরেছে" সিগন্যাল (হাবের /stock পেজে জানাতে-হবে তালিকা)
+  if (previousStock <= 0 && stock > 0) {
+    after(() => { sendRestockSignal(id, stock); });
+  }
 
   revalidatePath('/products');
   invalidateProductsData();

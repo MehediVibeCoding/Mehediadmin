@@ -11,12 +11,31 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import PendingOrdersBadge from '@/components/admin/PendingOrdersBadge';
 import { BrandLogo, BrandMark } from '@/components/common/BrandLogo';
 
+// external হলে নতুন ট্যাবে সাধারণ <a> (যেমন রিকভারি হাব — সার্ভার রিডাইরেক্ট হয়ে অন্য ডোমেইনে যায়),
+// নইলে স্বাভাবিক Next <Link>। বাকি props (className, onClick, aria-*) দুই ক্ষেত্রেই একই।
+function NavLink({ external, href, children, ...rest }: React.ComponentProps<'a'> & { external?: boolean; href: string }) {
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} {...(rest as Omit<React.ComponentProps<typeof Link>, 'href'>)}>
+      {children}
+    </Link>
+  );
+}
+
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
   enabled: boolean;
   badge?: { text: string; bg: string };
+  /** true হলে নতুন ট্যাবে সাধারণ <a> (অন্য সাইটে/সার্ভার-রিডাইরেক্টে যায়, Next Link নয়) */
+  external?: boolean;
 }
 
 interface NavSection {
@@ -153,6 +172,21 @@ const NAV_SECTIONS: NavSection[] = [
           <>
             <line x1="12" y1="1" x2="12" y2="23" />
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </>
+        ),
+      },
+      {
+        href: '/hub-access',
+        label: 'রিকভারি হাব',
+        enabled: true,
+        external: true,
+        badge: { text: 'HUB', bg: '#44A7FC' },
+        icon: (
+          <>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+            <path d="M3 21v-5h5" />
           </>
         ),
       },
@@ -417,7 +451,8 @@ function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boo
   }
 
   return (
-    <Link
+    <NavLink
+      external={item.external}
       href={item.href}
       aria-label={item.label}
       aria-current={active ? 'page' : undefined}
@@ -452,7 +487,7 @@ function DesktopNavItem({ item, active, expanded }: { item: NavItem; active: boo
           <PendingOrdersBadge active={false} className="ring-2 ring-white" />
         </span>
       )}
-    </Link>
+    </NavLink>
   );
 }
 
@@ -864,8 +899,9 @@ function MobileDrawer({
                   if (!item.enabled) return null;
                   const active = item.href === activeHref;
                   return (
-                    <Link
+                    <NavLink
                       key={item.href}
+                      external={item.external}
                       href={item.href}
                       onClick={onClose}
                       aria-current={active ? 'page' : undefined}
@@ -892,7 +928,7 @@ function MobileDrawer({
                         </span>
                       )}
                       {item.href === '/orders' && <PendingOrdersBadge active={active} />}
-                    </Link>
+                    </NavLink>
                   );
                 })}
               </div>
