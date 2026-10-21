@@ -31,12 +31,29 @@ export interface R2UploadResult {
   message?: string;
 }
 
+// 🆕 alt text (SEO) থেকে URL-এর জন্য একটা পরিষ্কার স্লাগ বানায়। শুধু ইংরেজি/সংখ্যা
+// রাখা হয় — বাংলা বা অন্য কোনো non-ASCII অক্ষর থাকলে সেগুলো বাদ যায় (URL-এ ভাঙা
+// এনকোডিং এড়াতে)। alt খালি বা পুরোটাই non-ASCII হলে খালি স্ট্রিং ফেরত দেয়, তখন
+// আগের মতোই শুধু র‍্যান্ডম নাম বসে — কিছু ভাঙে না।
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
 /**
  * ফাইল R2-তে আপলোড করে পাবলিক URL ফেরত দেয়।
  * prefix: path-এর ফোল্ডার অংশ (যেমন 'products', 'reviews', 'hero-cards', 'home-showcase')
  * — আগের Supabase Storage কাঠামোর সাথে মিল রেখে একই convention রাখা হলো।
  */
-export async function uploadToR2(file: File, prefix: string, ext: string): Promise<R2UploadResult> {
+export async function uploadToR2(
+  file: File,
+  prefix: string,
+  ext: string,
+  altHint?: string
+): Promise<R2UploadResult> {
   const bucket = process.env.R2_BUCKET_NAME;
   const publicBase = process.env.R2_PUBLIC_BASE_URL;
   if (!bucket || !publicBase) {
@@ -44,7 +61,9 @@ export async function uploadToR2(file: File, prefix: string, ext: string): Promi
   }
   try {
     const client = getR2Client();
-    const path = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const slug = altHint ? slugify(altHint) : '';
+    const randomSuffix = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const path = `${prefix}/${slug ? slug + '-' : ''}${randomSuffix}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     await client.send(
