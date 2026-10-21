@@ -147,6 +147,7 @@ export interface Product {
   stock: number;
   warranty: string;
   imgs: string[]; // প্রতিটা এন্ট্রি হয় image URL, নয়তো emoji fallback (📦)
+  img_alts?: string[]; // 🆕 প্রতিটা imgs[i]-এর নিজস্ব alt text (index মিলিয়ে)
   specs: ProductSpecs;
   desc_text: string;
   long_desc: string; // বর্তমান ফর্মে desc_text-এর সাথে একই মান সেভ হয় (legacy compat কলাম)

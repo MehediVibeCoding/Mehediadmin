@@ -24,6 +24,7 @@ export function emptyFormState(defaultCat: string): ProductFormInput {
     quickSpecsText: '',
     desc: '',
     imgs: [],
+    imgAlts: [],
     featuresRaw: '',
     techSpecsRaw: '',
     powerInfo: '',
@@ -94,6 +95,7 @@ export function productToFormState(p: Product): ProductFormInput {
     quickSpecsText: p.quick_specs_text || legacyQuickSpecsAsText(specs),
     desc: p.desc_text || p.long_desc || '',
     imgs: p.imgs || [],
+    imgAlts: p.img_alts || [],
     featuresRaw: (p.features || []).join('\n\n'),
     techSpecsRaw,
     powerInfo: p.power_info || '',
@@ -111,7 +113,7 @@ export function productToFormState(p: Product): ProductFormInput {
 // Description, এক নজরে, Packaging Content — সবগুলোরই এখন নিজস্ব ডেডিকেটেড
 // ফর্ম ফিল্ড আছে, তাই আর techSpecsRaw-এর ভেতরে গুঁজে দিতে হয় না)। ছবি এই
 // ফাংশনের বাইরে থেকে (AI Parser পেজের নিজস্ব image manager থেকে) আসে।
-export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []): ProductFormInput {
+export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = [], imgAlts: string[] = []): ProductFormInput {
   return {
     name: parsed.name,
     nameBn: parsed.name_bn,
@@ -132,6 +134,7 @@ export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []
     quickSpecsText: parsed.quick_specs_text,
     desc: parsed.desc,
     imgs,
+    imgAlts,
     featuresRaw: parsed.features.join('\n\n'),
     techSpecsRaw: parsed.tech_specs,
     powerInfo: parsed.power_info,

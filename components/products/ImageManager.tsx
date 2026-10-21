@@ -7,6 +7,7 @@ import { FIELD_CLS } from '@/components/common/FormField';
 
 interface Row {
   value: string;
+  alt: string; // 🆕 এই ছবির নিজস্ব alt text (SEO) — খালি রাখলে প্রোডাক্টের নামে ফলব্যাক হয়
   zoom: number; // %
   x: number; // %
   y: number; // %
@@ -15,6 +16,8 @@ interface Row {
 interface Props {
   images: string[];
   onChange: (images: string[]) => void;
+  alts?: string[]; // 🆕 images[i]-এর সাথে index মিলিয়ে
+  onChangeAlts?: (alts: string[]) => void;
 }
 
 function isUrl(v: string) {
@@ -23,22 +26,36 @@ function isUrl(v: string) {
 
 const SLIDER_CLS = 'h-1.5 min-w-0 flex-1 cursor-pointer accent-brand-light';
 
-export default function ImageManager({ images, onChange }: Props) {
+export default function ImageManager({ images, onChange, alts, onChangeAlts }: Props) {
   const { showToast } = useToast();
   const [rows, setRows] = useState<Row[]>(() =>
-    (images.length ? images : ['']).map((v) => ({ value: v, zoom: 100, x: 50, y: 50 }))
+    (images.length ? images : ['']).map((v, i) => ({
+      value: v,
+      alt: (alts && alts[i]) || '',
+      zoom: 100,
+      x: 50,
+      y: 50,
+    }))
   );
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
 
   function sync(next: Row[]) {
     setRows(next);
-    onChange(next.map((r) => r.value).filter(Boolean));
+    const filtered = next.filter((r) => Boolean(r.value));
+    onChange(filtered.map((r) => r.value));
+    onChangeAlts?.(filtered.map((r) => r.alt));
   }
 
   function updateVal(idx: number, val: string) {
     const next = [...rows];
     next[idx] = { ...next[idx], value: val };
+    sync(next);
+  }
+
+  function updateAlt(idx: number, val: string) {
+    const next = [...rows];
+    next[idx] = { ...next[idx], alt: val };
     sync(next);
   }
 
@@ -53,7 +70,17 @@ export default function ImageManager({ images, onChange }: Props) {
   }
 
   function addRow() {
-    sync([...rows, { value: '', zoom: 100, x: 50, y: 50 }]);
+    sync([...rows, { value: '', alt: '', zoom: 100, x: 50, y: 50 }]);
+  }
+
+  // 🆕 কোনটা প্রথম (মেইন) ছবি, কোনটা পরে — সেটা এই তালিকার ক্রমই ঠিক করে।
+  // উপরে/নিচে সরানোর এই দুটো বাটন দিয়ে সহজে সেই ক্রম বদলানো যায়।
+  function moveRow(idx: number, dir: -1 | 1) {
+    const targetIdx = idx + dir;
+    if (targetIdx < 0 || targetIdx >= rows.length) return;
+    const next = [...rows];
+    [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+    sync(next);
   }
 
   async function handleFileSelect(idx: number, file: File | undefined) {
@@ -62,6 +89,7 @@ export default function ImageManager({ images, onChange }: Props) {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('alt', rows[idx]?.alt || '');
       const res = await uploadProductImage(formData);
       if (res.ok && res.url) {
         updateVal(idx, res.url);
@@ -80,19 +108,46 @@ export default function ImageManager({ images, onChange }: Props) {
         return (
           <div key={idx} className="overflow-hidden rounded-[22px] border border-border-base/80 bg-white shadow-sh1">
             <div className="flex items-center justify-between border-b border-border-base/60 bg-brand-light/[0.07] px-4 py-2.5">
-              <span className="font-body text-[12.5px] font-black text-ink">ছবি {idx + 1}</span>
-              <button
-                type="button"
-                onClick={() => removeRow(idx)}
-                className="flex h-8 items-center gap-1.5 rounded-full border border-red-200/80 bg-red-50 px-3 font-body text-[11.5px] font-extrabold text-danger transition-all duration-brand active:scale-95"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                  <path d="M3 6h18" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                </svg>
-                সরান
-              </button>
+              <span className="font-body text-[12.5px] font-black text-ink">
+                ছবি {idx + 1}
+                {idx === 0 && <span className="ml-1.5 font-bold text-brand-light">(মেইন/প্রথম ছবি)</span>}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => moveRow(idx, -1)}
+                  disabled={idx === 0}
+                  title="উপরে সরান"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border-base bg-white text-ink transition-all duration-brand active:scale-95 disabled:opacity-30"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveRow(idx, 1)}
+                  disabled={idx === rows.length - 1}
+                  title="নিচে সরান"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border-base bg-white text-ink transition-all duration-brand active:scale-95 disabled:opacity-30"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                    <path d="M12 5v14M5 12l7 7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeRow(idx)}
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-red-200/80 bg-red-50 px-3 font-body text-[11.5px] font-extrabold text-danger transition-all duration-brand active:scale-95"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  </svg>
+                  সরান
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3.5 p-4 sm:flex-row">
@@ -169,6 +224,18 @@ export default function ImageManager({ images, onChange }: Props) {
                     </svg>
                     {uploadingIdx === idx ? '...' : 'আপলোড'}
                   </button>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="font-body text-[11.5px] font-extrabold text-ink">
+                    Alt Text <span className="font-normal text-muted">(SEO — খালি রাখলে প্রোডাক্টের নাম বসবে)</span>
+                  </label>
+                  <input
+                    className={`${FIELD_CLS} !h-11 !text-[13px]`}
+                    placeholder="যেমন: লাল RGB নিয়ন লাইট সামনে থেকে"
+                    value={row.alt}
+                    onChange={(e) => updateAlt(idx, e.target.value)}
+                  />
                 </div>
 
                 {url && (

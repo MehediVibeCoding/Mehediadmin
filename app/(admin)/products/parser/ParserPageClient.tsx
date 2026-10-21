@@ -18,6 +18,7 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
   const { showToast } = useToast();
   const [text, setText] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [imageAlts, setImageAlts] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusIdx, setStatusIdx] = useState(0);
   const [error, setError] = useState('');
@@ -50,7 +51,9 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
 
     try {
       const parsed = smartParse(raw, categories);
-      const formState = parsedToFormState(parsed, images.filter(Boolean));
+      // imgs ফিল্টার করার সময় imgAlts-ও index মিলিয়ে একইভাবে ছাঁটা, নইলে alt-গুলো এলোমেলো হয়ে যেত
+      const imgPairs = images.map((v, i) => ({ v, a: imageAlts[i] || '' })).filter((p) => Boolean(p.v));
+      const formState = parsedToFormState(parsed, imgPairs.map((p) => p.v), imgPairs.map((p) => p.a));
       setModalState(formState);
       setLoading(false);
     } catch (e) {
@@ -110,7 +113,7 @@ export default function ParserPageClient({ categories }: { categories: CategoryO
 
           <section>
             <SectionHeading hint="ঐচ্ছিক — ছবি দিলে ফর্মে আগেই বসে থাকবে">ধাপ ২ — প্রোডাক্টের ছবি</SectionHeading>
-            <ImageManager images={images} onChange={setImages} />
+            <ImageManager images={images} onChange={setImages} alts={imageAlts} onChangeAlts={setImageAlts} />
           </section>
         </div>
       </div>

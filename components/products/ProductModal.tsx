@@ -638,7 +638,12 @@ export default function ProductModal({ categories, editingProduct, initialState,
             {tab === 'images' && (
               <div>
                 <SectionHeading hint="প্রথম ছবিটাই প্রোডাক্ট তালিকা ও ওয়েবসাইটে কভার ছবি হিসেবে দেখাবে">প্রোডাক্টের ছবি</SectionHeading>
-                <ImageManager images={form.imgs} onChange={(v) => set('imgs', v)} />
+                <ImageManager
+                  images={form.imgs}
+                  onChange={(v) => set('imgs', v)}
+                  alts={form.imgAlts}
+                  onChangeAlts={(v) => set('imgAlts', v)}
+                />
               </div>
             )}
           </div>

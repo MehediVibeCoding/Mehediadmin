@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { ProductListRow } from '@/types';
 import type { CategoryCounts } from '@/app/actions/products';
 import type { CategoryOption } from '@/lib/constants/categories';
-import { deleteProduct, reorderProducts, updateBadge, updateStock } from '@/app/actions/products';
+import { deleteProduct, moveProductToEdge, moveProductToPosition, reorderProducts, updateBadge, updateStock } from '@/app/actions/products';
 import QuickEditPopover from './QuickEditPopover';
 import GuidePagesListModal from '@/components/guides/GuidePagesListModal';
 import Pagination from '@/components/common/Pagination';
@@ -144,6 +144,72 @@ function EditDot({ onClick, title }: { onClick: () => void; title: string }) {
   );
 }
 
+// 🆕 পেজ-নিরপেক্ষ reorder কন্ট্রোল — ড্র্যাগ শুধু বর্তমান পেজের মধ্যেই কাজ করে, তাই
+// শেষ পেজের কোনো প্রোডাক্টকে একদম প্রথম পেজের শুরুতে আনতে এই বাটন/ইনপুট দরকার।
+function PositionControls({
+  busy,
+  onEdge,
+  onPosition,
+}: {
+  busy: boolean;
+  onEdge: (edge: 'top' | 'bottom') => void;
+  onPosition: (position: number) => void;
+}) {
+  const [posInput, setPosInput] = useState('');
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onEdge('top')}
+        disabled={busy}
+        title="একদম উপরে আনুন"
+        className="flex h-9 items-center gap-1 rounded-full border border-border-base bg-white px-2.5 font-body text-[11px] font-extrabold text-ink transition-all duration-brand active:scale-95 disabled:opacity-40"
+      >
+        ⬆ উপরে
+      </button>
+      <button
+        type="button"
+        onClick={() => onEdge('bottom')}
+        disabled={busy}
+        title="একদম নিচে আনুন"
+        className="flex h-9 items-center gap-1 rounded-full border border-border-base bg-white px-2.5 font-body text-[11px] font-extrabold text-ink transition-all duration-brand active:scale-95 disabled:opacity-40"
+      >
+        ⬇ নিচে
+      </button>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = Number(posInput);
+          if (Number.isFinite(n) && n >= 1) {
+            onPosition(n);
+            setPosInput('');
+          }
+        }}
+        className="flex items-center gap-1"
+      >
+        <input
+          type="number"
+          min={1}
+          inputMode="numeric"
+          value={posInput}
+          onChange={(e) => setPosInput(e.target.value)}
+          placeholder="পজিশন #"
+          disabled={busy}
+          className="h-9 w-[76px] rounded-full border border-border-base bg-white px-2.5 font-body text-[11.5px] font-bold text-ink outline-none focus:border-brand-light disabled:opacity-40"
+        />
+        <button
+          type="submit"
+          disabled={busy || !posInput}
+          title="এই পজিশনে বসান"
+          className="flex h-9 items-center rounded-full bg-brand-light px-3 font-body text-[11px] font-extrabold text-white transition-all duration-brand active:scale-95 disabled:opacity-40"
+        >
+          বসান
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function ProductsTable({
   rows,
   total,
@@ -169,6 +235,7 @@ export default function ProductsTable({
   const [dragOrder, setDragOrder] = useState<number[] | null>(null); // বর্তমান পেজের rows-এর id, ড্র্যাগ চলাকালীন লাইভ অর্ডার
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set()); // মোবাইল কার্ডে "সবকিছু দেখুন" খোলা প্রোডাক্টগুলো
+  const [movingId, setMovingId] = useState<number | null>(null); // 🆕 উপরে/নিচে/পজিশন — কোন প্রোডাক্টের অনুরোধ চলছে
   const dragState = useRef<{ id: number } | null>(null);
 
   const catNameMap = useMemo(() => {
@@ -294,6 +361,34 @@ export default function ProductsTable({
     dragState.current = null;
     setDraggingId(null);
     setDragOrder(null);
+  }
+
+  // 🆕 পেজ-নিরপেক্ষ reorder: একদম উপরে/নিচে আনা, অথবা নির্দিষ্ট পজিশন নম্বরে বসানো —
+  // ড্র্যাগের মতো শুধু বর্তমান পেজে আটকে থাকে না, পুরো ক্যাটালগ জুড়ে কাজ করে।
+  async function handleMoveToEdge(id: number, edge: 'top' | 'bottom') {
+    setMovingId(id);
+    const res = await moveProductToEdge(id, edge);
+    notifyCatalogSyncCheck();
+    setMovingId(null);
+    if (!res.ok) {
+      showToast('❌ সরানো ব্যর্থ: ' + (res.message || 'error'));
+      return;
+    }
+    showToast(edge === 'top' ? '⬆️ একদম উপরে আনা হয়েছে' : '⬇️ একদম নিচে আনা হয়েছে');
+    onChanged();
+  }
+
+  async function handleMoveToPosition(id: number, position: number) {
+    setMovingId(id);
+    const res = await moveProductToPosition(id, position);
+    notifyCatalogSyncCheck();
+    setMovingId(null);
+    if (!res.ok) {
+      showToast('❌ সরানো ব্যর্থ: ' + (res.message || 'error'));
+      return;
+    }
+    showToast(`✅ পজিশন ${position}-এ বসানো হয়েছে`);
+    onChanged();
   }
 
   return (
@@ -519,6 +614,14 @@ export default function ProductsTable({
                           </div>
                         </div>
 
+                        <div className="mt-2.5">
+                          <PositionControls
+                            busy={movingId === p.id}
+                            onEdge={(edge) => handleMoveToEdge(p.id, edge)}
+                            onPosition={(pos) => handleMoveToPosition(p.id, pos)}
+                          />
+                        </div>
+
                         <div className="mt-2.5 flex gap-2">
                           <button
                             type="button"
@@ -635,34 +738,41 @@ export default function ProductsTable({
                             <span className="line-clamp-2 block max-w-[150px]">{p.warranty || '—'}</span>
                           </td>
                           <td className="whitespace-nowrap py-3 pl-3 pr-5">
-                            <div className="flex justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => onEdit(p.id)}
-                                title="এডিট করুন"
-                                aria-label="এডিট করুন"
-                                className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
-                              >
-                                <PencilIcon />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setGuidePagesFor(p)}
-                                title="গাইড পেজ (Installation/App-Remote SEO পেজ)"
-                                aria-label="গাইড পেজ"
-                                className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/10 text-brand-light transition-all duration-brand hover:bg-brand-light hover:text-white active:scale-90"
-                              >
-                                <GuideIcon />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleting({ row: p, busy: false })}
-                                title="ডিলিট করুন"
-                                aria-label="ডিলিট করুন"
-                                className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand hover:bg-danger hover:text-white active:scale-90"
-                              >
-                                <TrashIcon />
-                              </button>
+                            <div className="flex flex-col items-end gap-1.5">
+                              <div className="flex justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => onEdit(p.id)}
+                                  title="এডিট করুন"
+                                  aria-label="এডিট করুন"
+                                  className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-white transition-all duration-brand hover:bg-brand-light-hover active:scale-90"
+                                >
+                                  <PencilIcon />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setGuidePagesFor(p)}
+                                  title="গাইড পেজ (Installation/App-Remote SEO পেজ)"
+                                  aria-label="গাইড পেজ"
+                                  className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-light/40 bg-brand-light/10 text-brand-light transition-all duration-brand hover:bg-brand-light hover:text-white active:scale-90"
+                                >
+                                  <GuideIcon />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleting({ row: p, busy: false })}
+                                  title="ডিলিট করুন"
+                                  aria-label="ডিলিট করুন"
+                                  className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200/80 bg-red-50 text-danger transition-all duration-brand hover:bg-danger hover:text-white active:scale-90"
+                                >
+                                  <TrashIcon />
+                                </button>
+                              </div>
+                              <PositionControls
+                                busy={movingId === p.id}
+                                onEdge={(edge) => handleMoveToEdge(p.id, edge)}
+                                onPosition={(pos) => handleMoveToPosition(p.id, pos)}
+                              />
                             </div>
                           </td>
                         </tr>

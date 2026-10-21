@@ -239,6 +239,7 @@ export interface ProductFormInput {
   quickSpecsText: string; // 🆕 "স্পেসিফিকেশন এক নজরে" — ফ্রি-ফ্লো টেক্সট (আগে ছিল ৫টা key:value pair — SpecEditor বাদ)
   desc: string;
   imgs: string[];
+  imgAlts?: string[]; // 🆕 প্রতিটা imgs[i]-এর নিজস্ব alt text (SEO) — index মিলিয়ে
   featuresRaw: string; // blank-line দিয়ে আলাদা ব্লক — একলাইন হলে bullet, দুই+ লাইন হলে প্রথমটা title (bold) বাকিটা description
   techSpecsRaw: string; // "Key: Value" প্রতি লাইনে
   powerInfo: string; // ঐচ্ছিক — খালি রাখলে প্রোডাক্ট পেজে সেকশনটাই দেখাবে না
@@ -249,6 +250,16 @@ export interface ProductFormInput {
   colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
   colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
   collections: string[]; // হোম-শোকেস কালেকশন id (gift / premium / unique / cute) — custom_products.collections (text[])
+}
+
+// imgs থেকে খালি এন্ট্রি বাদ দেওয়ার সময় img_alts-ও index মিলিয়ে একইভাবে ছেঁটে রাখা —
+// নইলে কোনো ছবি মুছলে পরের ছবিগুলোর alt এলোমেলো হয়ে যেত
+function alignedImgs(input: ProductFormInput): { imgs: string[]; imgAlts: string[] } {
+  const alts = input.imgAlts || [];
+  const pairs = input.imgs
+    .map((url, i) => ({ url, alt: (alts[i] || '').trim() }))
+    .filter((p) => Boolean(p.url));
+  return { imgs: pairs.map((p) => p.url), imgAlts: pairs.map((p) => p.alt) };
 }
 
 // কালেকশন কলাম (_migration_reference/002_product_collections.sql) এখনো না বানানো থাকলে সেভ যেন না ভাঙে —
@@ -354,7 +365,7 @@ export async function createProduct(
   }
 
   const supabase = createServiceRoleClient();
-  const imgs = input.imgs.filter(Boolean);
+  const { imgs, imgAlts } = alignedImgs(input);
   const desc = sanitizeInput(input.desc);
 
   // নতুন প্রোডাক্ট সবসময় তালিকার শেষে বসে (sort_order = বর্তমান সর্বোচ্চ + গ্যাপ)।
@@ -378,6 +389,7 @@ export async function createProduct(
     stock: Number.isFinite(input.stock) ? input.stock : 0,
     warranty: sanitizeInput(input.warranty), // খালি থাকলে খালিই সেভ হয় — মেইন সাইটে ওয়ারেন্টি অংশ দেখাবে না
     imgs: imgs.length ? imgs : ['📦'],
+    img_alts: imgs.length ? imgAlts : [],
     specs: buildSpecs(input),
     desc_text: desc,
     long_desc: desc,
@@ -430,7 +442,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   }
 
   const supabase = createServiceRoleClient();
-  const imgs = input.imgs.filter(Boolean);
+  const { imgs, imgAlts } = alignedImgs(input);
   const desc = sanitizeInput(input.desc);
   // ✅ 'closing' column ইচ্ছাকৃতভাবে এখানে টাচ করা হচ্ছে না — legacy ফর্মে
   // এটার কোনো ম্যানুয়াল এডিট ফিল্ড নেই (শুধু AI Parse করলে সেট হয়), আর
@@ -447,6 +459,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     stock: Number.isFinite(input.stock) ? input.stock : 0,
     warranty: sanitizeInput(input.warranty),
     imgs: imgs.length ? imgs : ['📦'],
+    img_alts: imgs.length ? imgAlts : [],
     specs: buildSpecs(input),
     desc_text: desc,
     long_desc: desc,
@@ -731,6 +744,35 @@ export async function reorderProducts(updates: ReorderUpdate[]): Promise<{ ok: b
   return { ok: true };
 }
 
+// 🆕 পেজ-ভিত্তিক তালিকায় ড্র্যাগ করে একটা প্রোডাক্টকে অন্য পেজে নেওয়া সম্ভব না (ড্র্যাগ শুধু
+// একই পেজের মধ্যে কাজ করে, উপরের reorderProducts দেখুন) — তাই এই দুটো অ্যাকশন পুরো
+// ক্যাটালগ জুড়ে (পেজ-নিরপেক্ষভাবে) প্রোডাক্টের পজিশন বদলায়, DB ফাংশন দিয়ে।
+
+export async function moveProductToEdge(id: number, edge: 'top' | 'bottom'): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: 'প্রোডাক্ট আইডি সঠিক নয়' };
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.rpc('admin_move_product_to_edge', { p_id: id, p_edge: edge });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath('/products');
+  invalidateProductsData();
+  after(() => { revalidateVangcurCatalog(); });
+  return { ok: true };
+}
+
+export async function moveProductToPosition(id: number, position: number): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin();
+  if (!isValidPositiveIntId(id)) return { ok: false, message: 'প্রোডাক্ট আইডি সঠিক নয়' };
+  if (!Number.isFinite(position) || position < 1) return { ok: false, message: 'সঠিক পজিশন নম্বর দিন (১ বা তার বেশি)' };
+  const supabase = createServiceRoleClient();
+  const { error } = await supabase.rpc('admin_move_product_to_position', { p_id: id, p_position: Math.round(position) });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath('/products');
+  invalidateProductsData();
+  after(() => { revalidateVangcurCatalog(); });
+  return { ok: true };
+}
+
 // ══════════════════════════════════════════════════════════════
 //  IMAGE UPLOAD — Supabase Storage bucket 'product-images'
 //  (legacy client-side upload থেকে server action-এ সরানো হয়েছে,
@@ -749,5 +791,9 @@ export async function uploadProductImage(
   // 🛡️ অডিট ফিক্স: ফাইলের নাম না, আসল MIME টাইপ ও magic bytes চেক করে ext বসানো হচ্ছে
   const validated = await validateImageUpload(file);
   if (!validated.ok) return { ok: false, message: validated.message };
-  return uploadToR2(file, 'products', validated.ext!);
+  // 🆕 অ্যাডমিন ছবির সাথে যে alt text লেখে, সেটা থেকেই URL-এর নামটাও বানানো হয়
+  // (যেমন alt "লাল RGB নিয়ন লাইট সামনে থেকে" → products/red-rgb-neon-light-...webp)।
+  // খালি থাকলে আগের মতোই শুধু র‍্যান্ডম নাম বসে।
+  const alt = (formData.get('alt') as string | null) || '';
+  return uploadToR2(file, 'products', validated.ext!, alt);
 }
