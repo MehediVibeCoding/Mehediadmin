@@ -30,6 +30,7 @@ interface EditorState {
   label: string;
   catId: string;
   img: string;
+  alt: string;
   linkType: HeroLinkType;
   productId?: number;
   productName?: string;
@@ -80,7 +81,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
       return;
     }
     setProductQuery('');
-    setEditor({ index: -1, label: '', catId: '', img: '', linkType: 'category' });
+    setEditor({ index: -1, label: '', catId: '', img: '', alt: '', linkType: 'category' });
   }
 
   function openEdit(i: number) {
@@ -91,6 +92,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
       label: c.label || '',
       catId: c.catId || '',
       img: c.img || '',
+      alt: c.alt || '',
       linkType: c.linkType || 'category',
       productId: c.productId,
       productName: c.productName,
@@ -104,6 +106,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('alt', editor.alt);
     const res = await uploadHeroCardImage(formData);
     setUploading(false);
     if (!res.ok || !res.url) {
@@ -120,6 +123,7 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
       label: editor.label,
       catId: editor.catId,
       img: editor.img,
+      alt: editor.alt,
       linkType: editor.linkType,
       productId: editor.productId,
       productName: editor.productName,
@@ -389,6 +393,20 @@ export default function HeroCardsPageClient({ cards, categories, products }: Pro
                           ছবি সরান
                         </button>
                       )}
+                    </Field>
+
+                    <Field
+                      label="ছবির Alt Text (SEO)"
+                      help="ইংরেজিতে ছবিতে কী দেখা যাচ্ছে তার বর্ণনা (৫–১০ শব্দ), শেষে Vangcur। ছবি আপলোডের আগে লিখলে ফাইলের নামও এটা থেকেই হবে। ছবি বদলালে এটাও বদলে নিন।"
+                    >
+                      <input
+                        type="text"
+                        value={editor.alt}
+                        maxLength={125}
+                        onChange={(e) => setEditor({ ...editor, alt: e.target.value })}
+                        placeholder="যেমন: Blue Neon Light Strip Wall Decor Vangcur"
+                        className={FIELD_CLS}
+                      />
                     </Field>
 
                     <Field label="কার্ডের নিচের বাটন টেক্সট" help="এই লেখাটা কার্ডের নিচে দেখাবে">

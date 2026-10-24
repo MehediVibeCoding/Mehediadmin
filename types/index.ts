@@ -222,6 +222,7 @@ export interface StoreSetting {
 export interface Review {
   id: number;
   image_url: string;
+  alt_text?: string | null; // 🆕 SEO alt (ইংরেজি)
   created_at: string;
   is_active: boolean; // 🆕 (audit A7) — ড্রাফট/স্টেজিং টগল, false হলে পাবলিকলি দেখাবে না
 }

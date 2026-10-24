@@ -11,6 +11,7 @@ export type HeroLinkType = 'category' | 'grid' | 'product';
 export interface HeroCard {
   label: string;
   img: string;
+  alt?: string; // 🆕 SEO alt (ইংরেজি, ছবির বর্ণনা) — ছবির সাথেই কার্ডে সেভ হয়; খালি হলে মূল সাইট label ফলব্যাক নেয়
   emoji: string;
   catId: string;
   bg: string;
@@ -30,6 +31,7 @@ export interface HeroCardInput {
   label: string;
   catId: string;
   img: string;
+  alt?: string;
   linkType: HeroLinkType;
   productId?: number;
   productName?: string;

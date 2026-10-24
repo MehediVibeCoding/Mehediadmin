@@ -9,13 +9,19 @@ import type { Review } from '@/types';
 
 const TABLE = 'customer_reviews';
 
+// 🆕 alt text পরিষ্কার করা — কন্ট্রোল ক্যারেক্টার বাদ, সর্বোচ্চ ১২৫ অক্ষর; খালি হলে null (মূল সাইট সাধারণ ফলব্যাক নেয়)
+function cleanAlt(v: string | undefined): string | null {
+  const t = (v || '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 125);
+  return t || null;
+}
+
 // legacy loadReviewGallery()
 export async function listReviews(): Promise<Review[]> {
   await requireAdmin();
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select('id, image_url, created_at, is_active')
+    .select('id, image_url, alt_text, created_at, is_active')
     .order('created_at', { ascending: false });
   if (error) return [];
   return (data || []) as Review[];
@@ -27,13 +33,13 @@ export interface ReviewActionResult {
 }
 
 // legacy saveReview()-এর "নতুন" শাখা (insert)
-export async function addReview(imageUrl: string): Promise<ReviewActionResult> {
+export async function addReview(imageUrl: string, altText?: string): Promise<ReviewActionResult> {
   await requireAdmin();
   const image_url = imageUrl.trim();
   if (!image_url) return { ok: false, message: '❌ ছবির URL বা ফাইল দিন' };
 
   const supabase = createServiceRoleClient();
-  const { error } = await supabase.from(TABLE).insert({ image_url });
+  const { error } = await supabase.from(TABLE).insert({ image_url, alt_text: cleanAlt(altText) });
   if (error) return { ok: false, message: '❌ সমস্যা হয়েছে: ' + error.message };
 
   revalidatePath('/review-gallery');
@@ -41,13 +47,13 @@ export async function addReview(imageUrl: string): Promise<ReviewActionResult> {
 }
 
 // legacy saveReview()-এর "এডিট" শাখা (update)
-export async function updateReview(id: number, imageUrl: string): Promise<ReviewActionResult> {
+export async function updateReview(id: number, imageUrl: string, altText?: string): Promise<ReviewActionResult> {
   await requireAdmin();
   const image_url = imageUrl.trim();
   if (!image_url) return { ok: false, message: '❌ ছবির URL বা ফাইল দিন' };
 
   const supabase = createServiceRoleClient();
-  const { error } = await supabase.from(TABLE).update({ image_url }).eq('id', id);
+  const { error } = await supabase.from(TABLE).update({ image_url, alt_text: cleanAlt(altText) }).eq('id', id);
   if (error) return { ok: false, message: '❌ সমস্যা হয়েছে: ' + error.message };
 
   revalidatePath('/review-gallery');
@@ -101,5 +107,7 @@ export async function uploadReviewImage(
   if (!(await verifyImageMagicBytes(file, file.type))) {
     return { ok: false, message: MAGIC_BYTE_MISMATCH_MESSAGE };
   }
-  return uploadToR2(file, 'reviews', ext);
+  // 🆕 ফর্মে লেখা alt থেকে URL-এর নাম বানানো হয় — খালি থাকলে আগের মতো র‍্যান্ডম নাম
+  const alt = (formData.get('alt') as string | null) || '';
+  return uploadToR2(file, 'reviews', ext, alt);
 }
