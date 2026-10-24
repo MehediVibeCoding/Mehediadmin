@@ -13,6 +13,11 @@ import {
 
 const SETTING_KEY = 'vc_cath_cards';
 
+// 🆕 alt text পরিষ্কার করা — কন্ট্রোল ক্যারেক্টার/বাড়তি স্পেস বাদ, সর্বোচ্চ ১২৫ অক্ষর (alt-এর জন্য আদর্শ সীমা)
+function cleanAlt(v: string | undefined): string {
+  return (v || '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 125);
+}
+
 // legacy getCathCards() — saved থাকলে সেটাই authority, ১৩টার বেশি হলে
 // (safety net, কখনো bug/manual DB edit-এ হতে পারে) ট্রিম করে আবার সেভ করে দেয়
 export async function getHeroCards(): Promise<HeroCard[]> {
@@ -107,6 +112,7 @@ export async function addHeroCard(input: HeroCardInput): Promise<HeroCardActionR
     label,
     catId: input.catId || '',
     img: input.img || '',
+    ...(cleanAlt(input.alt) ? { alt: cleanAlt(input.alt) } : {}),
     emoji: emojis[cards.length % emojis.length],
     bg: 'linear-gradient(155deg,#1a1a2e,#0f3460)',
     ...linkFields(input),
@@ -127,13 +133,15 @@ export async function updateHeroCard(index: number, input: HeroCardInput): Promi
   const cards = await getHeroCards();
   if (index < 0 || index >= cards.length) return { ok: false, message: 'কার্ড খুঁজে পাওয়া যায়নি' };
 
-  const { linkType: _lt, productId: _pid, productName: _pn, ...base } = cards[index];
-  void _lt; void _pid; void _pn;
+  const { linkType: _lt, productId: _pid, productName: _pn, alt: _alt, ...base } = cards[index];
+  void _lt; void _pid; void _pn; void _alt;
+  const alt = cleanAlt(input.alt);
   cards[index] = {
     ...base,
     label,
     catId: input.catId || '',
     img: input.img || cards[index].img || '',
+    ...(alt ? { alt } : {}),
     ...linkFields(input),
   };
   await persistHeroCards(cards);
@@ -181,5 +189,7 @@ export async function uploadHeroCardImage(
   if (!(await verifyImageMagicBytes(file, file.type))) {
     return { ok: false, message: MAGIC_BYTE_MISMATCH_MESSAGE };
   }
-  return uploadToR2(file, 'hero-cards', ext);
+  // 🆕 ফর্মে লেখা alt থেকে URL-এর নাম বানানো হয় (products-এর মতোই) — খালি থাকলে আগের মতো র‍্যান্ডম নাম
+  const alt = (formData.get('alt') as string | null) || '';
+  return uploadToR2(file, 'hero-cards', ext, alt);
 }

@@ -21,6 +21,7 @@ interface Props {
 interface EditorState {
   id: number | null; // null মানে নতুন রিভিউ ছবি
   imageUrl: string;
+  altText: string;
 }
 
 export default function ReviewGalleryPageClient({ reviews }: Props) {
@@ -55,11 +56,11 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
   }, [editor, previewUrl, saving]);
 
   function openAdd() {
-    setEditor({ id: null, imageUrl: '' });
+    setEditor({ id: null, imageUrl: '', altText: '' });
   }
 
   function openEdit(r: Review) {
-    setEditor({ id: r.id, imageUrl: r.image_url || '' });
+    setEditor({ id: r.id, imageUrl: r.image_url || '', altText: r.alt_text || '' });
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -68,6 +69,7 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('alt', editor.altText);
     const res = await uploadReviewImage(formData);
     setUploading(false);
 
@@ -89,8 +91,8 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
     setSaving(true);
     const res =
       editor.id === null
-        ? await addReview(editor.imageUrl)
-        : await updateReview(editor.id, editor.imageUrl);
+        ? await addReview(editor.imageUrl, editor.altText)
+        : await updateReview(editor.id, editor.imageUrl, editor.altText);
     setSaving(false);
 
     if (!res.ok) {
@@ -333,6 +335,21 @@ export default function ReviewGalleryPageClient({ reviews }: Props) {
                   value={editor.imageUrl}
                   onChange={(e) => setEditor({ ...editor, imageUrl: e.target.value })}
                   placeholder="https://..."
+                  className={FIELD_CLS}
+                />
+              </Field>
+
+              {/* 🆕 Alt Text (SEO) — ছবির সাথেই সেভ হয়, ছবি বদলালে এটাও বদলে নিন */}
+              <Field
+                label="ছবির Alt Text (SEO)"
+                hint="(ইংরেজি, ৫–১০ শব্দ, শেষে Vangcur)"
+              >
+                <input
+                  type="text"
+                  value={editor.altText}
+                  maxLength={125}
+                  onChange={(e) => setEditor({ ...editor, altText: e.target.value })}
+                  placeholder="যেমন: Purple Glow Moon Lamp Customer Review Vangcur"
                   className={FIELD_CLS}
                 />
               </Field>
