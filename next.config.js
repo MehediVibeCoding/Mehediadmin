@@ -21,7 +21,7 @@ const contentSecurityPolicy = [
   `script-src 'self' 'unsafe-inline'`,
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `font-src 'self' https://fonts.gstatic.com`,
-  `img-src 'self' data: blob: https://res.cloudinary.com ${supabaseUrl}`,
+  `img-src 'self' data: blob: https://res.cloudinary.com https://img.vangcur.com ${supabaseUrl}`,
   `connect-src 'self' ${supabaseUrl} ${supabaseWsUrl} https://api.open-meteo.com https://api.bigdatacloud.net`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
@@ -66,6 +66,11 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
+      },
+      // R2 (Cloudflare) — নতুন ছবির ডোমেইন; CSP-তে না থাকায় অ্যাডমিনে প্রোডাক্টের ছবি ভাঙা দেখাচ্ছিল
+      {
+        protocol: 'https',
+        hostname: 'img.vangcur.com',
       },
     ],
   },
