@@ -498,7 +498,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
                     <Field label="ব্র্যান্ড">
                       <input
                         className={FIELD_CLS}
-                        placeholder="যেমন: Xiaomi — শুধু SEO স্কিমার জন্য, সাইটে আলাদা দেখানো হয় না, খালি রাখলে স্কিমাতে বাদ যাবে"
+                        placeholder="যেমন: Xiaomi — সার্চ, ব্র্যান্ড-ফিল্টার ও SEO স্কিমার জন্য (প্রোডাক্ট পেজে দেখানো হয় না)। সব প্রোডাক্টে একই বানান রাখুন"
                         value={form.brand}
                         onChange={(e) => set('brand', e.target.value)}
                       />
