@@ -233,7 +233,7 @@ export interface ProductFormInput {
   profit: number;
   // 🆕 SEO ফিল্ডস — সবগুলো ঐচ্ছিক, খালি রাখলে সাইট auto-generated fallback ব্যবহার করে
   h1: string;
-  brand: string; // 🆕 ব্যাচ ৯ — শুধু JSON-LD স্কিমার জন্য (সাইটে ভিজুয়ালি আলাদা দেখানো হয় না), খালি রাখলে schema-তে brand বাদ যায়
+  brand: string; // 🆕 ব্যাচ ৯ — JSON-LD স্কিমা, সাইটের সার্চ ও ব্র্যান্ড-ফিল্টারের জন্য (প্রোডাক্ট পেজে দেখানো হয় না); খালি রাখলে schema-তে brand বাদ যায় ও ফিল্টারে আসে না
   metaTitle: string;
   metaDescription: string;
   ogDescription: string;
