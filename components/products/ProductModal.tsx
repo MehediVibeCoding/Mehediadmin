@@ -495,6 +495,14 @@ export default function ProductModal({ categories, editingProduct, initialState,
                         onChange={(e) => set('h1', e.target.value)}
                       />
                     </Field>
+                    <Field label="ব্র্যান্ড">
+                      <input
+                        className={FIELD_CLS}
+                        placeholder="যেমন: Xiaomi — শুধু SEO স্কিমার জন্য, সাইটে আলাদা দেখানো হয় না, খালি রাখলে স্কিমাতে বাদ যাবে"
+                        value={form.brand}
+                        onChange={(e) => set('brand', e.target.value)}
+                      />
+                    </Field>
                     <Field label="Meta Title">
                       <input
                         className={FIELD_CLS}
