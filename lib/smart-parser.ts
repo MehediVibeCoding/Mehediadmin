@@ -477,49 +477,149 @@ function resolveCategories(raw: string, categories: CategoryOption[]): string[] 
 }
 
 // ══════════════════════════════════════════════════════════════
-//  🆕 ওয়ারেন্টি — শুধু ৮টা নির্ধারিত ফরম্যাট চেনে (বাংলা ৪ + ইংরেজি ৪)।
-//  কনটেন্টের যেকোনো জায়গায় এগুলোর একটা থাকলে সেটা ধরে (একাধিক থাকলে ডকুমেন্টে
-//  যেটা আগে আসে)। ওয়ারেন্টি তথ্য না থাকলে, অথবা এই ৮টার বাইরে অন্য কোনো
-//  ভাবে লেখা থাকলে খালি ফেরত দেয় — তখন প্রোডাক্টে কোনো ওয়ারেন্টি সেট হয় না।
+//  🆕 ওয়ারেন্টি — যেকোনো সংখ্যা, একক ও ধরন চেনে (আগে শুধু ৪টা নির্দিষ্ট মেয়াদ ছিল)।
+//  চেনা ফরম্যাট: <সংখ্যা> <একক> [ফ্রি] [ধরন] ওয়ারেন্টি / warranty, যেমন:
+//    "৩ দিনের সার্ভিস ওয়ারেন্টি", "12 days replacement warranty", "২ সপ্তাহ ওয়ারেন্টি",
+//    "18 Months Official Warranty", "1.5 years warranty", "7-day replacement warranty",
+//    "তিন মাসের রিপ্লেসমেন্ট ওয়ারেন্টি", "five years service warranty"।
+//  একক: দিন/সপ্তাহ/মাস/বছর (day/week/month/year ও সংক্ষিপ্ত রূপ)। ধরন (ঐচ্ছিক):
+//    রিপ্লেসমেন্ট / সার্ভিস(িং) / অফিসিয়াল — না থাকলে শুধু "ওয়ারেন্টি" হয়।
 //  বাংলা/ইংরেজি সংখ্যা (৬ বা 6), এক বা বহুবচন (Month/Months) দুটোই চলে।
+//  কনটেন্টের যেকোনো জায়গায় থাকলে ধরে (একাধিক থাকলে ডকুমেন্টে যেটা আগে আসে)।
+//  কিছু না মিললে "Warranty: ৬ মাস রিপ্লেসমেন্ট"-জাতীয় লেবেল-লাইনও দেখে। কিছুই না
+//  পেলে খালি ফেরত দেয় — তখন প্রোডাক্টে কোনো ওয়ারেন্টি সেট হয় না।
+//
+//  ফেরত দেওয়া লেখাটা মেইন সাইটের lib/warrantyData.ts-এর formatWarrantyLabel()-এর
+//  আউটপুট ফরম্যাটের সাথে হুবহু মেলে, তাই সাইট এটা সবসময় ঠিকভাবে পার্স করে।
 // ══════════════════════════════════════════════════════════════
 
-const WARRANTY_TIERS: { re: RegExp; bn: string; en: string }[] = [
-  {
-    re: /(?<![0-9.])7\s*(?:days?|দিনের|দিন)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
-    bn: '৭ দিনের রিপ্লেসমেন্ট ওয়ারেন্টি',
-    en: '7 Days Replacement Warranty',
-  },
-  {
-    re: /(?<![0-9.])6\s*(?:months?|মাসের|মাস)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
-    bn: '৬ মাসের রিপ্লেসমেন্ট ওয়ারেন্টি',
-    en: '6 Months Replacement Warranty',
-  },
-  {
-    re: /(?<![0-9.])1\s*(?:years?|বছরের|বছর)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
-    bn: '১ বছরের রিপ্লেসমেন্ট ওয়ারেন্টি',
-    en: '1 Year Replacement Warranty',
-  },
-  {
-    re: /(?<![0-9.])2\s*(?:years?|বছরের|বছর)\s*(?:replacement|রিপ্লেসমেন্ট)\s*(?:warranty|ওয়ারেন্টি)/i,
-    bn: '২ বছরের রিপ্লেসমেন্ট ওয়ারেন্টি',
-    en: '2 Year Replacement Warranty',
-  },
-];
+type WarrantyUnitKey = 'day' | 'week' | 'month' | 'year';
+type WarrantyKindKey = 'replacement' | 'service' | 'official' | 'plain';
+
+const WARRANTY_WORD_NUMBERS: Record<string, number> = {
+  এক: 1, দুই: 2, তিন: 3, চার: 4, পাঁচ: 5, ছয়: 6, সাত: 7, আট: 8, নয়: 9, দশ: 10,
+  এগারো: 11, বারো: 12, পনেরো: 15, ত্রিশ: 30,
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12,
+};
+
+// লম্বা রূপ আগে — যাতে "দিনের"-এর আগে "দিন" মিলে না যায়
+const WARRANTY_UNIT_SRC =
+  '(days?|দিনের|দিন|weeks?|wks?|সপ্তাহের|সপ্তাহ|months?|mos?|মাসের|মাস|years?|yrs?|বছরের|বছর)';
+const WARRANTY_KIND_SRC =
+  '(?:(?:free|ফ্রি)\\s*)?(replacement|রিপ্লেসমেন্ট|servicing|service|সার্ভিসিং|সার্ভিস|official|অফিসিয়াল)?';
+const WARRANTY_WORD_SRC = '(?:warranty|ওয়ারেন্টি)';
+
+function warrantyUnitOf(word: string): WarrantyUnitKey {
+  const w = word.toLowerCase();
+  if (/^(d|দিন)/.test(w)) return 'day';
+  if (/^(w|সপ্তাহ)/.test(w)) return 'week';
+  if (/^(m|মাস)/.test(w)) return 'month';
+  return 'year';
+}
+
+function warrantyKindOf(word: string | undefined): WarrantyKindKey {
+  if (!word) return 'plain';
+  const w = word.toLowerCase();
+  if (/^(replace|রিপ্লেস)/.test(w)) return 'replacement';
+  if (/^(serv|সার্ভিস)/.test(w)) return 'service';
+  if (/^(official|অফিসিয়াল)/.test(w)) return 'official';
+  return 'plain';
+}
+
+function enToBnDigits(s: string): string {
+  return s.replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'[Number(d)]);
+}
+
+// মেইন সাইটের formatWarrantyLabel()-এর সাথে হুবহু একই ফরম্যাট
+function formatDetectedWarranty(amount: number, unit: WarrantyUnitKey, kind: WarrantyKindKey, bangla: boolean): string {
+  const num = String(amount);
+  if (bangla) {
+    const unitBn = unit === 'day' ? 'দিনের' : unit === 'week' ? 'সপ্তাহের' : unit === 'month' ? 'মাসের' : 'বছরের';
+    const kindBn =
+      kind === 'replacement' ? 'রিপ্লেসমেন্ট ওয়ারেন্টি'
+      : kind === 'official' ? 'অফিসিয়াল ওয়ারেন্টি'
+      : kind === 'service' ? 'সার্ভিস ওয়ারেন্টি'
+      : 'ওয়ারেন্টি';
+    return `${enToBnDigits(num)} ${unitBn} ${kindBn}`;
+  }
+  const unitEn =
+    unit === 'day' ? (amount === 1 ? 'Day' : 'Days')
+    : unit === 'week' ? (amount === 1 ? 'Week' : 'Weeks')
+    : unit === 'month' ? (amount === 1 ? 'Month' : 'Months')
+    : 'Year';
+  const kindEn =
+    kind === 'replacement' ? 'Replacement Warranty'
+    : kind === 'official' ? 'Official Warranty'
+    : kind === 'service' ? 'Service Warranty'
+    : 'Warranty';
+  return `${num} ${unitEn} ${kindEn}`;
+}
+
+interface WarrantyHit {
+  index: number;
+  value: string;
+}
+
+// একটা রেজেক্সের (গ্রুপ: ১=প্রিফিক্স, ২=সংখ্যা/শব্দ, ৩=একক, ৪=ধরন) প্রথম বৈধ মিল খোঁজে
+function firstWarrantyHit(s: string, re: RegExp, wordNumbers: boolean): WarrantyHit | null {
+  re.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    const rawNum = m[2].toLowerCase();
+    const amount = wordNumbers ? WARRANTY_WORD_NUMBERS[rawNum] : parseFloat(rawNum);
+    if (amount === undefined || !Number.isFinite(amount) || amount <= 0) continue;
+    const matched = m[0].slice(m[1].length);
+    // মিলে যাওয়া অংশে বাংলা অক্ষর থাকলে বাংলা ফরম্যাট, নাহলে ইংরেজি ফরম্যাট
+    const isBangla = /[\u0980-\u09FF]/.test(matched);
+    return {
+      index: m.index + m[1].length,
+      value: formatDetectedWarranty(amount, warrantyUnitOf(m[3]), warrantyKindOf(m[4]), isBangla),
+    };
+  }
+  return null;
+}
 
 export function detectWarranty(text: string): string {
   if (!text) return '';
   const s = bnToEn(text);
-  let best: { index: number; value: string } | null = null;
-  for (const tier of WARRANTY_TIERS) {
-    const m = tier.re.exec(s);
-    if (!m) continue;
-    if (best && best.index <= m.index) continue;
-    // মিলে যাওয়া অংশে বাংলা অক্ষর থাকলে বাংলা ফরম্যাট, নাহলে ইংরেজি ফরম্যাট
-    const isBangla = /[\u0980-\u09FF]/.test(m[0]);
-    best = { index: m.index, value: isBangla ? tier.bn : tier.en };
+
+  // ⚠️ lookbehind (?<!...) ইচ্ছাকৃতভাবে এড়ানো — (^|[^...]) প্রিফিক্স গ্রুপ ব্যবহার হয়েছে
+  const numRe = new RegExp(
+    '(^|[^\\d.])(\\d+(?:\\.\\d+)?)\\s*-?\\s*' + WARRANTY_UNIT_SRC + '\\s*' + WARRANTY_KIND_SRC + '\\s*' + WARRANTY_WORD_SRC,
+    'gi'
+  );
+  const wordKeys = Object.keys(WARRANTY_WORD_NUMBERS).join('|');
+  const wordRe = new RegExp(
+    '(^|[^a-z\\u0980-\\u09FF\\d])(' + wordKeys + ')\\s*-?\\s*' + WARRANTY_UNIT_SRC + '\\s*' + WARRANTY_KIND_SRC + '\\s*' + WARRANTY_WORD_SRC,
+    'gi'
+  );
+
+  const hits = [firstWarrantyHit(s, numRe, false), firstWarrantyHit(s, wordRe, true)].filter(
+    (h): h is WarrantyHit => h !== null
+  );
+  if (hits.length > 0) {
+    hits.sort((a, b) => a.index - b.index);
+    return hits[0].value;
   }
-  return best ? best.value : '';
+
+  // ── ফলব্যাক: "Warranty: 6 months replacement" / "ওয়ারেন্টি: ৩ দিন" ধরনের লেবেল-লাইন ──
+  const labelRe = /^(?:warranty(?:\s*period)?|ওয়ারেন্টি(?:র মেয়াদ)?)\s*[:：=ঃ]\s*(.+)$/i;
+  const valueRe = new RegExp(
+    '(^|[^\\d.])(\\d+(?:\\.\\d+)?)\\s*-?\\s*' + WARRANTY_UNIT_SRC + '\\s*' + WARRANTY_KIND_SRC,
+    'i'
+  );
+  for (const line of s.split(/\r?\n/)) {
+    const lm = line.trim().match(labelRe);
+    if (!lm) continue;
+    const vm = valueRe.exec(lm[1]);
+    if (!vm) continue;
+    const amount = parseFloat(vm[2]);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const bangla = /[\u0980-\u09FF]/.test(line);
+    return formatDetectedWarranty(amount, warrantyUnitOf(vm[3]), warrantyKindOf(vm[4]), bangla);
+  }
+  return '';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -622,7 +722,7 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
   if (rating > 5) rating = 5;
   if (rating < 1) rating = 4.5;
 
-  // 🆕 ওয়ারেন্টি: শুধু ৮টা নির্ধারিত ফরম্যাটের একটা পেলে বসে, নাহলে খালি
+  // 🆕 ওয়ারেন্টি: যেকোনো সংখ্যা/একক/ধরনের ওয়ারেন্টি ধরে (৩ দিনের সার্ভিস, ১২ দিন, ১৮ মাস ইত্যাদি), না পেলে খালি
   const warranty = detectWarranty(lines.join('\n'));
 
   const badgeRaw = findVal(lines, ['Badge', 'ব্যাজ', 'Tag']);
