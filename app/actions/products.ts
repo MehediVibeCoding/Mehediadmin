@@ -233,6 +233,7 @@ export interface ProductFormInput {
   profit: number;
   // 🆕 SEO ফিল্ডস — সবগুলো ঐচ্ছিক, খালি রাখলে সাইট auto-generated fallback ব্যবহার করে
   h1: string;
+  brand: string; // 🆕 ব্যাচ ৯ — শুধু JSON-LD স্কিমার জন্য (সাইটে ভিজুয়ালি আলাদা দেখানো হয় না), খালি রাখলে schema-তে brand বাদ যায়
   metaTitle: string;
   metaDescription: string;
   ogDescription: string;
@@ -360,7 +361,7 @@ export async function createProduct(
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
-  if (!opts.forceDuplicate && (await checkDuplicateName(input.name))) {
+  if (!opts.forceDuplicate && (await checkDuplicateName(input.h1?.trim() ? input.h1 : input.name))) {
     return { status: 'duplicate' };
   }
 
@@ -380,7 +381,9 @@ export async function createProduct(
   const nextSortOrder = (Number(maxRow?.sort_order) || 0) + SORT_ORDER_GAP;
 
   const row = {
-    name: sanitizeInput(input.name),
+    // 🔗 ব্যাচ ১২: name সবসময় seo_h1-এর সাথে সিঙ্ক রাখা হয় (h1 খালি থাকলে input.name-ই থাকে) —
+    // যাতে কার্ড/কার্ট/চেকআউট/অ্যাকাউন্ট সব জায়গায় প্রোডাক্ট ডিটেইলস পেজের নামই দেখায়, আলাদা নাম না থাকে
+    name: sanitizeInput(input.h1?.trim() ? input.h1 : input.name),
     name_bn: sanitizeInput(input.nameBn),
     price: input.price,
     old: input.old || input.price,
@@ -401,6 +404,7 @@ export async function createProduct(
     power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
     info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
     seo_h1: input.h1 ? sanitizeInput(input.h1) : null,
+    brand: input.brand ? sanitizeInput(input.brand) : null,
     meta_title: input.metaTitle ? sanitizeInput(input.metaTitle) : null,
     meta_description: input.metaDescription ? sanitizeInput(input.metaDescription) : null,
     og_description: input.ogDescription ? sanitizeInput(input.ogDescription) : null,
@@ -437,7 +441,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
-  if (await checkDuplicateName(input.name, id)) {
+  if (await checkDuplicateName(input.h1?.trim() ? input.h1 : input.name, id)) {
     return { status: 'duplicate' };
   }
 
@@ -450,7 +454,8 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   // closing মুছে যেত (এক ধরনের ডেটা-লস বাগ) — এটা replicate না করে
   // existing মান অক্ষত রাখা হচ্ছে।
   const row = {
-    name: sanitizeInput(input.name),
+    // 🔗 ব্যাচ ১২: name সবসময় seo_h1-এর সাথে সিঙ্ক রাখা হয় (h1 খালি থাকলে input.name-ই থাকে)
+    name: sanitizeInput(input.h1?.trim() ? input.h1 : input.name),
     name_bn: sanitizeInput(input.nameBn),
     price: input.price,
     old: input.old || input.price,
@@ -470,6 +475,7 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
     info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
     seo_h1: input.h1 ? sanitizeInput(input.h1) : null,
+    brand: input.brand ? sanitizeInput(input.brand) : null,
     meta_title: input.metaTitle ? sanitizeInput(input.metaTitle) : null,
     meta_description: input.metaDescription ? sanitizeInput(input.metaDescription) : null,
     og_description: input.ogDescription ? sanitizeInput(input.ogDescription) : null,

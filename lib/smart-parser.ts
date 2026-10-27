@@ -37,6 +37,7 @@ export interface ParsedProductData {
   warranty: string;
   badge: string;
   seo_h1: string; // 🆕 H1 — খালি হলে সাইটে product name-ই h1 হিসেবে দেখাবে
+  brand: string; // 🆕 ব্যাচ ৯ — কন্টেন্টে "ব্র্যান্ড:" থাকলে অটো-ডিটেক্ট, না থাকলে খালি
   meta_title: string; // 🆕
   meta_description: string; // 🆕
   og_description: string; // 🆕
@@ -390,7 +391,7 @@ function parseFaqRegion(lines: string[]): string {
 //  স্পেসিফিকেশনের লেখার ভেতরে ঢুকে না যায় (প্রফিট গোপন তথ্য)।
 // ══════════════════════════════════════════════════════════════
 
-type MetaKey = 'nameBn' | 'profit' | 'category';
+type MetaKey = 'nameBn' | 'profit' | 'category' | 'brand';
 
 const META_PREFIX = '^[\\s\\-•*·▪►✓✔📌]*(?:এই\\s*)?(?:(?:প্রোডাক্টের|প্রোডাক্ট|পণ্যের|product(?:\'s)?)\\s*)?';
 // লেবেলের পর অবশ্যই বিভাজক চিহ্ন অথবা অন্তত একটা স্পেস লাগবে (যাতে "লাভজনক" এর মতো শব্দ ভুল না ধরে)
@@ -400,12 +401,15 @@ const META_TESTS: { key: MetaKey; re: RegExp }[] = [
   { key: 'nameBn', re: new RegExp(META_PREFIX + '(?:(?:বাংলা|বাঙলা|bangla|bengali)\\s*(?:নাম|name))' + META_SEP, 'i') },
   { key: 'profit', re: new RegExp(META_PREFIX + '(?:প্রফিট(?:\\s*মার্জিন)?|লাভ|profit(?:\\s*margin)?)' + META_SEP, 'i') },
   { key: 'category', re: new RegExp(META_PREFIX + '(?:ক্যাটাগরি|ক্যাটেগরি|category|categories)' + META_SEP, 'i') },
+  // 🆕 ব্যাচ ৯.১ — কন্টেন্টে "ব্র্যান্ড:" / "Brand:" লেখা থাকলে অটো-ডিটেক্ট, না থাকলে খালি
+  { key: 'brand', re: new RegExp(META_PREFIX + '(?:ব্র্যান্ড|brand)' + META_SEP, 'i') },
 ];
 
 interface ExtractedMeta {
   nameBn: string;
   profitRaw: string;
   categoryRaw: string;
+  brandRaw: string;
   lines: string[]; // মেটা লাইন বাদ দেওয়া ডকুমেন্ট
 }
 
@@ -414,7 +418,7 @@ function cleanMetaValue(v: string): string {
 }
 
 function extractMetaLines(lines: string[]): ExtractedMeta {
-  const out: ExtractedMeta = { nameBn: '', profitRaw: '', categoryRaw: '', lines: [] };
+  const out: ExtractedMeta = { nameBn: '', profitRaw: '', categoryRaw: '', brandRaw: '', lines: [] };
   const remove = new Set<number>();
   const taken = new Set<MetaKey>();
 
@@ -447,6 +451,7 @@ function extractMetaLines(lines: string[]): ExtractedMeta {
       removeIdx.forEach((x) => remove.add(x));
       if (key === 'nameBn') out.nameBn = value;
       else if (key === 'profit') out.profitRaw = value;
+      else if (key === 'brand') out.brandRaw = value;
       else out.categoryRaw = value;
       break;
     }
@@ -771,6 +776,7 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
     warranty,
     badge,
     seo_h1,
+    brand: meta.brandRaw,
     meta_title,
     meta_description,
     og_description,

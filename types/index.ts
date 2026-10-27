@@ -164,6 +164,7 @@ export interface Product {
   // খালি/null থাকলে সাইট auto-generated fallback ব্যবহার করে (নিচে দেখুন),
   // পুরনো প্রোডাক্টের আচরণ অপরিবর্তিত থাকে।
   seo_h1: string | null; // খালি হলে সাইটে প্রোডাক্টের `name`-ই <h1> হিসেবে দেখাবে
+  brand: string | null; // 🆕 ব্যাচ ৯ — শুধু JSON-LD স্কিমার জন্য, সাইটে ভিজুয়ালি আলাদা দেখানো হয় না
   meta_title: string | null; // খালি হলে সাইট আগের মতোই "নাম - ৳দাম | Vangcur" অটো-জেনারেট করবে
   meta_description: string | null; // খালি হলে সাইট আগের মতোই desc_text থেকে auto-truncate করবে
   og_description: string | null; // খালি হলে meta_description (বা তার auto fallback) ব্যবহার হবে
