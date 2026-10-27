@@ -333,7 +333,7 @@ export default function ProductModal({ categories, editingProduct, initialState,
                         <option value="green">সবুজ (স্পেশাল ডিসকাউন্ট)</option>
                       </SelectBox>
                     </Field>
-                    <Field label="ওয়ারেন্টি">
+                    <Field label="ওয়ারেন্টি" hint="(যেকোনো মেয়াদ/ধরন — যেমন: ৩ দিনের সার্ভিস ওয়ারেন্টি, ১২ দিন রিপ্লেসমেন্ট, ১৮ মাস অফিসিয়াল)">
                       <input
                         className={FIELD_CLS}
                         placeholder="৬ মাস রিপ্লেসমেন্ট"
