@@ -250,7 +250,7 @@ export interface ProductFormInput {
   closing?: string; // শুধু AI Parse ফ্লো থেকে আসে — ম্যানুয়াল ফর্মে কোনো ফিল্ড নেই (legacy-তেও নেই)
   colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
   colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
-  collections: string[]; // হোম-শোকেস কালেকশন id (gift / premium / unique / cute) — custom_products.collections (text[])
+  collections: string[]; // হোম-শোকেস কালেকশন id (gift / premium / room-decor / useful-tools) — custom_products.collections (text[])
 }
 
 // imgs থেকে খালি এন্ট্রি বাদ দেওয়ার সময় img_alts-ও index মিলিয়ে একইভাবে ছেঁটে রাখা —
