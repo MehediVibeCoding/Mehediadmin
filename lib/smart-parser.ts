@@ -735,6 +735,7 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
   if (/hot/i.test(badgeRaw)) badge = 'HOT';
   else if (/new/i.test(badgeRaw)) badge = 'NEW';
   else if (/sale/i.test(badgeRaw)) badge = 'SALE';
+  else if (/offer|অফার/i.test(badgeRaw)) badge = 'OFFER';
 
   const stockRaw = bnToEn(findVal(lines, ['Stock', 'স্টক', 'Quantity', 'স্টক পরিমাণ']));
   const stock = parseInt(stockRaw) || 0;

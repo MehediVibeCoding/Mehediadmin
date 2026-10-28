@@ -11,6 +11,7 @@ import Pagination from '@/components/common/Pagination';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useToast } from '@/components/admin/Toast';
 import { notifyCatalogSyncCheck } from '@/lib/catalogSyncEvent';
+import { badgeColorClass } from '@/lib/badgeStyle';
 
 interface Props {
   rows: ProductListRow[]; // বর্তমান পেজের সারি — সার্ভার থেকে আগেই সার্চ/ক্যাটাগরি/পেজ করা
@@ -122,7 +123,7 @@ function StockPill({ stock }: { stock: number }) {
 
 function BadgeChip({ badge }: { badge?: string | null }) {
   return badge ? (
-    <span className="inline-flex whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 font-body text-[11px] font-extrabold leading-none text-[#92400E]">
+    <span className={`inline-flex whitespace-nowrap rounded-full ${badgeColorClass(badge)} px-2.5 py-1 font-body text-[11px] font-extrabold leading-none`}>
       {badge}
     </span>
   ) : (

@@ -8,7 +8,7 @@
 // একটা বদলালে অন্যটাও বদলান।
 //
 // কালেকশন কীভাবে কাজ করে:
-//  • ৪টা কার্ডের প্রতিটার একটা স্থায়ী collectionId আছে (gift / premium / unique / cute) — এটা
+//  • ৪টা কার্ডের প্রতিটার একটা স্থায়ী collectionId আছে (gift / premium / room-decor / useful-tools) — এটা
 //    অ্যাডমিন থেকে বদলানো যায় না, তাই কার্ডের নাম বদলালেও প্রোডাক্টের সাথে সংযোগ নষ্ট হয় না।
 //  • প্রোডাক্টে custom_products.collections (text[]) কলামে এই id-গুলো থাকে।
 //  • কার্ডে ক্লিক করলে সাইটের /collection/<collectionId> পেজে যায়।
@@ -19,7 +19,7 @@ export const SHOWCASE_CARD_COUNT = 4;
 export const SHOWCASE_SPOTLIGHT_COUNT = 2;
 
 // প্রতিটা কার্ড-স্লটের স্থায়ী কালেকশন id (ক্রম গুরুত্বপূর্ণ — কার্ড #১ = gift ...)
-export const COLLECTION_IDS = ['gift', 'premium', 'unique', 'cute'] as const;
+export const COLLECTION_IDS = ['gift', 'premium', 'room-decor', 'useful-tools'] as const;
 export type CollectionId = (typeof COLLECTION_IDS)[number];
 
 // অক্ষর সীমা
@@ -112,8 +112,8 @@ export const DEFAULT_SHOWCASE: ShowcaseConfig = {
   cards: [
     { img: IMG_TALL, title: 'গিফট আইডিয়া', titleEn: 'Gift Ideas', collectionId: 'gift' },
     { img: IMG_WIDE, title: 'প্রিমিয়াম গ্যাজেট', titleEn: 'Premium Gadgets', collectionId: 'premium' },
-    { img: IMG_SQUARE, title: 'ইউনিক গ্যাজেট', titleEn: 'Unique Gadgets', collectionId: 'unique' },
-    { img: IMG_TALL, title: 'কিউট গ্যাজেট', titleEn: 'Cute Gadgets', collectionId: 'cute' },
+    { img: IMG_SQUARE, title: 'রুম ডেকর', titleEn: 'Room Decor', collectionId: 'room-decor' },
+    { img: IMG_TALL, title: 'ইউজফুল টুলস', titleEn: 'Useful Tools', collectionId: 'useful-tools' },
   ],
   spotlights: [
     {

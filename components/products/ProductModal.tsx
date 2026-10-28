@@ -322,10 +322,35 @@ export default function ProductModal({ categories, editingProduct, initialState,
                     <Field label="Badge">
                       <input
                         className={FIELD_CLS}
-                        placeholder="HOT / NEW / SALE"
+                        placeholder="HOT / NEW / SALE / OFFER"
                         value={form.badge}
                         onChange={(e) => set('badge', e.target.value)}
                       />
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {['HOT', 'NEW', 'SALE', 'OFFER'].map((b) => (
+                          <button
+                            key={b}
+                            type="button"
+                            onClick={() => set('badge', b)}
+                            className={`h-8 rounded-full border px-3.5 font-body text-[11.5px] font-extrabold transition-colors duration-brand ${
+                              form.badge.trim().toUpperCase() === b
+                                ? 'border-brand-light bg-brand-light text-white'
+                                : 'border-border-base bg-white text-ink hover:border-brand-light'
+                            }`}
+                          >
+                            {b}
+                          </button>
+                        ))}
+                        {!!form.badge && (
+                          <button
+                            type="button"
+                            onClick={() => set('badge', '')}
+                            className="h-8 rounded-full border border-red-200/80 bg-red-50 px-3.5 font-body text-[11.5px] font-extrabold text-danger"
+                          >
+                            মুছুন
+                          </button>
+                        )}
+                      </div>
                     </Field>
                     <Field label="ছাড়ের ব্যাজ রং">
                       <SelectBox value={form.discountColor} onChange={(v) => set('discountColor', v as '' | 'green')}>

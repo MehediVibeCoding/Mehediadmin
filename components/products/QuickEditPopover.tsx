@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-const BADGE_SUGGESTIONS = ['HOT', 'NEW', 'SALE'];
+const BADGE_SUGGESTIONS = ['HOT', 'NEW', 'SALE', 'OFFER'];
 
 // 📒 stock_logs-এর reason কোডগুলো একনজরে বাংলায় দেখানোর জন্য ম্যাপ —
 // app/actions/orders.ts ও products.ts যে reason স্ট্রিং লেখে তার সাথে মিলিয়ে।
