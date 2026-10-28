@@ -15,6 +15,7 @@ import StatusPill from '@/components/admin/StatusPill';
 import SectionHeading from '@/components/common/SectionHeading';
 import { RISK_META } from '@/components/orders/RiskBadge';
 import OrderNotes from '@/components/orders/OrderNotes';
+import InvoiceUsageBox from '@/components/orders/InvoiceUsage';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 interface Props {
@@ -419,6 +420,8 @@ export default function OrderDetailModal({ order, onClose, onStatusChange }: Pro
 
               {/* অ্যাডমিন নোট (শুধু এখানেই দেখায়; অর্ডার বদলালে নতুন করে লোড হয়) */}
               <OrderNotes key={order.id} orderId={order.id} />
+
+              <InvoiceUsageBox key={`inv-${order.id}`} orderId={order.id} />
             </div>
 
             {/* ─────────── সবশেষে, পুরো প্রস্থে: স্ট্যাটাস ───────────
