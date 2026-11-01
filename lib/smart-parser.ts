@@ -9,7 +9,7 @@
 //
 //  নতুন ডিজাইন: প্রথমে পুরো ডকুমেন্টকে একটা নির্দিষ্ট ক্রমের
 //  "canonical section anchor" (heading) দিয়ে ভাগ করা হয়:
-//    SEO Product Name → H1 → Meta Title → Meta Description →
+//    SEO Product Name → (H1 — শুধু চেনা হয়, সেভ হয় না) → Meta Title → Meta Description →
 //    OG Description → এক নজরে → Hero Introduction/Description →
 //    Technical Specifications → Packaging → FAQ
 //  প্রতিটা সেকশনের কনটেন্ট = তার নিজের anchor থেকে শুরু করে,
@@ -36,8 +36,9 @@ export interface ParsedProductData {
   rating: number;
   warranty: string;
   badge: string;
-  seo_h1: string; // 🆕 H1 — খালি হলে সাইটে product name-ই h1 হিসেবে দেখাবে
   brand: string; // 🆕 ব্যাচ ৯ — কন্টেন্টে "ব্র্যান্ড:" থাকলে অটো-ডিটেক্ট, না থাকলে খালি
+  color_name: string; // 🆕 "কালারের নাম:" / "Color Name:" লাইন থেকে — না থাকলে খালি
+  color_swatch: string; // 🆕 "সোয়াচ কালার:" / "Hex Code:" থেকে (বা নামের ভেতরের #হেক্স); না থাকলে পরিচিত কালারের ডিফল্ট, নইলে খালি
   meta_title: string; // 🆕
   meta_description: string; // 🆕
   og_description: string; // 🆕
@@ -47,7 +48,6 @@ export interface ParsedProductData {
   features: string[];
   tech_specs: string;
   faqs: string;
-  closing: string;
   power_info: string;
   info_boxes: string; // "### Title\nBody" ফরম্যাট (product-form.ts-এর parseInfoBoxes() এটা পার্স করে)
 }
@@ -101,6 +101,8 @@ interface AnchorMatch {
 
 const ANCHOR_TESTS: { id: AnchorId; test: RegExp }[] = [
   { id: 'name', test: /^(?:seo\s*product\s*name|product\s*name|প্রোডাক্টের\s*নাম|পণ্যের\s*নাম)\b/i },
+  // H1 এখন আর সেভ হয় না। তবে পুরনো ফরম্যাটের কনটেন্টে "H1:" লাইন থাকলে তা যেন পাশের সেকশনে ঢুকে না যায়,
+  // তাই anchor হিসেবে চেনা হয় — মান বাদ দেওয়া হয়।
   { id: 'h1', test: /^h1\b/i },
   { id: 'metaTitle', test: /^meta\s*title\b/i },
   { id: 'metaDesc', test: /^meta\s*description\b/i },
@@ -391,7 +393,7 @@ function parseFaqRegion(lines: string[]): string {
 //  স্পেসিফিকেশনের লেখার ভেতরে ঢুকে না যায় (প্রফিট গোপন তথ্য)।
 // ══════════════════════════════════════════════════════════════
 
-type MetaKey = 'nameBn' | 'profit' | 'category' | 'brand';
+type MetaKey = 'nameBn' | 'profit' | 'category' | 'brand' | 'colorName' | 'colorSwatch';
 
 const META_PREFIX = '^[\\s\\-•*·▪►✓✔📌]*(?:এই\\s*)?(?:(?:প্রোডাক্টের|প্রোডাক্ট|পণ্যের|product(?:\'s)?)\\s*)?';
 // লেবেলের পর অবশ্যই বিভাজক চিহ্ন অথবা অন্তত একটা স্পেস লাগবে (যাতে "লাভজনক" এর মতো শব্দ ভুল না ধরে)
@@ -403,6 +405,20 @@ const META_TESTS: { key: MetaKey; re: RegExp }[] = [
   { key: 'category', re: new RegExp(META_PREFIX + '(?:ক্যাটাগরি|ক্যাটেগরি|category|categories)' + META_SEP, 'i') },
   // 🆕 ব্যাচ ৯.১ — কন্টেন্টে "ব্র্যান্ড:" / "Brand:" লেখা থাকলে অটো-ডিটেক্ট, না থাকলে খালি
   { key: 'brand', re: new RegExp(META_PREFIX + '(?:ব্র্যান্ড|brand)' + META_SEP, 'i') },
+  // 🆕 কালার ভ্যারিয়েন্ট — "কালারের নাম: Silver" / "Color Name: Silver" / "রঙের নাম: সিলভার"
+  // ইচ্ছাকৃতভাবে শুধু স্পষ্ট লেবেল ধরা হয় (সাধারণ "Color: Black" না) — কারণ স্পেসিফিকেশনের লাইনও
+  // ওভাবে লেখা থাকে, আর মেটা লাইন ডকুমেন্ট থেকে সরে যায়।
+  { key: 'colorName', re: new RegExp(META_PREFIX + '(?:(?:কালার|রঙ|রং|colou?r)(?:ের|য়ের)?\\s*(?:নাম|name))' + META_SEP, 'i') },
+  // "সোয়াচ কালার: #C0C0C0" / "Hex Code: #C0C0C0" / "কালার হেক্স কোড: #C0C0C0" / "Swatch: C0C0C0"
+  {
+    key: 'colorSwatch',
+    re: new RegExp(
+      META_PREFIX +
+        '(?:সোয়াচ(?:\\s*(?:কালার|রঙ|রং))?|swatch(?:\\s*colou?r)?|(?:কালার|রঙ|রং|colou?r)\\s*(?:হেক্স(?:\\s*কোড)?|কোড|hex(?:\\s*code)?|code)|হেক্স(?:\\s*কোড)?|hex(?:\\s*code)?)' +
+        META_SEP,
+      'i'
+    ),
+  },
 ];
 
 interface ExtractedMeta {
@@ -410,6 +426,8 @@ interface ExtractedMeta {
   profitRaw: string;
   categoryRaw: string;
   brandRaw: string;
+  colorNameRaw: string;
+  colorSwatchRaw: string;
   lines: string[]; // মেটা লাইন বাদ দেওয়া ডকুমেন্ট
 }
 
@@ -418,7 +436,7 @@ function cleanMetaValue(v: string): string {
 }
 
 function extractMetaLines(lines: string[]): ExtractedMeta {
-  const out: ExtractedMeta = { nameBn: '', profitRaw: '', categoryRaw: '', brandRaw: '', lines: [] };
+  const out: ExtractedMeta = { nameBn: '', profitRaw: '', categoryRaw: '', brandRaw: '', colorNameRaw: '', colorSwatchRaw: '', lines: [] };
   const remove = new Set<number>();
   const taken = new Set<MetaKey>();
 
@@ -452,6 +470,8 @@ function extractMetaLines(lines: string[]): ExtractedMeta {
       if (key === 'nameBn') out.nameBn = value;
       else if (key === 'profit') out.profitRaw = value;
       else if (key === 'brand') out.brandRaw = value;
+      else if (key === 'colorName') out.colorNameRaw = value;
+      else if (key === 'colorSwatch') out.colorSwatchRaw = value;
       else out.categoryRaw = value;
       break;
     }
@@ -649,6 +669,70 @@ function findVal(lines: string[], keys: string[]): string {
   return '';
 }
 
+// ══════════════════════════════════════════════════════════════
+//  🆕 কালার ভ্যারিয়েন্ট — নাম + সোয়াচ হেক্স কোড
+//  • হেক্স কোড "#C0C0C0", "#CCC" (৩ ডিজিট) — সোয়াচ লেবেলের মানে "C0C0C0" (# ছাড়া) হলেও চলে
+//  • নামের ভেতরেই হেক্স থাকলে ("Silver (#C0C0C0)") সেটা আলাদা করে নামটা পরিষ্কার রাখা হয়
+//  • হেক্স না দিলে, নামটা পরিচিত কোনো কালার হলে (ইংরেজি/বাংলা) একটা ডিফল্ট সোয়াচ বসে — এডমিনে বদলানো যাবে
+// ══════════════════════════════════════════════════════════════
+
+const HEX_WITH_HASH = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/;
+const HEX_BARE = /\b[0-9a-fA-F]{6}\b/;
+
+function normalizeHex(h: string): string {
+  let v = h.replace('#', '').toUpperCase();
+  if (v.length === 3) v = v.split('').map((c) => c + c).join('');
+  return '#' + v;
+}
+
+function extractHex(s: string, allowBare: boolean): string {
+  const cleaned = bnToEn(s);
+  const m = cleaned.match(HEX_WITH_HASH) || (allowBare ? cleaned.match(HEX_BARE) : null);
+  return m ? normalizeHex(m[0]) : '';
+}
+
+const KNOWN_SWATCHES: { keys: string[]; hex: string }[] = [
+  { keys: ['black', 'কালো', 'ব্ল্যাক'], hex: '#1A1A1A' },
+  { keys: ['white', 'সাদা', 'হোয়াইট'], hex: '#FFFFFF' },
+  { keys: ['silver', 'সিলভার', 'রুপালি'], hex: '#C0C0C0' },
+  { keys: ['gray', 'grey', 'ধূসর', 'গ্রে'], hex: '#9CA3AF' },
+  { keys: ['red', 'লাল', 'রেড'], hex: '#E53935' },
+  { keys: ['blue', 'নীল', 'ব্লু'], hex: '#1E88E5' },
+  { keys: ['green', 'সবুজ', 'গ্রিন'], hex: '#43A047' },
+  { keys: ['yellow', 'হলুদ', 'ইয়েলো'], hex: '#FDD835' },
+  { keys: ['orange', 'কমলা', 'অরেঞ্জ'], hex: '#FB8C00' },
+  { keys: ['pink', 'গোলাপি', 'পিংক'], hex: '#F48FB1' },
+  { keys: ['purple', 'বেগুনি', 'পার্পল'], hex: '#8E24AA' },
+  { keys: ['brown', 'বাদামি', 'ব্রাউন'], hex: '#795548' },
+  { keys: ['gold', 'golden', 'সোনালি', 'গোল্ড'], hex: '#D4AF37' },
+  { keys: ['beige', 'বেইজ'], hex: '#E6DACF' },
+];
+
+function lookupSwatch(name: string): string {
+  const n = name.trim().toLowerCase();
+  if (!n) return '';
+  for (const { keys, hex } of KNOWN_SWATCHES) {
+    if (keys.some((k) => n === k || n.endsWith(' ' + k))) return hex;
+  }
+  return '';
+}
+
+function resolveColor(nameRaw: string, swatchRaw: string): { name: string; swatch: string } {
+  let name = nameRaw.trim();
+  const swatchFromLabel = extractHex(swatchRaw, true);
+  const swatchFromName = extractHex(name, false);
+  if (swatchFromName) {
+    name = name
+      .replace(new RegExp(HEX_WITH_HASH.source, 'g'), '')
+      .replace(/\(\s*\)|\[\s*\]/g, '')
+      .replace(/\s*[-–—,:|/]\s*$/, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+  const swatch = swatchFromLabel || swatchFromName || lookupSwatch(name);
+  return { name, swatch };
+}
+
 export function smartParse(raw: string, categories: CategoryOption[] = []): ParsedProductData {
   const allLines = raw.replace(/\r\n/g, '\n').split('\n');
   // 🆕 বাংলা নাম / প্রফিট / ক্যাটাগরি লাইন আগে আলাদা করে ডকুমেন্ট থেকে সরানো হয়
@@ -681,7 +765,6 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
   }
 
   // ── SEO মেটা ফিল্ডস ──
-  const seo_h1 = firstNonBlank(bodyOf('h1'));
   const meta_title = firstNonBlank(bodyOf('metaTitle'));
   const meta_description = joinNonBlank(bodyOf('metaDesc'), ' ');
   const og_description = joinNonBlank(bodyOf('ogDesc'), ' ');
@@ -749,20 +832,8 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
   else if (/fan|ফ্যান/i.test(raw)) cat = 'fan';
   else if (/rgb|neon|light|লাইট/i.test(raw)) cat = 'rgb';
 
-  let closing = '';
-  const closingPatterns =
-    /(?:অর্ডার করুন|পেতে|যোগাযোগ|থেকে সেরা|থেকে পাবেন|বিশ্বাস|পরিবার|নিশ্চিত|গ্যারান্টি|সাশ্রয়|সেরা দাম|এখনই|আজই|কিনুন)/i;
-  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 10); i--) {
-    const l = lines[i].trim();
-    if (l && !l.includes(':') && l.length > 15 && !/^(Q:|A:|FAQ|-|•|\*)/i.test(l)) {
-      if (closingPatterns.test(l)) {
-        closing = l;
-        break;
-      }
-    }
-  }
-
   const profitNum = parsePrice(meta.profitRaw);
+  const color = resolveColor(meta.colorNameRaw, meta.colorSwatchRaw);
 
   return {
     name,
@@ -776,8 +847,9 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
     rating,
     warranty,
     badge,
-    seo_h1,
     brand: meta.brandRaw,
+    color_name: color.name,
+    color_swatch: color.swatch,
     meta_title,
     meta_description,
     og_description,
@@ -787,7 +859,6 @@ export function smartParse(raw: string, categories: CategoryOption[] = []): Pars
     features,
     tech_specs,
     faqs,
-    closing,
     power_info,
     info_boxes: infoBoxesRaw,
   };
@@ -820,9 +891,6 @@ export const SMART_PARSER_EXAMPLE = `প্রোডাক্টের বাং
 এই প্রোডাক্টের ক্যাটাগরি: RGB Light
 
 SEO Product Name:
-GearUP NRGB50 5 Meter RGB Neon Light with App & Remote Control
-
-H1:
 GearUP NRGB50 5 Meter RGB Neon Light with App & Remote Control
 
 Meta Title:

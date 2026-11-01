@@ -512,14 +512,6 @@ export default function ProductModal({ categories, editingProduct, initialState,
                 <section>
                   <SectionHeading hint="(সবগুলো ঐচ্ছিক — খালি রাখলে সাইট নিজে থেকেই নাম/দাম দিয়ে বানিয়ে নেবে)">SEO মেটা তথ্য</SectionHeading>
                   <div className="space-y-3.5">
-                    <Field label="H1 (পেজের মূল হেডিং)">
-                      <input
-                        className={FIELD_CLS}
-                        placeholder="খালি রাখলে প্রোডাক্টের নামই দেখাবে"
-                        value={form.h1}
-                        onChange={(e) => set('h1', e.target.value)}
-                      />
-                    </Field>
                     <Field label="ব্র্যান্ড">
                       <input
                         className={FIELD_CLS}

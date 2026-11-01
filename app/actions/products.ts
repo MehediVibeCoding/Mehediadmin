@@ -232,7 +232,6 @@ export interface ProductFormInput {
   rating: number;
   profit: number;
   // 🆕 SEO ফিল্ডস — সবগুলো ঐচ্ছিক, খালি রাখলে সাইট auto-generated fallback ব্যবহার করে
-  h1: string;
   brand: string; // 🆕 ব্যাচ ৯ — JSON-LD স্কিমা, সাইটের সার্চ ও ব্র্যান্ড-ফিল্টারের জন্য (প্রোডাক্ট পেজে দেখানো হয় না); খালি রাখলে schema-তে brand বাদ যায় ও ফিল্টারে আসে না
   metaTitle: string;
   metaDescription: string;
@@ -247,7 +246,6 @@ export interface ProductFormInput {
   packagingContent: string; // 🆕 ঐচ্ছিক — খালি রাখলে প্রোডাক্ট পেজে সেকশনটাই দেখাবে না
   infoBoxesRaw: string; // "### Title\nBody" ফরম্যাট, একাধিক ব্লক blank line দিয়ে আলাদা
   faqsRaw: string; // "Q: ...\nA: ...\n\nQ: ...\nA: ..." ফরম্যাট
-  closing?: string; // শুধু AI Parse ফ্লো থেকে আসে — ম্যানুয়াল ফর্মে কোনো ফিল্ড নেই (legacy-তেও নেই)
   colorName: string; // 🆕 কালার ভ্যারিয়েন্ট — এই প্রোডাক্টটার কালারের নাম (যেমন "Baby Pink")
   colorSwatch: string; // 🆕 কালার ভ্যারিয়েন্ট — সোয়াচ ডটের হেক্স কোড (যেমন "#F9C5D1")
   collections: string[]; // হোম-শোকেস কালেকশন id (gift / premium / room-decor / useful-tools) — custom_products.collections (text[])
@@ -361,7 +359,7 @@ export async function createProduct(
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
-  if (!opts.forceDuplicate && (await checkDuplicateName(input.h1?.trim() ? input.h1 : input.name))) {
+  if (!opts.forceDuplicate && (await checkDuplicateName(input.name))) {
     return { status: 'duplicate' };
   }
 
@@ -381,9 +379,9 @@ export async function createProduct(
   const nextSortOrder = (Number(maxRow?.sort_order) || 0) + SORT_ORDER_GAP;
 
   const row = {
-    // 🔗 ব্যাচ ১২: name সবসময় seo_h1-এর সাথে সিঙ্ক রাখা হয় (h1 খালি থাকলে input.name-ই থাকে) —
-    // যাতে কার্ড/কার্ট/চেকআউট/অ্যাকাউন্ট সব জায়গায় প্রোডাক্ট ডিটেইলস পেজের নামই দেখায়, আলাদা নাম না থাকে
-    name: sanitizeInput(input.h1?.trim() ? input.h1 : input.name),
+    // 🔗 নাম সবসময় ফর্মের "প্রোডাক্টের নাম" (SEO Product Name) ফিল্ড থেকে আসে — আলাদা কোনো H1 কলাম নেই।
+    // কার্ড/কার্ট/চেকআউট/প্রোডাক্ট পেজ সব জায়গায় এই একটাই নাম দেখায়
+    name: sanitizeInput(input.name),
     name_bn: sanitizeInput(input.nameBn),
     price: input.price,
     old: input.old || input.price,
@@ -395,15 +393,12 @@ export async function createProduct(
     img_alts: imgs.length ? imgAlts : [],
     specs: buildSpecs(input),
     desc_text: desc,
-    long_desc: desc,
     features: sanitizeInputArray(parseFeatures(input.featuresRaw)),
     badge: (input.badge || '').toUpperCase(),
     rating: input.rating || 4.5,
     faqs: parseFaqs(input.faqsRaw).map((f) => ({ q: sanitizeInput(f.q), a: sanitizeInput(f.a) })),
-    closing: input.closing ? sanitizeInput(input.closing) : '',
     power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
     info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
-    seo_h1: input.h1 ? sanitizeInput(input.h1) : null,
     brand: input.brand ? sanitizeInput(input.brand) : null,
     meta_title: input.metaTitle ? sanitizeInput(input.metaTitle) : null,
     meta_description: input.metaDescription ? sanitizeInput(input.metaDescription) : null,
@@ -441,21 +436,16 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
   if (!input.name.trim() || !input.price) {
     return { status: 'error', message: 'নাম ও মূল্য আবশ্যক' };
   }
-  if (await checkDuplicateName(input.h1?.trim() ? input.h1 : input.name, id)) {
+  if (await checkDuplicateName(input.name, id)) {
     return { status: 'duplicate' };
   }
 
   const supabase = createServiceRoleClient();
   const { imgs, imgAlts } = alignedImgs(input);
   const desc = sanitizeInput(input.desc);
-  // ✅ 'closing' column ইচ্ছাকৃতভাবে এখানে টাচ করা হচ্ছে না — legacy ফর্মে
-  // এটার কোনো ম্যানুয়াল এডিট ফিল্ড নেই (শুধু AI Parse করলে সেট হয়), আর
-  // legacy-তে edit করার সময় hidden field থেকে খালি ভ্যালু গিয়ে বিদ্যমান
-  // closing মুছে যেত (এক ধরনের ডেটা-লস বাগ) — এটা replicate না করে
-  // existing মান অক্ষত রাখা হচ্ছে।
   const row = {
-    // 🔗 ব্যাচ ১২: name সবসময় seo_h1-এর সাথে সিঙ্ক রাখা হয় (h1 খালি থাকলে input.name-ই থাকে)
-    name: sanitizeInput(input.h1?.trim() ? input.h1 : input.name),
+    // 🔗 নাম সবসময় ফর্মের "প্রোডাক্টের নাম" (SEO Product Name) ফিল্ড থেকে আসে — আলাদা কোনো H1 কলাম নেই
+    name: sanitizeInput(input.name),
     name_bn: sanitizeInput(input.nameBn),
     price: input.price,
     old: input.old || input.price,
@@ -467,14 +457,12 @@ export async function updateProduct(id: number, input: ProductFormInput): Promis
     img_alts: imgs.length ? imgAlts : [],
     specs: buildSpecs(input),
     desc_text: desc,
-    long_desc: desc,
     features: sanitizeInputArray(parseFeatures(input.featuresRaw)),
     badge: (input.badge || '').toUpperCase(),
     rating: input.rating || 4.5,
     faqs: parseFaqs(input.faqsRaw).map((f) => ({ q: sanitizeInput(f.q), a: sanitizeInput(f.a) })),
     power_info: input.powerInfo ? sanitizeInput(input.powerInfo) : null,
     info_boxes: parseInfoBoxes(input.infoBoxesRaw).map((b) => ({ title: sanitizeInput(b.title), body: sanitizeInput(b.body) })) as ProductInfoBox[],
-    seo_h1: input.h1 ? sanitizeInput(input.h1) : null,
     brand: input.brand ? sanitizeInput(input.brand) : null,
     meta_title: input.metaTitle ? sanitizeInput(input.metaTitle) : null,
     meta_description: input.metaDescription ? sanitizeInput(input.metaDescription) : null,
