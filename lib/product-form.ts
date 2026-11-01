@@ -17,7 +17,6 @@ export function emptyFormState(defaultCat: string): ProductFormInput {
     warranty: '',
     rating: 4.5,
     profit: 200,
-    h1: '',
     brand: '',
     metaTitle: '',
     metaDescription: '',
@@ -89,13 +88,12 @@ export function productToFormState(p: Product): ProductFormInput {
     warranty: p.warranty || '',
     rating: p.rating || 4.5,
     profit: p.unit_profit ?? 200, // 🔒 আগে specs._profit থেকে আসত — এখন product_costs থেকে জয়েন করা p.unit_profit
-    h1: p.seo_h1 || '',
     brand: p.brand || '',
     metaTitle: p.meta_title || '',
     metaDescription: p.meta_description || '',
     ogDescription: p.og_description || '',
     quickSpecsText: p.quick_specs_text || legacyQuickSpecsAsText(specs),
-    desc: p.desc_text || p.long_desc || '',
+    desc: p.desc_text || '',
     imgs: p.imgs || [],
     imgAlts: p.img_alts || [],
     featuresRaw: (p.features || []).join('\n\n'),
@@ -111,7 +109,7 @@ export function productToFormState(p: Product): ProductFormInput {
 
 // Smart Parser ("AI Parser") থেকে পাওয়া ডেটা → নতুন প্রোডাক্ট ফর্মে prefill।
 // ২০২৬-০৮ পুনর্লিখনের পর থেকে প্রতিটা ফিল্ড parser-এর নিজস্ব anchor থেকে
-// সরাসরি আসে (SEO Product Name, H1, Meta Title, Meta Description, OG
+// সরাসরি আসে (SEO Product Name, Meta Title, Meta Description, OG
 // Description, এক নজরে, Packaging Content — সবগুলোরই এখন নিজস্ব ডেডিকেটেড
 // ফর্ম ফিল্ড আছে, তাই আর techSpecsRaw-এর ভেতরে গুঁজে দিতে হয় না)। ছবি এই
 // ফাংশনের বাইরে থেকে (AI Parser পেজের নিজস্ব image manager থেকে) আসে।
@@ -129,7 +127,6 @@ export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []
     warranty: parsed.warranty,
     rating: parsed.rating,
     profit: parsed.profit ?? 200,
-    h1: parsed.seo_h1,
     brand: parsed.brand || '',
     metaTitle: parsed.meta_title,
     metaDescription: parsed.meta_description,
@@ -144,8 +141,7 @@ export function parsedToFormState(parsed: ParsedProductData, imgs: string[] = []
     packagingContent: parsed.packaging_content,
     infoBoxesRaw: parsed.info_boxes,
     faqsRaw: parsed.faqs,
-    closing: parsed.closing,
-    colorName: '',
-    colorSwatch: '',
+    colorName: parsed.color_name,
+    colorSwatch: parsed.color_swatch,
   };
 }

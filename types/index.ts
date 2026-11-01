@@ -150,12 +150,10 @@ export interface Product {
   img_alts?: string[]; // 🆕 প্রতিটা imgs[i]-এর নিজস্ব alt text (index মিলিয়ে)
   specs: ProductSpecs;
   desc_text: string;
-  long_desc: string; // বর্তমান ফর্মে desc_text-এর সাথে একই মান সেভ হয় (legacy compat কলাম)
   features: string[];
   badge: string;
   rating: number;
   faqs: ProductFaq[];
-  closing: string;
   // 🆕 (নিয়ন লাইট প্রোডাক্ট পেজ রিফরম্যাট, ২০২৬-০৮): দুটোই সম্পূর্ণ
   // optional — খালি/null থাকলে প্রোডাক্ট পেজে সংশ্লিষ্ট অংশ একদম দেখাবে না।
   power_info: string | null; // Power adapter/connection স্পেসিফিকেশন — Specification ট্যাবে টেবিলের নিচে আলাদা বক্সে বসে, সব প্রোডাক্টে থাকবে না
@@ -163,7 +161,6 @@ export interface Product {
   // 🆕 (AI Planner + SEO ফিল্ড ওভারহল, ২০২৬-০৮): সবগুলো সম্পূর্ণ optional —
   // খালি/null থাকলে সাইট auto-generated fallback ব্যবহার করে (নিচে দেখুন),
   // পুরনো প্রোডাক্টের আচরণ অপরিবর্তিত থাকে।
-  seo_h1: string | null; // খালি হলে সাইটে প্রোডাক্টের `name`-ই <h1> হিসেবে দেখাবে
   brand: string | null; // 🆕 ব্যাচ ৯ — JSON-LD স্কিমা, সাইটের সার্চ-ম্যাচিং ও ব্র্যান্ড-ফিল্টারের জন্য; প্রোডাক্ট পেজে ভিজুয়ালি দেখানো হয় না
   meta_title: string | null; // খালি হলে সাইট আগের মতোই "নাম - ৳দাম | Vangcur" অটো-জেনারেট করবে
   meta_description: string | null; // খালি হলে সাইট আগের মতোই desc_text থেকে auto-truncate করবে
