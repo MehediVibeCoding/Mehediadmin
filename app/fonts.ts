@@ -1,28 +1,72 @@
-import { Playfair_Display, DM_Sans, Hind_Siliguri } from 'next/font/google';
+import localFont from 'next/font/local';
 
-// মূল সাইট (vangcurweb)-এর app/fonts.ts থেকে হুবহু কপি — একই তিনটা ফন্ট, একই
-// CSS variable নাম (--font-display/--font-dm-sans/--font-bengali), একই weight।
-// আগে admin.html-এ এই next/font সেটআপ ছাড়াই শুধু <link> ট্যাগে ফন্ট লোড করা
-// হতো, কিন্তু tailwind.config.ts-এর fontFamily আগে থেকেই var(--font-dm-sans)
-// ইত্যাদি রেফার করত — সেই ভ্যারিয়েবলগুলো কোথাও ডিফাইন না থাকায় পুরো
-// font-family ভ্যালুটাই ইনভ্যালিড হয়ে ব্রাউজার ডিফল্ট ফন্টে ফলব্যাক করছিল।
-export const playfairDisplay = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['600', '700'],
+// আগে next/font/google ব্যবহার হতো, কিন্তু Vercel-এর বিল্ডের সময় Google Fonts থেকে
+// ফন্ট আনতে গিয়ে বিল্ড ফেল করছিল ("Cannot read properties of null")। এখন ফন্টের
+// ফাইল npm প্যাকেজ (@fontsource/*) থেকে সরাসরি লোড হয়, বিল্ডে ইন্টারনেট লাগে না।
+// একই তিনটা ফন্ট, একই CSS variable নাম (--font-display/--font-dm-sans/--font-bengali),
+// একই weight — মূল সাইট (vangcurweb)-এর সাথে মিল রাখা হয়েছে।
+export const playfairDisplay = localFont({
+  src: [
+    {
+      path: '../node_modules/@fontsource/playfair-display/files/playfair-display-latin-600-normal.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../node_modules/@fontsource/playfair-display/files/playfair-display-latin-700-normal.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-display',
   display: 'swap',
 });
 
-export const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
+export const dmSans = localFont({
+  src: [
+    {
+      path: '../node_modules/@fontsource/dm-sans/files/dm-sans-latin-400-normal.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../node_modules/@fontsource/dm-sans/files/dm-sans-latin-500-normal.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../node_modules/@fontsource/dm-sans/files/dm-sans-latin-700-normal.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-dm-sans',
   display: 'swap',
 });
 
-export const hindSiliguri = Hind_Siliguri({
-  subsets: ['bengali'],
-  weight: ['400', '500', '600', '700'],
+export const hindSiliguri = localFont({
+  src: [
+    {
+      path: '../node_modules/@fontsource/hind-siliguri/files/hind-siliguri-bengali-400-normal.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../node_modules/@fontsource/hind-siliguri/files/hind-siliguri-bengali-500-normal.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../node_modules/@fontsource/hind-siliguri/files/hind-siliguri-bengali-600-normal.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../node_modules/@fontsource/hind-siliguri/files/hind-siliguri-bengali-700-normal.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-bengali',
   display: 'swap',
 });
