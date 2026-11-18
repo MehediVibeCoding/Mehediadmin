@@ -200,12 +200,13 @@ function EnToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
 
 // ছবির URL + আপলোড বাটন
 function ImageField({
-  value, onChange, onUploading, hint,
+  value, onChange, onUploading, hint, label = 'ছবি',
 }: {
   value: string;
   onChange: (url: string) => void;
   onUploading: (delta: 1 | -1) => void;
   hint?: string;
+  label?: string;
 }) {
   const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -235,7 +236,7 @@ function ImageField({
   }
 
   return (
-    <Field label="ছবি" help={hint || 'URL পেস্ট করুন অথবা আপলোড করুন — যেকোনো মাপের ছবি দিলে সাইটে নিজে থেকে ক্রপ হয়ে বসবে'}>
+    <Field label={label} help={hint || 'URL পেস্ট করুন অথবা আপলোড করুন — যেকোনো মাপের ছবি দিলে সাইটে নিজে থেকে ক্রপ হয়ে বসবে'}>
       <div className="flex gap-2">
         <input
           type="text"
@@ -260,6 +261,81 @@ function ImageField({
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handleFile} />
       </div>
     </Field>
+  );
+}
+
+// স্পটলাইটের ছবির তালিকা (স্লাইডার): ২টা বা বেশি ছবি দিলে সাইটে ঘুরে ঘুরে দেখাবে, একটা দিলে স্থির থাকবে।
+// তালিকার প্রথম ছবিই img হিসেবে সেভ হয় (সার্ভারও একই নিয়ম মানে)।
+function SpotlightImages({
+  s, onPatch, onUploading,
+}: {
+  s: ShowcaseSpotlight;
+  onPatch: (p: Partial<ShowcaseSpotlight>) => void;
+  onUploading: (d: 1 | -1) => void;
+}) {
+  const slides = s.imgs && s.imgs.length ? s.imgs : [s.img || ''];
+  const max = L.spotImgs;
+
+  const commit = (next: string[]) => {
+    const first = next.find((u) => u.trim()) || '';
+    onPatch({ imgs: next, img: first });
+  };
+  const setAt = (k: number, url: string) => commit(slides.map((u, j) => (j === k ? url : u)));
+  const remove = (k: number) => commit(slides.length > 1 ? slides.filter((_, j) => j !== k) : ['']);
+  const move = (k: number, dir: -1 | 1) => {
+    const t = k + dir;
+    if (t < 0 || t >= slides.length) return;
+    const next = [...slides];
+    [next[k], next[t]] = [next[t], next[k]];
+    commit(next);
+  };
+
+  const iconBtn =
+    'flex h-7 w-7 items-center justify-center rounded-full border border-border-base/80 bg-white text-ink transition-all duration-brand hover:border-brand-light disabled:opacity-30 active:scale-90';
+
+  return (
+    <div className="space-y-3">
+      <div className="font-body text-[11.5px] font-semibold leading-snug text-muted">
+        ২টা বা বেশি ছবি দিলে সাইটে স্লাইডারের মতো ঘুরে ঘুরে দেখাবে (সর্বোচ্চ {max}টা)। সবচেয়ে ভালো মাপ: ৪:৫ পোর্ট্রেট, যেমন ১২০০ × ১৫০০ পিক্সেল।
+      </div>
+
+      {slides.map((url, k) => (
+        <div key={k} className="flex items-start gap-2 rounded-2xl border border-border-base/70 bg-surface-muted/40 p-2.5">
+          <Thumb src={url} className="h-14 w-11 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1">
+            <ImageField
+              label={slides.length > 1 ? `স্লাইড ${k + 1}` : 'ছবি'}
+              value={url}
+              onChange={(u) => setAt(k, u)}
+              onUploading={onUploading}
+              hint={k === 0 ? 'এটাই প্রথমে দেখাবে — URL পেস্ট করুন অথবা আপলোড করুন' : 'URL পেস্ট করুন অথবা আপলোড করুন'}
+            />
+          </div>
+          <div className="flex shrink-0 flex-col gap-1 pt-6">
+            <button type="button" className={iconBtn} disabled={k === 0} onClick={() => move(k, -1)} aria-label="উপরে সরান">
+              <Svg className="h-3.5 w-3.5" sw={2.6}><path d="m18 15-6-6-6 6" /></Svg>
+            </button>
+            <button type="button" className={iconBtn} disabled={k === slides.length - 1} onClick={() => move(k, 1)} aria-label="নিচে সরান">
+              <Svg className="h-3.5 w-3.5" sw={2.6}><path d="m6 9 6 6 6-6" /></Svg>
+            </button>
+            <button type="button" className={iconBtn} disabled={slides.length === 1 && !url} onClick={() => remove(k)} aria-label="এই ছবি বাদ দিন">
+              <Svg className="h-3.5 w-3.5" sw={2.6}><path d="M18 6 6 18M6 6l12 12" /></Svg>
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {slides.length < max && (
+        <button
+          type="button"
+          onClick={() => commit([...slides, ''])}
+          className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full border-2 border-dashed border-brand-light/50 bg-brand-light/[0.08] font-body text-[12.5px] font-extrabold text-ink transition-all duration-brand hover:bg-brand-light/15 active:scale-[0.98]"
+        >
+          <Svg className="h-3.5 w-3.5 text-brand-light" sw={3}><path d="M12 5v14M5 12h14" /></Svg>
+          আরেকটা ছবি যোগ করুন
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -723,12 +799,7 @@ function SpotlightEditor({
         এই সেকশন মূল সাইটে শুধু ডেস্কটপ ও ট্যাবলেটে দেখায় (মোবাইলে লুকানো)। ছবি সারির পুরো উচ্চতা জুড়ে ক্রপ হয়ে বসে।
       </p>
 
-      <ImageField
-        value={s.img}
-        onChange={(url) => onPatch({ img: url })}
-        onUploading={onUploading}
-        hint="যেকোনো মাপের ছবি চলবে — সারির উচ্চতা অনুযায়ী নিজে থেকে ক্রপ হয়ে ভরে যায়। লম্বাটে/চৌকো ছবি সবচেয়ে ভালো দেখায়।"
-      />
+      <SpotlightImages s={s} onPatch={onPatch} onUploading={onUploading} />
 
       <BnEn
         label="প্রোডাক্টের নাম (লেখার উপরের চিপে)"
