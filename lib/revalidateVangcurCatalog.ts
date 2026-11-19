@@ -1,9 +1,10 @@
 // ফাইলের পাথ: lib/revalidateVangcurCatalog.ts
-// প্রোডাক্ট/ক্যাটাগরি/হিরো কার্ড/অফার সেভ হওয়ার পর এটা কল করলে Vangcur-এর
-// /api/revalidate-catalog এন্ডপয়েন্ট হিট হয় — লাইভ সাইটের ক্যাশ করা পেজ সাথে সাথে নতুন হয়।
+// প্রোডাক্ট/ক্যাটাগরি/হিরো কার্ড/অফার সেভ হওয়ার পর revalidateVangcurCatalog() ডাকা হয় — এখন সেটা শুধু
+// "পেন্ডিং পরিবর্তন" গণনা বাড়ায়। অ্যাডমিন "এখনই প্রকাশ করুন" চাপলে publishCatalogNow() Vangcur-এর
+// /api/revalidate-catalog একবার হিট করে — লাইভ সাইটের ISR ও এজ ক্যাশ মুছে পেজ নতুন হয়।
 //
-// ডিজাইন নিয়ম (আগের মতোই): এটা কখনো throw করে না এবং অ্যাডমিনের সেভ কখনো আটকায় না।
-// ব্যর্থ হলেও লাইভ সাইট নিজে থেকেই ২–৫ মিনিটের মধ্যে নতুন ডেটা নিয়ে নেয়।
+// ডিজাইন নিয়ম (আগের মতোই): এগুলো কখনো throw করে না এবং অ্যাডমিনের সেভ কখনো আটকায় না।
+// ⚠️ লাইভ সাইটের পেজ ক্যাশ এখন ~২৪ ঘণ্টা — প্রকাশ না করলে বদল আপনা-আপনি ২৪ ঘণ্টা পর্যন্ত দেখা নাও যেতে পারে।
 //
 // 🆕 আগে সব ব্যর্থতা (env নেই, 401, 503, রিডাইরেক্ট, নেটওয়ার্ক) নিঃশব্দে গিলে ফেলা হতো, তাই
 // "প্রোডাক্ট সাইটে আসছে না" হলে কারণ জানার উপায় ছিল না। এখন প্রতিবার ফলাফল Vercel
@@ -110,11 +111,9 @@ async function recordStatus(ok: boolean, message: string): Promise<void> {
   }
 }
 
-export async function revalidateVangcurCatalog(): Promise<CatalogSyncResult> {
-  // প্রোডাক্ট/স্টক/প্রফিট সেভের পর অ্যাডমিনের নিজের ক্যাশও (ড্যাশবোর্ডের কম-স্টক, প্রফিট) মুছে ফেলি —
-  // এটা প্রতিটা প্রোডাক্ট-রাইটের পরে ডাকা হয়, তাই এক জায়গাতেই সব কভার হয়
-  invalidateProductsData();
-
+// 🚀 "এখনই প্রকাশ করুন" বাটন এটা ডাকে: লাইভ সাইটের /api/revalidate-catalog একবার হিট করে (ওই এন্ডপয়েন্ট
+// ISR ও Cloudflare এজ ক্যাশ দুটোই মোছে)। সফল হলে পেন্ডিং গণনা ০ হয়ে যায়।
+export async function publishCatalogNow(): Promise<CatalogSyncResult> {
   const base = process.env.VANGCUR_SITE_URL;
   const secret = process.env.GUIDE_REVALIDATE_SECRET_KEY;
 
@@ -142,6 +141,7 @@ export async function revalidateVangcurCatalog(): Promise<CatalogSyncResult> {
   if (result.ok) {
     console.log(`[revalidate-catalog] ✅ লাইভ সাইটের ক্যাশ রিফ্রেশ হয়েছে (${url} → ${result.status})`);
     await recordStatus(true, 'ঠিক আছে');
+    await setPendingCount(0);
     return { ok: true, message: 'ঠিক আছে' };
   }
 
@@ -151,4 +151,49 @@ export async function revalidateVangcurCatalog(): Promise<CatalogSyncResult> {
   const message = `${result.status ? `HTTP ${result.status}` : 'সংযোগ ব্যর্থ'}${result.note ? ` — ${result.note}` : ''}`;
   await recordStatus(false, message);
   return { ok: false, message };
+}
+
+// 📝 পেন্ডিং গণনা admin_sync_status টেবিলেই (key='catalog_pending', গণনা `message` কলামে) থাকে — নতুন টেবিল/মাইগ্রেশন লাগে না।
+// একজন অ্যাডমিন ব্যবহার করেন বলে read→write রেসের ঝুঁকি নগণ্য। এগুলো কখনো throw করে না।
+export const CATALOG_PENDING_KEY = 'catalog_pending';
+
+export async function getPendingCount(): Promise<number> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase
+      .from('admin_sync_status')
+      .select('message')
+      .eq('key', CATALOG_PENDING_KEY)
+      .maybeSingle();
+    if (error || !data) return 0;
+    const n = parseInt(String(data.message ?? '0'), 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function setPendingCount(n: number): Promise<void> {
+  try {
+    const supabase = createServiceRoleClient();
+    await supabase
+      .from('admin_sync_status')
+      .upsert(
+        { key: CATALOG_PENDING_KEY, ok: true, message: String(n), updated_at: new Date().toISOString() },
+        { onConflict: 'key' },
+      );
+  } catch {
+    // গণনা লেখা ব্যর্থ হলেও সেভ আটকাবে না
+  }
+}
+
+// ✏️ প্রতিটা প্রোডাক্ট/ক্যাটাগরি/হিরো/অফার সেভের পর আগের মতোই এটা ডাকা হয় (কলার বদলাইনি)।
+// এখন এটা লাইভ সাইট ডাকে না — তাতে প্রতি সেভে পুরো সাইটের ক্যাশ মুছে KV লেখা বাড়ত।
+// শুধু অ্যাডমিনের নিজের ক্যাশ মুছে "পেন্ডিং পরিবর্তন" ১ বাড়ায়; লাইভে পাঠায় publishCatalogNow()।
+export async function revalidateVangcurCatalog(): Promise<CatalogSyncResult> {
+  // প্রোডাক্ট/স্টক/প্রফিট সেভের পর অ্যাডমিনের নিজের ক্যাশও (ড্যাশবোর্ডের কম-স্টক, প্রফিট) মুছে ফেলি —
+  // এটা প্রতিটা প্রোডাক্ট-রাইটের পরে ডাকা হয়, তাই এক জায়গাতেই সব কভার হয়
+  invalidateProductsData();
+  await setPendingCount((await getPendingCount()) + 1);
+  return { ok: true, message: 'পেন্ডিং' };
 }
